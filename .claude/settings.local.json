@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm run *)",
+      "Bash(sed -i '' 's/font-semibold text-base transition-opacity/font-semibold text-canvas transition-opacity/' src/app/page.tsx src/app/not-found.tsx \"src/app/events/[event]/page.tsx\")",
+      "Bash(sed -i '' 's/bg-base\\\\/80/bg-canvas\\\\/80/' src/app/layout.tsx)",
+      "Bash(sed -i '' 's/--color-base:/--color-canvas:/; s/var\\(--color-base\\)/var\\(--color-canvas\\)/g' src/app/globals.css)",
+      "Bash(sed -i '' 's|^import { searchStays, searchTickets, searchTravel } from \"@/lib/providers\";|import { searchStays, searchTickets, searchTravel } from \"@/lib/providers\";\\\\nimport { transportSurchargePerNight } from \"@/lib/providers/stays/seeded\";|' src/lib/trip.ts)",
+      "Bash(npx tsc *)",
+      "Bash(sed -i '' 's/name={team\\\\.shortName}/name={team.name}/' src/app/leagues/\\\\[league\\\\]/page.tsx src/app/teams/\\\\[team\\\\]/page.tsx)",
+      "Bash(sed -i '' 's/name={awayTeam\\\\.shortName}/name={awayTeam.name}/; s/name={homeTeam\\\\.shortName}/name={homeTeam.name}/' src/components/EventCard.tsx)",
+      "Bash(sed -i '' 's/name={context\\\\.awayTeam\\\\.shortName}/name={context.awayTeam.name}/; s/name={context\\\\.homeTeam\\\\.shortName}/name={context.homeTeam.name}/' src/app/events/\\\\[event\\\\]/page.tsx)",
+      "Bash(touch MEMORY.md)",
+      "Bash(echo \"- [Spotlight sports ticketing startup]\\(spotlight-sports-ticketing.md\\) — real launch intent at ~/SP; ticket-resale APIs are blocked on partner approval, not code\")",
+      "Bash(curl -s -o /dev/null -w \"no-key: HTTP %{http_code}\\\\n\" \"https://app.ticketmaster.com/discovery/v2/events.json?keyword=lakers\" --max-time 15)",
+      "Bash(curl -s \"https://app.ticketmaster.com/discovery/v2/events.json?apikey=INVALID&keyword=lakers\" --max-time 15)",
+      "Bash(perl -0pi -e 's/\\(export const seededTicketProvider: TicketProvider = \\\\{\\\\n  name: \"seeded\",\\\\n  enabled: true,\\)/export const seededTicketProvider: TicketProvider = {\\\\n  name: \"seeded\",\\\\n  enabled: true,\\\\n  synthetic: true,/' src/lib/providers/tickets/seeded.ts)",
+      "Bash(perl -0pi -e 's/\\(export const seededTravelProvider: TravelProvider = \\\\{\\\\n  name: \"seeded\",\\\\n  enabled: true,\\)/export const seededTravelProvider: TravelProvider = {\\\\n  name: \"seeded\",\\\\n  enabled: true,\\\\n  synthetic: true,/' src/lib/providers/travel/seeded.ts)",
+      "Bash(perl -0pi -e 's/\\(export const seededStayProvider: StayProvider = \\\\{\\\\n  name: \"seeded\",\\\\n  enabled: true,\\)/export const seededStayProvider: StayProvider = {\\\\n  name: \"seeded\",\\\\n  enabled: true,\\\\n  synthetic: true,/' src/lib/providers/stays/seeded.ts)",
+      "Bash(node -e ' *)",
+      "Bash(python3 -)",
+      "Bash(node --check scripts/check-providers.mjs)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s -o /tmp/am.txt -w 'HTTP %{http_code}\\\\n' -X POST https://test.api.amadeus.com/v1/security/oauth2/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=client_credentials&client_id=BAD&client_secret=BAD' --max-time 20)",
+      "Read(//tmp/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s http://localhost:3000/leagues/nfl)",
+      "Bash(curl -s http://localhost:3000/dev-audit)"
+    ]
+  }
+}
