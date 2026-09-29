@@ -69,14 +69,22 @@ export default async function RootLayout({
 
         <footer className="mt-24 border-t border-line bg-surface">
           <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-10 text-[13px] text-ink-3 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <p className="max-w-xl">
-              Ticket prices are the lowest each site listed when we last checked,
-              never estimates. They change fast, so always check the final price on
-              the booking site before you pay.
-            </p>
-            <Link href="/" className="font-medium text-ink-2 hover:text-ink">
-              © Spotlight
-            </Link>
+            <div className="max-w-xl space-y-2">
+              <p>
+                Ticket prices are the lowest each site listed when we last checked,
+                never estimates. They change fast, so always check the final price on
+                the booking site before you pay.
+              </p>
+              <p>
+                Some links may be affiliate links: if you buy through them, the site may
+                pay us a commission. It never changes your price or the order we show.
+              </p>
+            </div>
+            <nav className="flex gap-4 font-medium text-ink-2">
+              <Link href="/about" className="hover:text-ink">About</Link>
+              <Link href="/privacy" className="hover:text-ink">Privacy</Link>
+              <Link href="/" className="hover:text-ink">© Spotlight</Link>
+            </nav>
           </div>
         </footer>
       </body>
