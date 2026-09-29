@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s · Spotlight",
   },
   description:
-    "Compare ticket prices for every Premier League match across ticket sites, then book flights and a hotel for the exact dates.",
+    "Compare ticket prices across ticket sites for NFL, NBA, MLS, Premier League, Champions League and Formula 1, then add the cheapest hotel and flight for the exact dates.",
 };
 
 export default async function RootLayout({
@@ -35,6 +35,11 @@ export default async function RootLayout({
   const currency = await getCurrency();
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
+      <head>
+        {/* Impact.com site ownership check for the affiliate programs. */}
+        {/* @ts-expect-error Impact reads a `value` attribute, not `content`. */}
+        <meta name="impact-site-verification" value="efec0309-eec0-40ec-96f6-0d0cdcfa841a" />
+      </head>
       <body className="min-h-screen">
         <header className="sticky top-0 z-50 border-b border-line bg-surface/80 backdrop-blur-xl">
           <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5 sm:px-8">
