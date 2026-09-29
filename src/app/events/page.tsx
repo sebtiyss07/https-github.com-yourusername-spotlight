@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getEventContexts, getMarqueeEvents } from "@/lib/repositories";
-import { MarqueeCard } from "@/components/EventCard";
+import { GameCard } from "@/components/GameCard";
 import { BackLink } from "@/components/ui";
 
 export const metadata: Metadata = {
@@ -34,7 +34,7 @@ export default async function EventsPage() {
         Big events
       </h1>
       <p className="mt-2 text-[16px] text-ink-2">
-        Finals and championships, soonest first. Pick one to see the prices.
+        Finals, championships and Grand Prix weekends, soonest first, with the cheapest ticket on each.
       </p>
 
       {[...groups.entries()].map(([month, monthEvents]) => (
@@ -42,11 +42,7 @@ export default async function EventsPage() {
           <h2 className="text-[20px] font-semibold">{month}</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {monthEvents.map((context) => (
-              <MarqueeCard
-                key={context.event.id}
-                context={context}
-                accent={context.sport?.accent ?? "#4f46e5"}
-              />
+              <GameCard key={context.event.id} context={context} race={context.event.sportId === "motorsport"} />
             ))}
           </div>
         </section>

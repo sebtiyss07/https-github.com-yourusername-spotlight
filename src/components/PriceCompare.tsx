@@ -129,7 +129,13 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
                     <span className="text-[14px] font-medium text-ink-3">—</span>
                   )}
                 </span>
-                <span className="hidden shrink-0 rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-white transition-colors group-hover:bg-accent sm:inline-block">
+                <span
+                  className={`hidden shrink-0 rounded-full px-4 py-2 text-[13px] font-semibold transition-colors sm:inline-block ${
+                    offer.amount !== null
+                      ? "bg-ink text-white group-hover:bg-accent"
+                      : "border border-line text-ink-2 group-hover:border-accent group-hover:text-accent"
+                  }`}
+                >
                   {offer.amount !== null ? "View tickets ↗" : "Check site ↗"}
                 </span>
               </a>

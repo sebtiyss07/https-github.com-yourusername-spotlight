@@ -164,9 +164,21 @@ export function TripTotal({
             label={`Hotel · ${nights} ${nights === 1 ? "night" : "nights"}${rooms > 1 ? ` · ${rooms} rooms` : ""}`}
             value={hotelAmount !== null ? money(hotelAmount) : "—"}
             detail={
-              hotel
-                ? `Cheapest on ${hotel.site}: ${hotel.name}${hotel.room ? ` (${hotel.room})` : ""}, ${hotel.distance} from ${venueName}. ${money(hotel.total)} for ${hotel.nights} ${hotel.nights === 1 ? "night" : "nights"} (${money(hotel.perNight)} a night on average) before taxes${travellers > 1 ? `, per room for 2 people` : ""}. Checked ${hotel.checkedOn}.`
-                : "No saved price for these dates and group size. Cheapest hotels near the venue on:"
+              hotel ? (
+                <>
+                  <span className="block text-[14px] font-semibold text-ink">{hotel.name}</span>
+                  <span className="block">
+                    {[hotel.room, `${hotel.distance} from ${venueName}`, `${money(hotel.perNight)} a night`]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                  <span className="block text-[12px]">
+                    Cheapest on {hotel.site}, before taxes{travellers > 1 ? ", per room for 2 people" : ""}. Checked {hotel.checkedOn}.
+                  </span>
+                </>
+              ) : (
+                "No saved price for these dates and group size. Cheapest hotels near the venue on:"
+              )
             }
             href={hotel?.url}
             action={hotel ? `Book on ${hotel.site}` : "See hotels"}
@@ -197,7 +209,7 @@ function Line({
   icon: ReactNode;
   label: string;
   value: string;
-  detail: string;
+  detail: ReactNode;
   href?: string;
   action: string;
   links?: Link[];
@@ -214,7 +226,7 @@ function Line({
           <p className="tabular shrink-0 text-[18px] font-semibold">{value}</p>
         </div>
         <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <p className="min-w-0 flex-1 text-[13px] text-ink-3">{detail}</p>
+          <div className="min-w-0 flex-1 text-[13px] text-ink-3">{detail}</div>
           {href && (
             <a
               href={href}

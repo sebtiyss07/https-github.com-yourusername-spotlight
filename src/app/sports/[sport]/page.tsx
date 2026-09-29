@@ -8,7 +8,7 @@ import {
   getSport,
   getSports,
 } from "@/lib/repositories";
-import { MarqueeCard } from "@/components/EventCard";
+import { GameCard } from "@/components/GameCard";
 import { BackLink, EmptyState } from "@/components/ui";
 import { SportIcon } from "@/components/SportIcon";
 
@@ -105,7 +105,7 @@ export default async function SportPage({
           <h2 className="text-[22px] font-semibold">Big events</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {marquee.map((context) => (
-              <MarqueeCard key={context.event.id} context={context} accent={sport.accent} />
+              <GameCard key={context.event.id} context={context} race={context.event.sportId === "motorsport"} />
             ))}
           </div>
         </section>
