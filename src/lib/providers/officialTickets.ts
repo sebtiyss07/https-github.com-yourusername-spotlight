@@ -4,10 +4,12 @@ import type { SitePrice } from "@/lib/data/prices";
 /**
  * Live prices from the two sellers that offer an official, free developer API:
  *
- * - SeatGeek Platform API (sign up at https://seatgeek.com/build): each game's
- *   lowest listed price, fees included. Needs SEATGEEK_CLIENT_ID.
+ * - SeatGeek Platform API (sign up at https://seatgeek.com/build): the exact
+ *   event page, and its lowest listed price (fees included) where the account's
+ *   tier includes prices. Needs SEATGEEK_CLIENT_ID.
  * - Ticketmaster Discovery API (sign up at https://developer.ticketmaster.com):
- *   the price range Ticketmaster publishes for the game. Needs
+ *   the exact event page, and a price range where Ticketmaster publishes one
+ *   (none of our NFL/NBA/MLS games had one on 29 Sep 2026). Needs
  *   TICKETMASTER_API_KEY.
  *
  * Each switches on only when its key is set (in .env.local, and in Vercel's
@@ -48,18 +50,28 @@ async function seatGeek(event: SportEvent, home: Team | null, known?: SitePrice)
   if (knownId) ev = await getJson<SgEvent>(`${base}/${knownId}?client_id=${key}`);
   if (!ev && home) {
     // Not matched yet: the home team's game within a few hours of kick-off.
-    const q = new URLSearchParams({ client_id: key, "performers[home_team].slug": slug(home.name), per_page: "10" });
+    const around = (h: number) => new Date(Date.parse(event.startsAt) + h * 3_600_000).toISOString().slice(0, 19);
+    const q = new URLSearchParams({
+      client_id: key,
+      "performers[home_team].slug": slug(home.name),
+      "datetime_utc.gte": around(-6),
+      "datetime_utc.lte": around(6),
+      per_page: "10",
+    });
     const found = await getJson<{ events: SgEvent[] }>(`${base}?${q}`);
     ev = found?.events.find((e) => hoursApart(`${e.datetime_utc}Z`, event.startsAt) <= 6) ?? null;
   }
   if (!ev) return null;
+  // SeatGeek's free tier (checked 29 Sep 2026) returns an empty `stats`
+  // object, so there's usually no price: only the exact event link.
   const price = ev.stats?.lowest_price ?? null;
+  const soldOut = ev.stats?.listing_count === 0;
   return {
     site: "seatgeek",
     url: ev.url,
     price: price && price > 0 ? price : null,
-    label: "Lowest listing, live from SeatGeek",
-    note: price ? undefined : "No tickets listed on SeatGeek right now",
+    label: price ? "Lowest listing, live from SeatGeek" : undefined,
+    note: price ? undefined : soldOut ? "No tickets listed on SeatGeek right now" : "SeatGeek doesn't share its price: open the site to see it",
   };
 }
 
@@ -109,6 +121,7 @@ export async function withLiveOfficialPrices(event: SportEvent, home: Team | nul
   if (!LIVE_TICKET_SOURCES) return rows;
   const find = (site: SitePrice["site"]) => rows.find((r) => r.site === site);
   const [sg, tm] = await Promise.all([seatGeek(event, home, find("seatgeek")), ticketmaster(event, home, find("ticketmaster"))]);
-  const live = [sg, tm].filter((r): r is SitePrice => r !== null);
+  // A live answer without a price never replaces a price we checked ourselves.
+  const live = [sg, tm].filter((r): r is SitePrice => r !== null && !(r.price === null && (find(r.site)?.price ?? null) !== null));
   return [...rows.filter((r) => !live.some((l) => l.site === r.site)), ...live];
 }
