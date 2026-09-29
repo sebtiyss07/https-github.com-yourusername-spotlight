@@ -26,6 +26,7 @@ import { ACTIVE_SPORTS, isLeagueActive } from "@/lib/data/scope";
 import { venuePhotoFor, type VenuePhoto } from "@/lib/data/photos";
 import { getCurrency, type Currency } from "@/lib/currency";
 import { SITE_FEES, type SiteFees } from "@/lib/data/fees";
+import { LIVE_TICKET_SOURCES, withLiveOfficialPrices } from "@/lib/providers/officialTickets";
 
 export type { SiteFees };
 
@@ -327,10 +328,11 @@ function comparePrices(
 
 const US_LEAGUE_IDS = new Set(["nfl", "nba", "mls"]);
 
-function eventPrices(
+async function eventPrices(
   event: SportEvent,
   currency: Currency,
-): Pick<EventContext, "prices" | "raceDayPrices"> {
+  live: boolean,
+): Promise<Pick<EventContext, "prices" | "raceDayPrices">> {
   if (event.sportId === "motorsport") {
     const race = racePricesFor(event.venueId.replace(/^f1-/, ""));
     const f1Date = () => F1_PRICES_CHECKED_ON;
@@ -339,15 +341,31 @@ function eventPrices(
       raceDayPrices: race ? comparePrices(race.raceDay, f1Date, currency) : null,
     };
   }
-  const checked = US_LEAGUE_IDS.has(event.leagueId) ? US_PRICES_CHECKED_ON : PRICES_CHECKED_ON;
+  const isUs = US_LEAGUE_IDS.has(event.leagueId);
+  const checked = isUs ? US_PRICES_CHECKED_ON : PRICES_CHECKED_ON;
+  let rows = sitePricesFor(event.id);
+  const liveSites = new Set<PriceSite>();
+  if (live && isUs && LIVE_TICKET_SOURCES) {
+    const home = event.homeTeamId ? (TEAMS_BY_ID.get(event.homeTeamId) ?? null) : null;
+    const before = rows;
+    rows = await withLiveOfficialPrices(event, home, rows);
+    for (const r of rows) if (!before.includes(r)) liveSites.add(r.site);
+  }
+  const today = new Date().toISOString().slice(0, 10);
   return {
-    prices: comparePrices(sitePricesFor(event.id), (site) => checked[site], currency),
+    prices: comparePrices(rows, (site) => (liveSites.has(site) ? today : checked[site]), currency),
     raceDayPrices: null,
   };
 }
 
+/**
+ * `live` fetches SeatGeek's and Ticketmaster's current prices through their
+ * official APIs (when keys are set). Only a single game's page asks for it;
+ * lists of games use the saved prices.
+ */
 export async function getEventContext(
   event: SportEvent,
+  { live = false }: { live?: boolean } = {},
 ): Promise<EventContext> {
   return {
     event,
@@ -357,7 +375,7 @@ export async function getEventContext(
     league: LEAGUES_BY_ID.get(event.leagueId) ?? null,
     sport: SPORTS_BY_ID.get(event.sportId) ?? null,
     title: eventTitle(event),
-    ...eventPrices(event, await getCurrency()),
+    ...(await eventPrices(event, await getCurrency(), live)),
     photo: venuePhotoFor(
       event.sportId === "motorsport"
         ? `f1:${event.venueId.replace(/^f1-/, "")}`
@@ -369,7 +387,7 @@ export async function getEventContext(
 export async function getEventContexts(
   events: SportEvent[],
 ): Promise<EventContext[]> {
-  return Promise.all(events.map(getEventContext));
+  return Promise.all(events.map((e) => getEventContext(e)));
 }
 
 /** Free-text search across sports, leagues, teams, and events. */

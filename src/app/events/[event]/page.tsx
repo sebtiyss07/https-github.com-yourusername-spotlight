@@ -30,7 +30,7 @@ export async function generateMetadata({
   const { event: eventId } = await params;
   const event = await getEvent(eventId);
   if (!event) return {};
-  const context = await getEventContext(event);
+  const context = await getEventContext(event, { live: true });
   return {
     title: context.title,
     description: context.prices.cheapest
@@ -78,7 +78,7 @@ export default async function EventPage({
   const event = await getEvent(eventId);
   if (!event) notFound();
 
-  const context = await getEventContext(event);
+  const context = await getEventContext(event, { live: true });
   const venue = context.venue;
   if (!venue) notFound();
 
