@@ -255,6 +255,36 @@ export default async function EventPage({
           <p className="text-[15px] text-white/60">
             {venue.name}, {venue.city}
           </p>
+
+          {/* The answer first: the cheapest ticket, one tap from buying or
+              comparing, before the trip planner below. */}
+          {prices.cheapest && (
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <p className="rounded-2xl bg-white/12 px-4 py-2 ring-1 ring-white/20 backdrop-blur">
+                <span className="block text-[12px] font-medium text-white/70">
+                  {isRace ? "Cheapest weekend pass" : "Cheapest ticket"}
+                </span>
+                <span className="tabular text-[24px] font-semibold leading-tight">
+                  {formatPrice(prices.cheapest.amount!, prices.currency)}
+                </span>
+                <span className="text-[14px] text-white/80"> on {prices.cheapest.label}</span>
+              </p>
+              <a
+                href="#tickets"
+                className="rounded-full bg-white px-5 py-3 text-[15px] font-semibold text-ink transition-colors hover:bg-accent hover:text-white"
+              >
+                Compare {prices.offers.length} ticket sites ↓
+              </a>
+              <a
+                href={prices.cheapest.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full px-3 py-3 text-[15px] font-semibold text-white/90 underline-offset-4 hover:underline"
+              >
+                Buy on {prices.cheapest.label} ↗
+              </a>
+            </div>
+          )}
         </div>
       </section>
 
@@ -418,7 +448,7 @@ export default async function EventPage({
         {/* Tickets in detail. */}
         <section
           id="tickets"
-          className="mt-6 mb-10 min-w-0 scroll-mt-24 rounded-2xl border border-line bg-surface p-5 shadow-xs sm:p-6"
+          className="mt-6 mb-10 min-w-0 scroll-mt-32 sm:scroll-mt-24 rounded-2xl border border-line bg-surface p-5 shadow-xs sm:p-6"
         >
           <h2 className="text-[20px] font-semibold">Compare ticket prices</h2>
           <p className="mt-1 text-[14px] text-ink-2">

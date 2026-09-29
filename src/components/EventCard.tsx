@@ -56,7 +56,7 @@ export function EventRow({ context }: { context: EventContext }) {
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold">{title}</p>
+        <p className="line-clamp-2 text-[15px] font-semibold leading-snug">{title}</p>
         <p className="truncate text-[13px] text-ink-3">
           {event.endsAt
             ? formatDateRange(event.startsAt, event.endsAt, timeZone)

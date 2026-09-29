@@ -342,21 +342,33 @@ async function eventPrices(
     };
   }
   const isUs = US_LEAGUE_IDS.has(event.leagueId);
+  const useLive = live && isUs && LIVE_TICKET_SOURCES;
+  // Saved prices only change on a new deploy, so each game's comparison is
+  // worked out once per currency and reused (lists show hundreds of games).
+  const memoKey = `${event.id}|${currency}`;
+  if (!useLive) {
+    const hit = SAVED_PRICES_MEMO.get(memoKey);
+    if (hit) return hit;
+  }
   const checked = isUs ? US_PRICES_CHECKED_ON : PRICES_CHECKED_ON;
   let rows = sitePricesFor(event.id);
   const liveSites = new Set<PriceSite>();
-  if (live && isUs && LIVE_TICKET_SOURCES) {
+  if (useLive) {
     const home = event.homeTeamId ? (TEAMS_BY_ID.get(event.homeTeamId) ?? null) : null;
     const before = rows;
     rows = await withLiveOfficialPrices(event, home, rows);
     for (const r of rows) if (!before.includes(r)) liveSites.add(r.site);
   }
   const today = new Date().toISOString().slice(0, 10);
-  return {
+  const result = {
     prices: comparePrices(rows, (site) => (liveSites.has(site) ? today : checked[site]), currency),
     raceDayPrices: null,
   };
+  if (!useLive) SAVED_PRICES_MEMO.set(memoKey, result);
+  return result;
 }
+
+const SAVED_PRICES_MEMO = new Map<string, Pick<EventContext, "prices" | "raceDayPrices">>();
 
 /**
  * `live` fetches SeatGeek's and Ticketmaster's current prices through their
@@ -407,7 +419,7 @@ export interface SearchResults {
   truncated: boolean;
 }
 
-const SEARCH_LIMIT = 40;
+const SEARCH_LIMIT = 120;
 
 export async function search(query: string): Promise<SearchResults> {
   const q = query.trim().toLowerCase();
