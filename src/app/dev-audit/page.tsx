@@ -47,8 +47,8 @@ export default async function DevAudit() {
     const present = venues.filter((v): v is NonNullable<typeof v> => v !== null);
     const unique = new Map(present.map((v) => [v.id, v]));
 
-    const naive = present.reduce((s, v) => s + v.capacity, 0);
-    const deduped = [...unique.values()].reduce((s, v) => s + v.capacity, 0);
+    const naive = present.reduce((s, v) => s + (v.capacity ?? 0), 0);
+    const deduped = [...unique.values()].reduce((s, v) => s + (v.capacity ?? 0), 0);
     const shared = present.length - unique.size;
 
     checks.push({
@@ -268,7 +268,7 @@ export default async function DevAudit() {
     // was the blind spot that let a visibly-$1-short column pass this check:
     // prices display without decimals, so the figures a user adds up are the
     // rounded ones.
-    const breakdown = tripBreakdown(estimate, 2, 2);
+    const breakdown = tripBreakdown(estimate, 2);
     const partsSum = sumMoney(breakdown.parts.map((p) => p.value));
 
     if (partsSum.total?.amount !== breakdown.total?.amount) {

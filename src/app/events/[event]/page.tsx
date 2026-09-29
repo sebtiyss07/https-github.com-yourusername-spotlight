@@ -1,22 +1,26 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import type { TicketListing } from "@/lib/domain/types";
-import { getEvent, getEventContext, getVenue } from "@/lib/repositories";
-import { bestValue, buildTrip, tripBreakdown } from "@/lib/trip";
-import { MARKETPLACE_LABELS } from "@/lib/providers/tickets/seeded";
-import { AIRPORTS_BY_IATA, resolveOrigin } from "@/lib/providers/geo";
-import { transportSurchargePerNight } from "@/lib/providers/stays/seeded";
+import type { ReactNode } from "react";
+import { convertUsd, getEvent, getEventContext, getTicketSellers } from "@/lib/repositories";
+import { PriceCompare, type PriceGroup } from "@/components/PriceCompare";
+import { roomsFor, tripDates } from "@/lib/trip";
 import {
-  approachDescription,
+  AIRPORTS_BY_IATA,
+  flightSearchCode,
+  resolveOrigin,
+} from "@/lib/providers/geo";
+import { flightLinks, hotelLinks, type TravelLink } from "@/lib/providers/travelLinks";
+import { coachLinks, driveLink, groundTravelPossible, trainLink } from "@/lib/providers/ground";
+import { TripTotal } from "@/components/TripTotal";
+import { PhotoCredit } from "@/components/ui";
+import { cheapestFlight, cheapestHotelNear } from "@/lib/providers/livePrices";
+import {
   formatDateRange,
-  formatDistance,
-  formatDuration,
-  formatMoney,
-  formatMoneyCents,
+  formatFullDate,
+  formatPrice,
   formatTime,
 } from "@/lib/format";
-import { Badge, Breadcrumbs, EmptyState, SectionHeading, TeamMark } from "@/components/ui";
 
 export async function generateMetadata({
   params,
@@ -29,7 +33,9 @@ export async function generateMetadata({
   const context = await getEventContext(event);
   return {
     title: context.title,
-    description: `Cheapest tickets for ${context.title} across every marketplace, plus flights and stays near ${context.venue?.name ?? "the venue"}.`,
+    description: context.prices.cheapest
+      ? `${context.title} tickets from ${formatPrice(context.prices.cheapest.amount!, context.prices.currency)}: prices compared across ticket sites, plus flights and a hotel for the exact dates.`
+      : `Tickets for ${context.title}, plus flights and a hotel for the exact dates.`,
   };
 }
 
@@ -37,14 +43,28 @@ interface SearchParams {
   origin?: string;
   travellers?: string;
   nights?: string;
+  /** "0" when the visitor doesn't need a flight or a hotel (they live nearby). */
+  flight?: string;
+  /** How they travel: flight, train, coach, drive, or none. */
+  go?: string;
+  hotel?: string;
 }
 
-/** Clamps user-supplied numbers so a hand-edited URL can't blow up the maths. */
+/** Clamps user-supplied numbers so a hand-edited URL can't break the links. */
 function toInt(value: string | undefined, fallback: number, min: number, max: number) {
   const n = Number.parseInt(value ?? "", 10);
   if (Number.isNaN(n)) return fallback;
   return Math.min(max, Math.max(min, n));
 }
+
+function people(n: number): string {
+  return `${n} ${n === 1 ? "person" : "people"}`;
+}
+
+function nightsLabel(n: number): string {
+  return `${n} ${n === 1 ? "night" : "nights"}`;
+}
+
 
 export default async function EventPage({
   params,
@@ -59,646 +79,502 @@ export default async function EventPage({
   if (!event) notFound();
 
   const context = await getEventContext(event);
-  const venue = await getVenue(event.venueId);
+  const venue = context.venue;
   if (!venue) notFound();
 
+  const isRace = event.sportId === "motorsport";
+  // MLS is soccer but, like the NFL and NBA, calls them games.
+  const isFootball = event.sportId === "soccer" && event.leagueId !== "mls";
   const origin = query.origin?.trim() ?? "";
-  const travellers = toInt(query.travellers, 2, 1, 12);
-  const nights = toInt(query.nights, 2, 1, 14);
+  // One ticket first; people can pick more.
+  const travellers = toInt(query.travellers, 1, 1, 8);
+  // A race weekend runs Friday to Sunday; a match is one day.
+  const nights = toInt(query.nights, isRace ? 3 : 2, 1, 7);
 
-  const trip = await buildTrip({ event, venue, origin, travellers, nights });
-  const { estimate, tickets, travel, stays } = trip;
-
+  const dates = tripDates(event, venue, nights);
+  const rooms = roomsFor(travellers);
   const resolvedOrigin = origin ? resolveOrigin(origin) : null;
+  // How the visitor gets there. Train and coach only within Great Britain;
+  // driving only within one country.
+  const groundOk = groundTravelPossible(resolvedOrigin?.country, venue.country);
+  const driveOk = !!resolvedOrigin && resolvedOrigin.country === venue.country;
+  const available: TravelMode[] = [
+    "flight",
+    ...(groundOk ? (["train", "coach"] as const) : []),
+    ...(driveOk ? (["drive"] as const) : []),
+  ];
+  const requested = query.go as TravelMode | "none" | undefined;
+  const go: TravelMode | "none" =
+    requested === "none" || query.flight === "0"
+      ? "none"
+      : requested && available.includes(requested)
+        ? requested
+        : groundOk
+          ? "train"
+          : "flight";
+  const wantTravel = go !== "none";
+  const wantFlight = go === "flight";
+  const wantHotel = query.hotel !== "0";
+  /** A link to this page with some trip settings changed, keeping the rest. */
+  const tripHref = (change: Partial<Record<keyof SearchParams, string>>) => {
+    const next: Record<string, string> = {
+      origin,
+      travellers: String(travellers),
+      nights: String(nights),
+      go: query.go || query.flight === "0" ? go : "",
+      hotel: wantHotel ? "" : "0",
+      ...change,
+    };
+    return `?${new URLSearchParams(Object.entries(next).filter(([, v]) => v))}`;
+  };
+  const sellers = await getTicketSellers(event);
+  const prices = context.prices;
+  const priceGroups: PriceGroup[] = isRace
+    ? [
+        { key: "weekend", label: "Full weekend", comparison: prices },
+        ...(context.raceDayPrices
+          ? [{ key: "race-day", label: "Race day only", comparison: context.raceDayPrices }]
+          : []),
+      ]
+    : [{ key: "match", label: "Match ticket", comparison: prices }];
+
   const originUnresolved = origin.length > 0 && resolvedOrigin === null;
   const destination = AIRPORTS_BY_IATA.get(venue.nearestAirport);
+  const sameCity =
+    resolvedOrigin && destination
+      ? flightSearchCode(resolvedOrigin) === flightSearchCode(destination)
+      : false;
 
-  const accent = context.sport?.accent ?? "#3b82f6";
-  const value = bestValue(tickets);
+  const flights =
+    resolvedOrigin && destination && !sameCity
+      ? flightLinks({
+          from: flightSearchCode(resolvedOrigin),
+          to: flightSearchCode(destination),
+          departOn: dates.checkIn,
+          returnOn: dates.checkOut,
+          adults: travellers,
+        })
+      : [];
 
-  // Local transport is part of the total, so it needs its own column — without
-  // one, tickets + travel + stay visibly fail to add up to the figure shown.
-  const showsLocalTransport =
-    estimate.localTransport !== null && estimate.localTransport.amount > 0;
+  const hotels = hotelLinks({
+    destination: `${venue.name}, ${venue.city}`,
+    lat: venue.lat,
+    lon: venue.lon,
+    checkIn: dates.checkIn,
+    checkOut: dates.checkOut,
+    adults: travellers,
+  });
 
-  // Render from the shared breakdown rather than formatting each component
-  // independently. Rounding four values separately and printing an
-  // independently-rounded total left the visible column short by a unit — small,
-  // but the kind of small wrongness that makes a price comparison untrustworthy.
-  const breakdown = tripBreakdown(estimate, travellers, nights);
-  const [ticketPart, travelPart, stayPart, transportPart] = breakdown.parts;
+  // The cheapest real flight and hotel for these exact dates.
+  const [flightQuote, hotelQuote] = await Promise.all([
+    wantFlight && resolvedOrigin && destination && !sameCity
+      ? cheapestFlight({
+          from: flightSearchCode(resolvedOrigin),
+          to: flightSearchCode(destination),
+          departOn: dates.checkIn,
+          returnOn: dates.checkOut,
+        })
+      : Promise.resolve(null),
+    wantHotel
+      ? cheapestHotelNear({
+          eventId: event.id,
+          venueName: `${venue.name}, ${venue.city}`,
+          lat: venue.lat,
+          lon: venue.lon,
+          checkIn: dates.checkIn,
+          checkOut: dates.checkOut,
+          adults: travellers,
+        })
+      : Promise.resolve(null),
+  ]);
 
-  // Cheapest listing per marketplace — the core comparison.
-  const byMarketplace = new Map<string, TicketListing>();
-  for (const listing of tickets) {
-    const current = byMarketplace.get(listing.marketplace);
-    if (!current || listing.total.amount < current.total.amount) {
-      byMarketplace.set(listing.marketplace, listing);
-    }
-  }
-  const marketplaceRows = [...byMarketplace.values()].sort(
-    (a, b) => a.total.amount - b.total.amount,
-  );
-  const bestTotal = marketplaceRows[0]?.total.amount ?? 0;
+  const groundLinks: TravelLink[] =
+    !resolvedOrigin || go === "none" || go === "flight"
+      ? []
+      : go === "train"
+        ? [
+            trainLink({
+              fromCity: resolvedOrigin.city,
+              homeTeamId: event.homeTeamId ?? "",
+              venueCity: venue.city,
+              departOn: dates.checkIn,
+              returnOn: dates.checkOut,
+              adults: travellers,
+            }),
+          ].filter((l): l is TravelLink => l !== null)
+        : go === "coach"
+          ? coachLinks(resolvedOrigin.city, venue.city)
+          : [driveLink(resolvedOrigin.city, venue.lat, venue.lon)];
 
-  // Cheapest listing per seating tier, so "cheap" and "good" are both visible.
-  const byTier = new Map<string, TicketListing>();
-  for (const listing of tickets) {
-    const current = byTier.get(listing.section);
-    if (!current || listing.total.amount < current.total.amount) {
-      byTier.set(listing.section, listing);
-    }
-  }
-  // Only listings that actually report a seat quality belong in the "where to
-  // sit" breakdown — a live provider returning aggregate prices has no seat
-  // detail to place, and a rendered quality bar there would be invented.
-  const tierRows = [...byTier.values()]
-    .filter((l): l is typeof l & { seatQuality: number } => l.seatQuality !== null)
-    .sort((a, b) => a.seatQuality - b.seatQuality);
+  const accent = context.sport?.accent ?? "#4f46e5";
+  const photo = context.photo;
 
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden border-b border-line">
-        <div className="wash" style={{ ["--wash-color" as string]: accent }} />
-        <div className="relative mx-auto max-w-7xl px-5 py-12 sm:px-8">
-          <Breadcrumbs
-            items={[
-              { label: "Sports", href: "/" },
-              {
-                label: context.sport?.name ?? "Sport",
-                href: `/sports/${event.sportId}`,
-              },
-              {
-                label: context.league?.shortName ?? "League",
-                href: `/leagues/${event.leagueId}`,
-              },
-              { label: context.title },
-            ]}
+      {/* The event, under its own floodlights */}
+      <section className="glow relative overflow-hidden" style={{ ["--glow" as string]: accent }}>
+        {photo && !isRace && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photo.large}
+              alt={`${venue.name}, ${venue.city}`}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0b0d1a]/95 via-[#0b0d1a]/75 to-[#0b0d1a]/35" />
+          </>
+        )}
+        {photo && isRace && (
+          // The circuit's shape as a white outline behind the title.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photo.large}
+            alt={`${venue.name} track map`}
+            className="pointer-events-none absolute -right-10 top-1/2 hidden h-[125%] -translate-y-1/2 opacity-30 [filter:brightness(0)_invert(1)] md:block"
           />
-
-          <div className="flex flex-wrap items-center gap-2">
-            {event.isMarquee && <Badge tone="warn">Championship</Badge>}
-            {event.kind === "playoff" && <Badge tone="accent">Playoff</Badge>}
-            {event.demandScore >= 85 && <Badge tone="hot">High demand</Badge>}
-          </div>
-
-          <div className="mt-4 flex items-start gap-4">
-            {context.homeTeam && context.awayTeam && (
-              <div className="hidden shrink-0 items-center -space-x-2 sm:flex">
-                <TeamMark
-                  name={context.awayTeam.name}
-                  abbreviation={context.awayTeam.abbreviation}
-                  logoUrl={context.awayTeam.logoUrl}
-                  primary={context.awayTeam.primaryColor}
-                  secondary={context.awayTeam.secondaryColor}
-                  size={48}
-                />
-                <TeamMark
-                  name={context.homeTeam.name}
-                  abbreviation={context.homeTeam.abbreviation}
-                  logoUrl={context.homeTeam.logoUrl}
-                  primary={context.homeTeam.primaryColor}
-                  secondary={context.homeTeam.secondaryColor}
-                  size={48}
-                />
-              </div>
-            )}
-            <h1 className="text-2xl font-black leading-tight tracking-tight sm:text-4xl">
-              {context.title}
-            </h1>
-          </div>
-
-          <p className="mt-4 text-[15px] text-ink-2">
-            {formatDateRange(event.startsAt, event.endsAt)}
-            {!event.endsAt && ` · ${formatTime(event.startsAt)}`}
+        )}
+        {photo && <PhotoCredit photo={photo} className="absolute right-4 top-3 z-10" />}
+        <div className="relative mx-auto max-w-6xl px-5 pb-24 pt-10 sm:px-8">
+          <Link
+            href={`/leagues/${event.leagueId}`}
+            className="text-[14px] font-medium text-white/70 transition-colors hover:text-white"
+          >
+            ← All {context.league?.shortName ?? ""} {isRace ? "races" : isFootball ? "matches" : "games"}
+          </Link>
+          <p className="mt-8 text-[13px] font-semibold uppercase tracking-wide text-white/60">
+            {context.league?.name}
           </p>
-          <p className="text-[14px] text-ink-3">
-            {venue.name}, {venue.city} · capacity{" "}
-            {venue.capacity.toLocaleString("en-US")}
+          <h1 className="mt-2 max-w-3xl text-[32px] font-semibold leading-[1.08] sm:text-[46px]">
+            {context.title}
+          </h1>
+          <p className="mt-4 text-[16px] text-white/85">
+            {event.endsAt
+              ? formatDateRange(event.startsAt, event.endsAt, venue.timeZone)
+              : `${formatFullDate(event.startsAt, venue.timeZone)} · ${isRace ? "Race starts" : isFootball ? "Kick-off" : "Starts"} ${formatTime(event.startsAt, venue.timeZone)} local time`}
           </p>
-
-          {event.notes && (
-            <p className="mt-6 max-w-2xl border-l-2 border-line-bright pl-4 text-[13.5px] leading-relaxed text-ink-2">
-              {event.notes}
-            </p>
-          )}
+          <p className="text-[15px] text-white/60">
+            {venue.name}, {venue.city}
+          </p>
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
-        {/* Trip planner — a plain GET form, so it works without JavaScript
-            and every configured trip is a shareable URL. */}
-        <form
-          method="get"
-          className="border-b border-line pb-8"
-        >
-          <div className="grid gap-4 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end">
-            <label className="block">
-              <span className="mb-2 block text-[12.5px] text-ink-3">
-                Travelling from
-              </span>
-              <input
-                name="origin"
-                defaultValue={origin}
-                placeholder="London, Tokyo, LAX…"
-                className="w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-[14px] text-ink placeholder:text-ink-3 outline-none transition-colors focus:border-accent"
-              />
-            </label>
+      <div className="mx-auto max-w-6xl px-5 sm:px-8">
+        {/* Step 1: what the visitor needs. Plain links and a GET form, so it
+            works without JavaScript and every trip is a link you can send. */}
+        <section className="relative -mt-10 rounded-2xl border border-line bg-surface p-4 shadow-lg sm:p-5">
+          <h2 className="text-[18px] font-semibold">What do you need?</h2>
+          <p className="text-[14px] text-ink-2">
+            Tap to add or remove. Live nearby? Turn off the flight and hotel to see just the tickets.
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <NeedTile icon={<TicketIcon />} label={isRace ? "Race tickets" : isFootball ? "Match tickets" : "Game tickets"} on />
+            <NeedTile
+              icon={<PlaneIcon />}
+              label="Travel"
+              on={wantTravel}
+              href={tripHref({ go: wantTravel ? "none" : "" })}
+            />
+            <NeedTile
+              icon={<BedIcon />}
+              label="Hotel"
+              on={wantHotel}
+              href={tripHref({ hotel: wantHotel ? "0" : "" })}
+            />
+          </div>
 
-            <label className="block">
-              <span className="mb-2 block text-[12.5px] text-ink-3">
-                Travellers
-              </span>
-              <input
+          <form method="get" className="mt-3 flex flex-col gap-2 rounded-xl bg-surface-2 p-2 sm:flex-row">
+            {(query.go || query.flight === "0") && <input type="hidden" name="go" value={go} />}
+            {!wantHotel && <input type="hidden" name="hotel" value="0" />}
+            {wantTravel && (
+              <Field label="Travelling from" className="sm:flex-[2]">
+                <input
+                  name="origin"
+                  defaultValue={origin}
+                  placeholder="Your city, e.g. New York"
+                  className="w-full bg-transparent text-[15px] font-medium text-ink placeholder:font-normal placeholder:text-ink-3 outline-none"
+                />
+              </Field>
+            )}
+            <Field label="Tickets" className="sm:flex-1">
+              <select
                 name="travellers"
-                type="number"
-                min={1}
-                max={12}
                 defaultValue={travellers}
-                className="tabular w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-[14px] text-ink outline-none transition-colors focus:border-accent"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-2 block text-[12.5px] text-ink-3">
-                Nights
-              </span>
-              <input
-                name="nights"
-                type="number"
-                min={1}
-                max={14}
-                defaultValue={nights}
-                className="tabular w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-[14px] text-ink outline-none transition-colors focus:border-accent"
-              />
-            </label>
-
+                className="w-full bg-transparent text-[15px] font-medium text-ink outline-none"
+              >
+                {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n} {n === 1 ? "ticket" : "tickets"} · {people(n)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {(wantTravel || wantHotel) && (
+              <Field label={wantHotel ? "Hotel" : "Time away"} className="sm:flex-1">
+                <select
+                  name="nights"
+                  defaultValue={nights}
+                  className="w-full bg-transparent text-[15px] font-medium text-ink outline-none"
+                >
+                  {Array.from({ length: 7 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {nightsLabel(n)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <button
               type="submit"
-              className="rounded-lg bg-ink px-5 py-2.5 text-[14px] font-semibold text-surface transition-opacity hover:opacity-90"
+              className="rounded-xl bg-accent px-6 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-accent-2"
             >
-              Price the trip
+              Update total
             </button>
-          </div>
+          </form>
 
-          {originUnresolved && (
-            <p className="mt-3 text-[13px] text-warn">
-              Couldn&apos;t match &ldquo;{origin}&rdquo; to an airport. Try a
-              major city or an IATA code (LHR, JFK, NRT).
-            </p>
-          )}
-        </form>
-
-        {/* Total cost */}
-        <section className="mt-10">
-          <div>
-            <h2 className="text-[22px] font-bold tracking-[-0.02em]">
-              What it costs to be there
-            </h2>
-            <p className="mt-1 text-[13px] text-ink-3">
-              {travellers} {travellers === 1 ? "traveller" : "travellers"} ·{" "}
-              {nights} {nights === 1 ? "night" : "nights"}
-              {resolvedOrigin
-                ? ` · from ${resolvedOrigin.city} (${resolvedOrigin.iata})`
-                : " · tickets only, add an origin for travel"}
-            </p>
-          </div>
-
-          <div
-            className={`mt-7 grid gap-y-7 border-t border-line pt-7 sm:gap-x-8 ${
-              showsLocalTransport ? "sm:grid-cols-5" : "sm:grid-cols-4"
-            }`}
-          >
-            <CostCell
-              label="Tickets"
-              sub={
-                estimate.ticket
-                  ? `${travellers} × ${formatMoney(estimate.ticket.total)} · ${MARKETPLACE_LABELS[estimate.ticket.marketplace]}`
-                  : "No listings"
-              }
-              value={ticketPart.value ? formatMoney(ticketPart.value) : "—"}
-            />
-            <CostCell
-              label="Getting there"
-              sub={
-                estimate.travel
-                  ? `${estimate.travel.carrier} · ${formatDuration(estimate.travel.durationMinutes)}`
-                  : resolvedOrigin
-                    ? "Already local"
-                    : "Add an origin"
-              }
-              value={travelPart.value ? formatMoney(travelPart.value) : "—"}
-            />
-            <CostCell
-              label="Stay"
-              sub={
-                estimate.stay
-                  ? `${nights} × ${formatMoney(estimate.stay.pricePerNight)} · ${approachDescription(estimate.stay.distanceToVenueM)}`
-                  : "No stays found"
-              }
-              value={stayPart.value ? formatMoney(stayPart.value) : "—"}
-            />
-            {showsLocalTransport && (
-              <CostCell
-                label="Local transport"
-                sub={`${nights} × return trip to the ground`}
-                value={transportPart.value ? formatMoney(transportPart.value) : "—"}
-              />
-            )}
-
-            <div>
-              <p className="text-[12.5px] font-medium text-ink">Total</p>
-              {breakdown.total ? (
-                <>
-                  <p
-                    className="tabular mt-1 text-2xl font-black tracking-tight"
-                    style={{ color: accent }}
-                  >
-                    {formatMoney(breakdown.total)}
-                  </p>
-                  <p className="mt-1 text-[12px] text-ink-3">
-                    everything in
-                  </p>
-                </>
-              ) : (
-                // Components came back in different currencies. Converting
-                // without a live FX rate would be a guess, and adding the
-                // numbers regardless would be a lie — so say what happened.
-                <>
-                  <p className="mt-1 text-lg font-bold tracking-tight text-warn">
-                    Mixed currencies
-                  </p>
-                  <p className="mt-1 text-[12px] text-ink-3">
-                    Priced in {estimate.totalCurrencies.join(" + ")} — no single
-                    total without a conversion rate
-                  </p>
-                </>
+          {wantTravel && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px]">
+              <span className="text-ink-3">How are you getting there?</span>
+              {available.map((mode) => (
+                <Link
+                  key={mode}
+                  href={tripHref({ go: mode })}
+                  scroll={false}
+                  className={`rounded-full border px-3.5 py-1 font-semibold transition-colors ${
+                    go === mode
+                      ? "border-ink bg-ink text-white"
+                      : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
+                  }`}
+                >
+                  {MODE_LABEL[mode]}
+                </Link>
+              ))}
+              {!resolvedOrigin && (
+                <span className="text-ink-3">
+                  {venue.country === "GB"
+                    ? "Train, coach and drive appear once you pick a UK city."
+                    : "Driving appears once you pick where you're travelling from."}
+                </span>
               )}
             </div>
-          </div>
-        </section>
-
-        {/* Marketplace comparison */}
-        <section className="mt-14">
-          {trip.ticketsSynthetic ? (
-            <p className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-warn/25 bg-warn/[0.06] px-4 py-3 text-[13px] text-warn">
-              <Badge tone="warn">Modelled</Badge>
-              These prices are generated, not live quotes. Add a marketplace API
-              key to <code className="font-mono">.env.local</code> to show real
-              inventory.
-            </p>
-          ) : (
-            <p className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-positive/25 bg-positive/[0.06] px-4 py-3 text-[13px] text-positive">
-              <Badge tone="positive">Live</Badge>
-              Prices fetched from {trip.ticketSources.join(", ")}.
-            </p>
           )}
 
-          <SectionHeading
-            eyebrow="Tickets"
-            title={
-              marketplaceRows.length === 1
-                ? "Available pricing"
-                : `Same event, ${marketplaceRows.length} prices`
-            }
-            action={
-              trip.spreadPct > 0 && (
-                <span className="text-[13px] text-ink-2">
-                  <span className="font-semibold text-positive">
-                    {formatMoneyCents(trip.savingVsWorst)} saved
-                  </span>{" "}
-                  vs the dearest site
-                </span>
-              )
-            }
-          />
-
-          {marketplaceRows.length === 0 ? (
-            <EmptyState
-              title="No listings available"
-              description="No marketplace currently has inventory for this event."
-            />
-          ) : (
-            <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
-              <table className="w-full min-w-[640px] text-left">
-                <thead>
-                  <tr className="border-b border-line text-[11px] uppercase tracking-[0.1em] text-ink-3">
-                    <th className="px-5 py-3 font-semibold">Marketplace</th>
-                    <th className="px-5 py-3 font-semibold">Cheapest seat</th>
-                    <th className="px-5 py-3 text-right font-semibold">Face</th>
-                    <th className="px-5 py-3 text-right font-semibold">Fees</th>
-                    <th className="px-5 py-3 text-right font-semibold">
-                      All-in
-                    </th>
-                    <th className="px-5 py-3 text-right font-semibold">Diff</th>
-                    <th className="px-5 py-3" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {marketplaceRows.map((listing, i) => {
-                    const diff = listing.total.amount - bestTotal;
-                    return (
-                      <tr
-                        key={listing.marketplace}
-                        className={i === 0 ? "bg-positive/[0.04]" : undefined}
-                      >
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[14px] font-semibold">
-                              {MARKETPLACE_LABELS[listing.marketplace]}
-                            </span>
-                            {i === 0 && <Badge tone="positive">Cheapest</Badge>}
-                            {!listing.isResale && i !== 0 && (
-                              <Badge tone="neutral">Primary</Badge>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-5 py-3.5 text-[13px] text-ink-2">
-                          {listing.section}
-                          {listing.row && (
-                            <span className="text-ink-3"> · Row {listing.row}</span>
-                          )}
-                        </td>
-                        <td className="tabular px-5 py-3.5 text-right text-[13px] text-ink-2">
-                          {formatMoney(listing.price)}
-                        </td>
-                        <td className="tabular px-5 py-3.5 text-right text-[13px] text-ink-3">
-                          +{formatMoney(listing.fees)}
-                          {listing.feesEstimated && (
-                            <span className="text-ink-3">*</span>
-                          )}
-                        </td>
-                        <td className="tabular px-5 py-3.5 text-right text-[14px] font-bold">
-                          {formatMoney(listing.total)}
-                        </td>
-                        <td className="tabular px-5 py-3.5 text-right text-[13px]">
-                          {diff === 0 ? (
-                            <span className="text-positive">best</span>
-                          ) : (
-                            <span className="text-hot">
-                              +{formatMoneyCents(diff)}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3.5 text-right">
-                          <a
-                            href={listing.deepLink}
-                            target="_blank"
-                            rel="noopener noreferrer nofollow"
-                            className="text-[13px] font-medium text-accent hover:underline"
-                          >
-                            Go →
-                          </a>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {marketplaceRows.some((l) => l.feesEstimated) && (
-            <p className="mt-4 text-[12.5px] text-ink-3">
-              * Estimated from each marketplace&apos;s published fee rate. Most
-              ticketing APIs return pre-fee prices, so the exact total is only
-              confirmed at their checkout.
-            </p>
-          )}
-
-          {value && (
-            <p className="mt-5 text-[13.5px] leading-relaxed text-ink-2">
-              <span className="font-semibold text-ink">Best value:</span>{" "}
-              {value.section} on {MARKETPLACE_LABELS[value.marketplace]} at{" "}
-              <span className="tabular font-semibold">
-                {formatMoney(value.total)}
-              </span>{" "}
-              — the most seat quality per dollar, not simply the cheapest row in
-              the building.
-            </p>
-          )}
-        </section>
-
-        {/* Seating tiers */}
-        {tierRows.length > 0 && (
-          <section className="mt-14">
-            <SectionHeading
-              eyebrow="Where to sit"
-              title="Cheapest in each part of the ground"
-            />
-            <div className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
-              {tierRows.map((listing) => (
-                <div
-                  key={listing.section}
-                  className="rounded-xl border border-line bg-surface p-4"
+          {wantTravel && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px]">
+              <span className="text-ink-3">Travelling from</span>
+              {POPULAR_ORIGINS.map((city) => (
+                <Link
+                  key={city}
+                  href={tripHref({ origin: city })}
+                  scroll={false}
+                  className={`rounded-full border px-3 py-1 font-medium transition-colors ${
+                    resolvedOrigin?.city === city
+                      ? "border-accent bg-accent text-white"
+                      : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
+                  }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-[14px] font-semibold">{listing.section}</p>
-                    <p className="tabular shrink-0 text-[15px] font-bold">
-                      {formatMoney(listing.total)}
-                    </p>
-                  </div>
-                  <div className="mt-3 h-1 overflow-hidden rounded-full bg-surface-3">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${listing.seatQuality}%`,
-                        background: accent,
-                      }}
-                    />
-                  </div>
-                  <p className="mt-2 text-[12px] text-ink-3">
-                    View quality {listing.seatQuality}/100 ·{" "}
-                    {MARKETPLACE_LABELS[listing.marketplace]}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Travel */}
-        <section className="mt-14">
-          <SectionHeading
-            eyebrow="Getting there"
-            title={
-              resolvedOrigin
-                ? `${resolvedOrigin.city} → ${destination?.city ?? venue.city}`
-                : "Getting there"
-            }
-          />
-
-          {!resolvedOrigin ? (
-            <EmptyState
-              title="Add where you're starting from"
-              description="Enter any city or airport above and we'll price flights, rail, and coach timed to land before the event starts."
-            />
-          ) : travel.length === 0 ? (
-            <EmptyState
-              title="You're already there"
-              description={`${resolvedOrigin.city} is the venue's local airport — no travel leg needed.`}
-            />
-          ) : (
-            <div className="divide-y divide-line border-y border-line">
-              {travel.map((option) => (
-                <div
-                  key={option.id}
-                  className="flex flex-wrap items-center gap-4 py-4"
-                >
-                  <span className="w-16 shrink-0 text-[12px] font-semibold uppercase tracking-wide text-ink-3">
-                    {option.mode}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-semibold">{option.carrier}</p>
-                    <p className="tabular text-[12.5px] text-ink-3">
-                      {option.fromCode} → {option.toCode} ·{" "}
-                      {formatDuration(option.durationMinutes)} ·{" "}
-                      {option.stops === 0
-                        ? "direct"
-                        : `${option.stops} stop${option.stops > 1 ? "s" : ""}`}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="tabular text-[15px] font-bold">
-                      {formatMoney(option.price)}
-                    </p>
-                    <p className="text-[11.5px] text-ink-3">
-                      {travellers} {travellers === 1 ? "person" : "people"}
-                    </p>
-                  </div>
-                  <a
-                    href={option.deepLink}
-                    target="_blank"
-                    rel="noopener noreferrer nofollow"
-                    className="text-[13px] font-medium text-accent hover:underline"
-                  >
-                    Book →
-                  </a>
-                </div>
+                  {city}
+                </Link>
               ))}
             </div>
           )}
+
+          {wantTravel && originUnresolved && (
+            <p className="mt-3 text-[14px] font-medium text-hot">
+              We couldn&apos;t find &ldquo;{origin}&rdquo;. Try a big city nearby,
+              like New York, London or Paris.
+            </p>
+          )}
         </section>
 
-        {/* Stays */}
-        <section className="mt-14">
-          <SectionHeading
-            eyebrow="Somewhere to sleep"
-            title={`Stays near ${venue.name}`}
-            action={
-              <span className="text-[13px] text-ink-3">
-                Ranked by true cost — room plus getting to the ground
-              </span>
+        {/* Step 2: the answer. Everything added up, one button per thing to book. */}
+        <div className="mt-6">
+          <TripTotal
+            currency={prices.currency}
+            ticketPrice={prices.cheapest?.amount ?? null}
+            ticketSite={prices.cheapest?.label ?? null}
+            ticketUrl={prices.cheapest?.url ?? null}
+            ticketNoun={isRace ? "Race ticket" : isFootball ? "Match ticket" : "Game ticket"}
+            travellers={travellers}
+            nights={dates.nights}
+            rooms={rooms}
+            venueName={venue.name}
+            travelMode={go}
+            includeHotel={wantHotel}
+            flight={
+              flightQuote?.status === "ok"
+                ? { ...flightQuote, quote: { ...flightQuote.quote, perPerson: convertUsd(flightQuote.quote.perPerson, prices.currency) } }
+                : flightQuote
             }
+            hotel={hotelQuote && { ...hotelQuote, perNight: convertUsd(hotelQuote.perNight, prices.currency), total: convertUsd(hotelQuote.total, prices.currency) }}
+            flightLinks={flights}
+            groundLinks={groundLinks}
+            hotelLinks={hotels}
+            needsOrigin={!resolvedOrigin}
+            noFlightNeeded={sameCity}
+            icons={{ ticket: <TicketIcon />, flight: <PlaneIcon />, hotel: <BedIcon /> }}
           />
-
-          <div className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
-            {stays.slice(0, 9).map((stay) => {
-              const surcharge = transportSurchargePerNight(stay.distanceToVenueM);
-              return (
-              <a
-                key={stay.id}
-                href={stay.deepLink}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                className="group -mx-3 rounded-lg border-t border-line px-3 pb-4 pt-4 transition-colors hover:bg-surface-2/70"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold">
-                      {stay.name}
-                    </p>
-                    <p className="text-[12px] capitalize text-ink-3">{stay.kind}</p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="tabular text-[15px] font-bold">
-                      {formatMoney(stay.pricePerNight)}
-                    </p>
-                    <p className="text-[11px] text-ink-3">per night</p>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center gap-3 text-[12px]">
-                  <span className="tabular rounded-md bg-surface-3 px-1.5 py-0.5 font-semibold">
-                    {stay.rating.toFixed(1)}
-                  </span>
-                  <span className="text-ink-3">
-                    {stay.reviewCount.toLocaleString("en-US")} reviews
-                  </span>
-                </div>
-
-                <p className="mt-2.5 text-[12.5px] text-ink-2">
-                  {formatDistance(stay.distanceToVenueM)} from the ground ·{" "}
-                  {approachDescription(stay.distanceToVenueM)}
-                </p>
-
-                {surcharge > 0 ? (
-                  <p className="mt-1 text-[12px] text-warn">
-                    + about {formatMoneyCents(surcharge)}/night getting there and
-                    back
-                  </p>
-                ) : (
-                  <p className="mt-1 text-[12px] text-positive">
-                    Walkable — no transport needed
-                  </p>
-                )}
-
-                <p className="mt-2 truncate text-[11.5px] text-ink-3">
-                  {stay.amenities.join(" · ")}
-                </p>
-              </a>
-              );
-            })}
-          </div>
-        </section>
-
-        {trip.notices.length > 0 && (
-          <p className="mt-10 rounded-xl border border-warn/25 bg-warn/[0.06] px-4 py-3 text-[13px] text-warn">
-            Some providers didn&apos;t respond: {trip.notices.join("; ")}. Prices
-            shown are from the providers that did.
-          </p>
-        )}
-
-        <div className="mt-12 flex flex-wrap gap-3 text-[13px]">
-          {context.homeTeam && (
-            <Link
-              href={`/teams/${context.homeTeam.id}`}
-              className="rounded-lg border border-line bg-surface px-4 py-2 font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
-            >
-              All {context.homeTeam.name} fixtures
-            </Link>
-          )}
-          {context.awayTeam && (
-            <Link
-              href={`/teams/${context.awayTeam.id}`}
-              className="rounded-lg border border-line bg-surface px-4 py-2 font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
-            >
-              All {context.awayTeam.name} fixtures
-            </Link>
-          )}
         </div>
+
+        {/* Tickets in detail. */}
+        <section
+          id="tickets"
+          className="mt-6 mb-10 min-w-0 scroll-mt-24 rounded-2xl border border-line bg-surface p-5 shadow-xs sm:p-6"
+        >
+          <h2 className="text-[20px] font-semibold">Compare ticket prices</h2>
+          <p className="mt-1 text-[14px] text-ink-2">
+            {isRace
+              ? "The lowest price for one ticket on every site that sells this race, cheapest first. Switch between full-weekend passes and race-day tickets."
+              : isFootball
+                ? "The lowest price for one ticket on every site that sells this match, cheapest first."
+                : "The cheapest single ticket on every site that sells this game, cheapest first. Parking, tailgate passes and add-ons are left out. Where the venue sells standing room, the cheapest ticket may be standing room, not a seat."}
+          </p>
+          <div className="mt-5">
+            <PriceCompare groups={priceGroups} />
+          </div>
+
+          {sellers.length > 0 && (
+            <details className="group mt-6 rounded-xl border border-line">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-[14px] font-semibold">
+                Official club ticket offices
+                <span className="text-[13px] font-normal text-ink-3 group-open:hidden">
+                  Face value, usually members first ▾
+                </span>
+              </summary>
+              <div className="space-y-2 border-t border-line p-3">
+                {sellers.map((seller) => (
+                  <a
+                    key={seller.url}
+                    href={seller.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group/row flex items-center gap-4 rounded-lg px-3 py-2.5 transition-colors hover:bg-accent/5"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-semibold group-hover/row:text-accent">
+                        {seller.label}
+                      </span>
+                      <span className="block text-[13px] text-ink-3">{seller.note}</span>
+                    </span>
+                    <span className="shrink-0 text-[13px] font-semibold text-accent">Visit ↗</span>
+                  </a>
+                ))}
+              </div>
+            </details>
+          )}
+        </section>
       </div>
     </>
   );
 }
 
-function CostCell({
+type TravelMode = "flight" | "train" | "coach" | "drive";
+
+const MODE_LABEL: Record<TravelMode, string> = {
+  flight: "✈ Flight",
+  train: "🚆 Train",
+  coach: "🚌 Coach",
+  drive: "🚗 Drive",
+};
+
+const POPULAR_ORIGINS = ["New York", "Los Angeles", "Chicago", "Toronto", "London", "Manchester"];
+
+
+/** One thing the trip can include. Tapping it switches it on or off. */
+function NeedTile({
+  icon,
   label,
-  value,
-  sub,
+  on,
+  href,
 }: {
+  icon: ReactNode;
   label: string;
-  value: string;
-  sub: string;
+  on: boolean;
+  /** Missing for tickets, which are always included. */
+  href?: string;
 }) {
+  const body = (
+    <>
+      <span
+        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
+          on ? "bg-accent text-white" : "bg-surface-2 text-ink-3"
+        }`}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={`block text-[15px] font-semibold ${on ? "text-ink" : "text-ink-3"}`}>{label}</span>
+        <span className="block text-[13px] text-ink-3">
+          {!href ? "Always included" : on ? "Included · tap to remove" : "Not needed · tap to add"}
+        </span>
+      </span>
+      <span
+        aria-hidden
+        className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[13px] font-bold ${
+          on ? "bg-accent text-white" : "border-2 border-line"
+        }`}
+      >
+        {on ? "✓" : ""}
+      </span>
+    </>
+  );
+  const cls = `flex items-center gap-3 rounded-xl border-2 px-3 py-3 transition-colors ${
+    on ? "border-accent bg-accent/5" : "border-dashed border-line bg-surface hover:border-accent"
+  }`;
+  return href ? (
+    <Link href={href} scroll={false} className={cls} aria-pressed={on}>
+      {body}
+    </Link>
+  ) : (
+    <div className={cls}>{body}</div>
+  );
+}
+
+function Field({ label, className = "", children }: { label: string; className?: string; children: ReactNode }) {
   return (
-    <div>
-      <p className="text-[12.5px] text-ink-3">{label}</p>
-      <p className="tabular mt-1.5 text-[22px] font-semibold tracking-[-0.02em]">
-        {value}
-      </p>
-      <p className="mt-1 text-[12.5px] leading-snug text-ink-3">{sub}</p>
-    </div>
+    <label className={`block rounded-xl bg-surface px-4 py-2 ${className}`}>
+      <span className="block text-[12px] font-semibold text-ink-3">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const ICON_STROKE = {
+  fill: "none" as const,
+  stroke: "currentColor",
+  strokeWidth: 1.7,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+
+function TicketIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden>
+      <path
+        d="M3.5 9.5a2 2 0 0 0 0 5V17a1.5 1.5 0 0 0 1.5 1.5h14A1.5 1.5 0 0 0 20.5 17v-2.5a2 2 0 0 1 0-5V7A1.5 1.5 0 0 0 19 5.5H5A1.5 1.5 0 0 0 3.5 7z"
+        {...ICON_STROKE}
+      />
+      <path d="M14 5.5v13" {...ICON_STROKE} strokeDasharray="2 2.5" />
+    </svg>
+  );
+}
+
+function PlaneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden>
+      <path
+        d="M11.2 4.2l1.1 5.6 6-1.8c.8-.24 1.5.5 1.2 1.26-.16.4-.5.7-.9.82l-5.9 1.77.9 4.56 2 1.1c.3.16.3.6 0 .78l-1.5.8-1.9-1.4-1.9 1.4-1.5-.8c-.3-.18-.3-.62 0-.78l2-1.1.9-4.56-5.9-1.77a1.08 1.08 0 0 1-.9-.82c-.3-.76.4-1.5 1.2-1.26l6 1.8 1.1-5.6a1.08 1.08 0 0 1 2.1 0z"
+        {...ICON_STROKE}
+      />
+    </svg>
+  );
+}
+
+function BedIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden>
+      <path d="M3 18.5v-9M3 18.5h18M21 18.5v-6a2 2 0 0 0-2-2h-8v5" {...ICON_STROKE} />
+      <path d="M3 15.5V9a1.5 1.5 0 0 1 1.5-1.5h4A1.5 1.5 0 0 1 10 9v.5" {...ICON_STROKE} />
+      <circle cx="6.2" cy="10.6" r="1.1" {...ICON_STROKE} />
+    </svg>
   );
 }

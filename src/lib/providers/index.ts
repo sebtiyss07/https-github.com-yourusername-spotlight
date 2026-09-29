@@ -13,12 +13,10 @@ import {
   type TravelProvider,
   type TravelQuery,
 } from "@/lib/providers/types";
-import { seededTicketProvider } from "@/lib/providers/tickets/seeded";
 import { TicketmasterProvider } from "@/lib/providers/tickets/ticketmaster";
 import { SeatGeekProvider } from "@/lib/providers/tickets/seatgeek";
-import { seededTravelProvider } from "@/lib/providers/travel/seeded";
 import { AmadeusProvider } from "@/lib/providers/travel/amadeus";
-import { effectiveNightly, seededStayProvider } from "@/lib/providers/stays/seeded";
+import { effectiveNightly } from "@/lib/providers/stays/seeded";
 
 /**
  * Provider registry.
@@ -31,21 +29,21 @@ import { effectiveNightly, seededStayProvider } from "@/lib/providers/stays/seed
  * marketplace timing out costs you its listings, not the comparison.
  */
 
+// Real sources only. The seeded (generated) providers still exist for tests
+// and the dev audit, but are deliberately not registered: nothing invented may
+// ever reach a page or a price comparison.
 const TICKET_PROVIDERS: TicketProvider[] = [
-  seededTicketProvider,
   new TicketmasterProvider(),
   new SeatGeekProvider(),
   // new StubHubProvider(),       — needs partner approval, not self-serve
 ];
 
 const TRAVEL_PROVIDERS: TravelProvider[] = [
-  seededTravelProvider,
   new AmadeusProvider(),
   // new DuffelProvider(),        — better UX, paid
 ];
 
 const STAY_PROVIDERS: StayProvider[] = [
-  seededStayProvider,
   // new AmadeusHotelProvider(),
   // new BookingProvider(),       — needs affiliate approval
 ];

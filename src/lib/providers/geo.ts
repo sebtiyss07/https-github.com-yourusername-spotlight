@@ -1,3 +1,5 @@
+import europeAirports from "@/lib/data/europe-airports.json";
+import northAmericaAirports from "@/lib/data/north-america-airports.json";
 /**
  * Airport catalogue and distance maths.
  *
@@ -21,6 +23,7 @@ export interface Airport {
 export const AIRPORTS: Airport[] = [
   { iata: "ATL", city: "Atlanta", country: "US", name: "Hartsfield–Jackson", lat: 33.6407, lon: -84.4277, currency: "USD" },
   { iata: "AGS", city: "Augusta", country: "US", name: "Augusta Regional", lat: 33.3699, lon: -81.9645, currency: "USD" },
+  { iata: "AUH", city: "Abu Dhabi", country: "AE", name: "Zayed International", lat: 24.4330, lon: 54.6511, currency: "AED" },
   { iata: "AMD", city: "Ahmedabad", country: "IN", name: "Sardar Vallabhbhai Patel", lat: 23.0772, lon: 72.6347, currency: "INR" },
   { iata: "AMS", city: "Amsterdam", country: "NL", name: "Schiphol", lat: 52.3105, lon: 4.7683, currency: "EUR" },
   { iata: "AUS", city: "Austin", country: "US", name: "Austin–Bergstrom", lat: 30.1975, lon: -97.6664, currency: "USD" },
@@ -41,6 +44,7 @@ export const AIRPORTS: Airport[] = [
   { iata: "DEN", city: "Denver", country: "US", name: "Denver International", lat: 39.8561, lon: -104.6737, currency: "USD" },
   { iata: "DFW", city: "Dallas", country: "US", name: "Dallas/Fort Worth", lat: 32.8998, lon: -97.0403, currency: "USD" },
   { iata: "DTW", city: "Detroit", country: "US", name: "Detroit Metropolitan", lat: 42.2162, lon: -83.3554, currency: "USD" },
+  { iata: "DOH", city: "Doha", country: "QA", name: "Hamad International", lat: 25.2731, lon: 51.6081, currency: "QAR" },
   { iata: "DXB", city: "Dubai", country: "AE", name: "Dubai International", lat: 25.2532, lon: 55.3657, currency: "AED" },
   { iata: "EDI", city: "Edinburgh", country: "GB", name: "Edinburgh", lat: 55.9508, lon: -3.3615, currency: "GBP" },
   { iata: "EMA", city: "Nottingham", country: "GB", name: "East Midlands", lat: 52.8311, lon: -1.3281, currency: "GBP" },
@@ -50,6 +54,7 @@ export const AIRPORTS: Airport[] = [
   { iata: "GIG", city: "Rio de Janeiro", country: "BR", name: "Galeão", lat: -22.8100, lon: -43.2506, currency: "BRL" },
   { iata: "GRB", city: "Green Bay", country: "US", name: "Austin Straubel", lat: 44.4851, lon: -88.1296, currency: "USD" },
   { iata: "GRU", city: "São Paulo", country: "BR", name: "Guarulhos", lat: -23.4356, lon: -46.4731, currency: "BRL" },
+  { iata: "GYD", city: "Baku", country: "AZ", name: "Heydar Aliyev", lat: 40.4675, lon: 50.0467, currency: "AZN" },
   { iata: "HND", city: "Tokyo", country: "JP", name: "Haneda", lat: 35.5494, lon: 139.7798, currency: "JPY" },
   { iata: "IAH", city: "Houston", country: "US", name: "George Bush", lat: 29.9902, lon: -95.3368, currency: "USD" },
   { iata: "IND", city: "Indianapolis", country: "US", name: "Indianapolis International", lat: 39.7169, lon: -86.2956, currency: "USD" },
@@ -57,6 +62,7 @@ export const AIRPORTS: Airport[] = [
   { iata: "JAX", city: "Jacksonville", country: "US", name: "Jacksonville International", lat: 30.4941, lon: -81.6879, currency: "USD" },
   { iata: "JFK", city: "New York", country: "US", name: "John F. Kennedy", lat: 40.6413, lon: -73.7781, currency: "USD" },
   { iata: "JNB", city: "Johannesburg", country: "ZA", name: "O. R. Tambo", lat: -26.1367, lon: 28.2411, currency: "ZAR" },
+  { iata: "KUL", city: "Kuala Lumpur", country: "MY", name: "Kuala Lumpur International", lat: 2.7456, lon: 101.7099, currency: "MYR" },
   { iata: "LAS", city: "Las Vegas", country: "US", name: "Harry Reid", lat: 36.0840, lon: -115.1537, currency: "USD" },
   { iata: "LAX", city: "Los Angeles", country: "US", name: "Los Angeles International", lat: 33.9416, lon: -118.4085, currency: "USD" },
   { iata: "LBA", city: "Leeds", country: "GB", name: "Leeds Bradford", lat: 53.8659, lon: -1.6606, currency: "GBP" },
@@ -93,13 +99,59 @@ export const AIRPORTS: Airport[] = [
   { iata: "SJC", city: "San Jose", country: "US", name: "Norman Y. Mineta", lat: 37.3639, lon: -121.9289, currency: "USD" },
   { iata: "SLC", city: "Salt Lake City", country: "US", name: "Salt Lake City International", lat: 40.7899, lon: -111.9791, currency: "USD" },
   { iata: "SMF", city: "Sacramento", country: "US", name: "Sacramento International", lat: 38.6954, lon: -121.5908, currency: "USD" },
+  { iata: "STN", city: "London", country: "GB", name: "Stansted", lat: 51.8860, lon: 0.2389, currency: "GBP" },
   { iata: "SYD", city: "Sydney", country: "AU", name: "Kingsford Smith", lat: -33.9399, lon: 151.1753, currency: "AUD" },
   { iata: "TPA", city: "Tampa", country: "US", name: "Tampa International", lat: 27.9755, lon: -82.5332, currency: "USD" },
   { iata: "YUL", city: "Montreal", country: "CA", name: "Pierre Elliott Trudeau", lat: 45.4706, lon: -73.7408, currency: "CAD" },
   { iata: "YYZ", city: "Toronto", country: "CA", name: "Pearson International", lat: 43.6777, lon: -79.6248, currency: "CAD" },
 ];
 
-export const AIRPORTS_BY_IATA = new Map(AIRPORTS.map((a) => [a.iata, a]));
+/**
+ * Every airport we can fly *to*: the catalogue above plus Europe's large
+ * airports and the North American airports nearest NFL, NBA and MLS venues
+ * (both from OurAirports, public domain), so every stadium has a nearest
+ * airport. Origins still resolve against the catalogue above only.
+ */
+export const AIRPORTS_BY_IATA = new Map<string, Airport>([
+  ...(europeAirports as Omit<Airport, "currency">[]).map(
+    (a) => [a.iata, { ...a, currency: "EUR" }] as [string, Airport],
+  ),
+  ...(northAmericaAirports as Omit<Airport, "currency">[]).map(
+    (a) => [a.iata, { ...a, currency: a.country === "CA" ? "CAD" : "USD" }] as [string, Airport],
+  ),
+  ...AIRPORTS.map((a) => [a.iata, a] as [string, Airport]),
+]);
+
+/**
+ * Cities with several airports. The cheapest flight to "London" often isn't
+ * from Heathrow, so searches use the IATA metro code (LON = every London
+ * airport) — checked against Expedia, which shows it as "LON-All Airports".
+ * `main` is the airport used for distance maths and for display.
+ */
+const METROS: Record<string, { code: string; main: string }> = {
+  London: { code: "LON", main: "LHR" },
+  "New York": { code: "NYC", main: "JFK" },
+  Newark: { code: "NYC", main: "JFK" },
+  Chicago: { code: "CHI", main: "ORD" },
+  Washington: { code: "WAS", main: "DCA" },
+  Paris: { code: "PAR", main: "CDG" },
+  Milan: { code: "MIL", main: "MXP" },
+  Rome: { code: "ROM", main: "FCO" },
+  Tokyo: { code: "TYO", main: "HND" },
+  "São Paulo": { code: "SAO", main: "GRU" },
+  "Rio de Janeiro": { code: "RIO", main: "GIG" },
+  Montreal: { code: "YMQ", main: "YUL" },
+  Toronto: { code: "YTO", main: "YYZ" },
+};
+
+/** The code to search flights with: every airport in the city where there's a choice. */
+export function flightSearchCode(airport: Airport): string {
+  return METROS[airport.city]?.code ?? airport.iata;
+}
+
+export function hasSeveralAirports(airport: Airport): boolean {
+  return airport.city in METROS;
+}
 
 /**
  * Resolves whatever the user typed into an airport: an IATA code, a city name,
@@ -112,6 +164,11 @@ export function resolveOrigin(input: string): Airport | null {
 
   const byCode = AIRPORTS_BY_IATA.get(q.toUpperCase());
   if (byCode) return byCode;
+
+  // A city's main airport, not whichever one sorts first — "London" used to
+  // resolve to London City, a small airport most flights don't use.
+  const metro = Object.entries(METROS).find(([city]) => city.toLowerCase() === q);
+  if (metro) return AIRPORTS_BY_IATA.get(metro[1].main) ?? null;
 
   const exactCity = AIRPORTS.find((a) => a.city.toLowerCase() === q);
   if (exactCity) return exactCity;

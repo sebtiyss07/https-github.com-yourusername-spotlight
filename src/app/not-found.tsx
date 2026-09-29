@@ -2,22 +2,17 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="mx-auto flex max-w-2xl flex-col items-center px-5 py-32 text-center sm:px-8">
-      <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-ink-3">
-        404
-      </p>
-      <h1 className="mt-3 text-3xl font-black tracking-tight">
-        We couldn&apos;t find that
-      </h1>
-      <p className="mt-3 max-w-md text-[14px] leading-relaxed text-ink-2">
-        That sport, team, or event isn&apos;t in the catalogue — or the fixture
-        has already been played.
+    <div className="mx-auto flex max-w-xl flex-col items-center px-5 py-28 text-center sm:px-8">
+      <p className="font-display text-[64px] font-semibold leading-none text-accent">404</p>
+      <h1 className="mt-4 text-[28px] font-semibold">We can&apos;t find that page</h1>
+      <p className="mt-2 text-[15px] text-ink-3">
+        The game may already have been played, or the link may be wrong.
       </p>
       <Link
         href="/"
-        className="mt-8 rounded-lg bg-ink px-5 py-2.5 text-[14px] font-semibold text-surface transition-opacity hover:opacity-90"
+        className="mt-8 rounded-full bg-ink px-6 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-accent"
       >
-        Back to all sports
+        Back to home
       </Link>
     </div>
   );

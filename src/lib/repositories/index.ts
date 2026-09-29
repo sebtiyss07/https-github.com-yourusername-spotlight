@@ -6,21 +6,41 @@ import type {
   Venue,
 } from "@/lib/domain/types";
 import { SPORTS, SPORTS_BY_ID } from "@/lib/data/sports";
-import { LEAGUES, LEAGUES_BY_ID, leaguesForSport } from "@/lib/data/leagues";
+import {
+  LEAGUES,
+  LEAGUES_BY_ID,
+  featuredLeagues,
+  leaguesForSport,
+} from "@/lib/data/leagues";
 import {
   TEAMS,
   TEAMS_BY_ID,
   VENUES_BY_ID,
   teamsForLeague,
 } from "@/lib/data/teams";
+import { cache } from "react";
+import { eventTitle } from "@/lib/data/events";
+import { loadLiveData } from "@/lib/data/live";
+import { CLUB_TICKETS } from "@/lib/data/tickets";
+import { ACTIVE_SPORTS, isLeagueActive } from "@/lib/data/scope";
+import { venuePhotoFor, type VenuePhoto } from "@/lib/data/photos";
+import { getCurrency, type Currency } from "@/lib/currency";
+import { SITE_FEES, type SiteFees } from "@/lib/data/fees";
+
+export type { SiteFees };
+
+export type { VenuePhoto };
 import {
-  EVENTS,
-  EVENTS_BY_ID,
-  eventTitle,
-  eventsForLeague,
-  eventsForSport,
-  eventsForTeam,
-} from "@/lib/data/events";
+  F1_PRICES_CHECKED_ON,
+  PRICE_SITE_LABELS,
+  PRICES_CHECKED_ON,
+  US_PRICES_CHECKED_ON,
+  RATES,
+  racePricesFor,
+  sitePricesFor,
+  type PriceSite,
+  type SitePrice,
+} from "@/lib/data/prices";
 
 /**
  * Repository layer — the seam between the app and its storage.
@@ -31,22 +51,43 @@ import {
  * microtask; the saving later is a rewrite.
  *
  * Nothing outside this directory should import from `lib/data`.
+ *
+ * Every query also applies the site's current scope (`lib/data/scope.ts`), so
+ * a switched-off sport can't surface anywhere — not in a list, not in search,
+ * not through a direct link.
  */
 
+const SCOPED_SPORTS = SPORTS.filter((s) => ACTIVE_SPORTS.includes(s.id));
+const SCOPED_LEAGUES = LEAGUES.filter(isLeagueActive);
+const LEAGUE_IDS = new Set(SCOPED_LEAGUES.map((l) => l.id));
+const SCOPED_TEAMS = TEAMS.filter((t) => LEAGUE_IDS.has(t.leagueId));
+
+function inScope<T extends { leagueId: string }>(item: T | undefined): T | null {
+  return item && LEAGUE_IDS.has(item.leagueId) ? item : null;
+}
+
 export async function getSports(): Promise<Sport[]> {
-  return SPORTS;
+  return SCOPED_SPORTS;
 }
 
 export async function getSport(id: string): Promise<Sport | null> {
-  return SPORTS_BY_ID.get(id as Sport["id"]) ?? null;
+  const sport = SPORTS_BY_ID.get(id as Sport["id"]);
+  return sport && ACTIVE_SPORTS.includes(sport.id) ? sport : null;
 }
 
 export async function getLeagues(): Promise<League[]> {
-  return LEAGUES;
+  return SCOPED_LEAGUES;
 }
 
 export async function getLeague(id: string): Promise<League | null> {
-  return LEAGUES_BY_ID.get(id) ?? null;
+  return LEAGUE_IDS.has(id) ? (LEAGUES_BY_ID.get(id) ?? null) : null;
+}
+
+/** One flagship league per sport — the homepage's primary browse surface. */
+export async function getFeaturedLeagues(): Promise<
+  { league: League; label: string }[]
+> {
+  return featuredLeagues().filter(({ league }) => LEAGUE_IDS.has(league.id));
 }
 
 export async function getLeaguesBySport(sportId: string): Promise<League[]> {
@@ -58,41 +99,57 @@ export async function getLeaguesBySport(sportId: string): Promise<League[]> {
     international: 2,
     tour: 3,
   };
-  return leaguesForSport(sportId).sort(
+  return leaguesForSport(sportId).filter(isLeagueActive).sort(
     (a, b) => order[a.tier] - order[b.tier] || a.name.localeCompare(b.name),
   );
 }
 
 export async function getTeams(): Promise<Team[]> {
-  return TEAMS;
+  return SCOPED_TEAMS;
 }
 
 export async function getTeam(id: string): Promise<Team | null> {
-  return TEAMS_BY_ID.get(id) ?? null;
+  return inScope(TEAMS_BY_ID.get(id));
 }
 
 export async function getTeamsByLeague(leagueId: string): Promise<Team[]> {
-  return teamsForLeague(leagueId);
+  return LEAGUE_IDS.has(leagueId) ? teamsForLeague(leagueId) : [];
 }
 
+/**
+ * Fixtures come from real sources (`lib/data/live.ts`). `cache` shares one
+ * load per request; Next's fetch cache shares the network calls across them.
+ */
+const liveData = cache(loadLiveData);
+
 export async function getVenue(id: string): Promise<Venue | null> {
-  return VENUES_BY_ID.get(id) ?? null;
+  return VENUES_BY_ID.get(id) ?? (await liveData()).venuesById.get(id) ?? null;
 }
 
 export async function getEvent(id: string): Promise<SportEvent | null> {
-  return EVENTS_BY_ID.get(id) ?? null;
+  return inScope((await liveData()).eventsById.get(id));
 }
 
-/** Only events that haven't started. Everything user-facing wants this. */
-function upcoming(events: SportEvent[]): SportEvent[] {
+/**
+ * In-scope events that haven't started, soonest first. Every list query goes
+ * through here, which is what keeps switched-off sports out of every list and
+ * search.
+ */
+async function upcoming(
+  match: (e: SportEvent) => boolean = () => true,
+): Promise<SportEvent[]> {
+  const { events } = await liveData();
   const now = Date.now();
   return events
-    .filter((e) => Date.parse(e.startsAt) >= now)
+    .filter((e) => LEAGUE_IDS.has(e.leagueId) && match(e) && Date.parse(e.startsAt) >= now)
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
 }
 
+const playsIn = (teamId: string) => (e: SportEvent) =>
+  e.homeTeamId === teamId || e.awayTeamId === teamId;
+
 export async function getUpcomingEvents(limit?: number): Promise<SportEvent[]> {
-  const events = upcoming(EVENTS);
+  const events = await upcoming();
   return limit ? events.slice(0, limit) : events;
 }
 
@@ -100,7 +157,7 @@ export async function getEventsBySport(
   sportId: string,
   limit?: number,
 ): Promise<SportEvent[]> {
-  const events = upcoming(eventsForSport(sportId));
+  const events = await upcoming((e) => e.sportId === sportId);
   return limit ? events.slice(0, limit) : events;
 }
 
@@ -108,11 +165,14 @@ export async function getEventsBySport(
  * True counts, deliberately separate from the list queries above.
  *
  * Pages show a capped slice for readability, and reporting `list.length` as
- * the count turns a display limit into a fabricated statistic — every sport
- * claiming "15+ events" because 15 is the limit, not because that's the number.
+ * the count turns a display limit into a fabricated statistic.
  */
 export async function countEventsBySport(sportId: string): Promise<number> {
-  return upcoming(eventsForSport(sportId)).length;
+  return (await upcoming((e) => e.sportId === sportId)).length;
+}
+
+export async function countEventsByLeague(leagueId: string): Promise<number> {
+  return (await upcoming((e) => e.leagueId === leagueId)).length;
 }
 
 export async function countEventsByTeam(teamId: string): Promise<{
@@ -120,7 +180,7 @@ export async function countEventsByTeam(teamId: string): Promise<{
   home: number;
   away: number;
 }> {
-  const events = upcoming(eventsForTeam(teamId));
+  const events = await upcoming(playsIn(teamId));
   return {
     total: events.length,
     home: events.filter((e) => e.homeTeamId === teamId).length,
@@ -132,7 +192,7 @@ export async function getEventsByLeague(
   leagueId: string,
   limit?: number,
 ): Promise<SportEvent[]> {
-  const events = upcoming(eventsForLeague(leagueId));
+  const events = await upcoming((e) => e.leagueId === leagueId);
   return limit ? events.slice(0, limit) : events;
 }
 
@@ -140,20 +200,20 @@ export async function getEventsByTeam(
   teamId: string,
   limit?: number,
 ): Promise<SportEvent[]> {
-  const events = upcoming(eventsForTeam(teamId));
+  const events = await upcoming(playsIn(teamId));
   return limit ? events.slice(0, limit) : events;
 }
 
-/** The championships and finals — what the landing page leads with. */
+/** The big standalone events — every F1 race, for now. */
 export async function getMarqueeEvents(limit?: number): Promise<SportEvent[]> {
-  const events = upcoming(EVENTS.filter((e) => e.isMarquee));
+  const events = await upcoming((e) => e.isMarquee);
   return limit ? events.slice(0, limit) : events;
 }
 
 export async function getMarqueeEventsBySport(
   sportId: string,
 ): Promise<SportEvent[]> {
-  return upcoming(EVENTS.filter((e) => e.isMarquee && e.sportId === sportId));
+  return upcoming((e) => e.isMarquee && e.sportId === sportId);
 }
 
 /**
@@ -168,6 +228,122 @@ export interface EventContext {
   league: League | null;
   sport: Sport | null;
   title: string;
+  /** A match ticket, or for a race the full-weekend pass. */
+  prices: PriceComparison;
+  /** Races only: single race-day tickets. */
+  raceDayPrices: PriceComparison | null;
+  /** The home ground's photo, or for a race the circuit map. */
+  photo: VenuePhoto | null;
+}
+
+/** One ticket site's lowest listed price, linking to that exact ticket page. */
+export interface PriceOffer {
+  site: PriceSite;
+  label: string;
+  url: string;
+  /** Lowest single-ticket price the site listed; null when it listed none. */
+  amount: number | null;
+  /** What the ticket covers, when it varies (e.g. "4-day pass (Thu–Sun)"). */
+  ticket?: string;
+  /** The site's own price when it charges in another currency (e.g. £195.70). */
+  original?: { amount: number; currency: string };
+  /** What the site adds in fees, and whether `amount` already includes them. */
+  fees: SiteFees;
+  /** Shown instead of a price for a site we link without reading its price. */
+  note?: string;
+}
+
+export interface PriceComparison {
+  /** Sites with a price, cheapest first, then the ones that listed none. */
+  offers: PriceOffer[];
+  /** The cheapest priced offer, or null when no site listed a price. */
+  cheapest: PriceOffer | null;
+  currency: Currency;
+  /** When these prices were read (YYYY-MM-DD), or null with no offers. */
+  checkedOn: string | null;
+}
+
+/** A USD amount in the visitor's currency, at the stored ECB rate. */
+export function convertUsd(amount: number, currency: Currency): number {
+  return Math.round(amount * RATES[currency] * 100) / 100;
+}
+
+/**
+ * Sites whose event pages open already filtered to one ticket when the link
+ * carries `quantity=1` (checked on each site: the page shows "1 Ticket"), so
+ * visitors land on the same one-ticket price we show.
+ */
+const ONE_TICKET_PARAM: Partial<Record<PriceSite, string>> = {
+  tickpick: "quantity",
+  gametime: "quantity",
+  vividseats: "quantity",
+  stubhub: "quantity",
+  seatgeek: "quantity",
+};
+
+function oneTicketUrl(site: PriceSite, url: string): string {
+  const param = ONE_TICKET_PARAM[site];
+  if (!param) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set(param, "1");
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+function comparePrices(
+  rows: SitePrice[],
+  checkedOn: (site: PriceSite) => string,
+  currency: Currency,
+): PriceComparison {
+  const offers: PriceOffer[] = rows.map((p) => ({
+    site: p.site,
+    label: PRICE_SITE_LABELS[p.site],
+    url: oneTicketUrl(p.site, p.url),
+    // A site's own figure when it already charges in this currency;
+    // otherwise converted.
+    amount:
+      p.price === null
+        ? null
+        : p.original?.currency === currency
+          ? p.original.amount
+          : convertUsd(p.price, currency),
+    ticket: p.label,
+    original: p.original && p.original.currency !== currency ? p.original : undefined,
+    fees: SITE_FEES[p.site],
+    note: p.note,
+  }));
+  offers.sort((a, b) => (a.amount ?? Infinity) - (b.amount ?? Infinity));
+  const dates = offers.map((o) => checkedOn(o.site)).sort();
+  return {
+    offers,
+    cheapest: offers[0]?.amount != null ? offers[0] : null,
+    currency,
+    checkedOn: dates.at(-1) ?? null,
+  };
+}
+
+const US_LEAGUE_IDS = new Set(["nfl", "nba", "mls"]);
+
+function eventPrices(
+  event: SportEvent,
+  currency: Currency,
+): Pick<EventContext, "prices" | "raceDayPrices"> {
+  if (event.sportId === "motorsport") {
+    const race = racePricesFor(event.venueId.replace(/^f1-/, ""));
+    const f1Date = () => F1_PRICES_CHECKED_ON;
+    return {
+      prices: comparePrices(race?.weekend ?? [], f1Date, currency),
+      raceDayPrices: race ? comparePrices(race.raceDay, f1Date, currency) : null,
+    };
+  }
+  const checked = US_LEAGUE_IDS.has(event.leagueId) ? US_PRICES_CHECKED_ON : PRICES_CHECKED_ON;
+  return {
+    prices: comparePrices(sitePricesFor(event.id), (site) => checked[site], currency),
+    raceDayPrices: null,
+  };
 }
 
 export async function getEventContext(
@@ -175,12 +351,18 @@ export async function getEventContext(
 ): Promise<EventContext> {
   return {
     event,
-    venue: VENUES_BY_ID.get(event.venueId) ?? null,
+    venue: await getVenue(event.venueId),
     homeTeam: event.homeTeamId ? (TEAMS_BY_ID.get(event.homeTeamId) ?? null) : null,
     awayTeam: event.awayTeamId ? (TEAMS_BY_ID.get(event.awayTeamId) ?? null) : null,
     league: LEAGUES_BY_ID.get(event.leagueId) ?? null,
     sport: SPORTS_BY_ID.get(event.sportId) ?? null,
     title: eventTitle(event),
+    ...eventPrices(event, await getCurrency()),
+    photo: venuePhotoFor(
+      event.sportId === "motorsport"
+        ? `f1:${event.venueId.replace(/^f1-/, "")}`
+        : (event.homeTeamId ?? ""),
+    ),
   };
 }
 
@@ -215,7 +397,7 @@ export async function search(query: string): Promise<SearchResults> {
 
   const hits: SearchHit[] = [];
 
-  for (const s of SPORTS) {
+  for (const s of SCOPED_SPORTS) {
     if (s.name.toLowerCase().includes(q)) {
       hits.push({
         kind: "sport",
@@ -227,7 +409,7 @@ export async function search(query: string): Promise<SearchResults> {
     }
   }
 
-  for (const l of LEAGUES) {
+  for (const l of SCOPED_LEAGUES) {
     if (
       l.name.toLowerCase().includes(q) ||
       l.shortName.toLowerCase().includes(q)
@@ -242,7 +424,7 @@ export async function search(query: string): Promise<SearchResults> {
     }
   }
 
-  for (const t of TEAMS) {
+  for (const t of SCOPED_TEAMS) {
     if (
       t.name.toLowerCase().includes(q) ||
       t.shortName.toLowerCase().includes(q) ||
@@ -258,7 +440,7 @@ export async function search(query: string): Promise<SearchResults> {
     }
   }
 
-  for (const e of upcoming(EVENTS)) {
+  for (const e of await upcoming()) {
     const title = eventTitle(e);
     if (title.toLowerCase().includes(q) || e.name.toLowerCase().includes(q)) {
       hits.push({
@@ -285,4 +467,38 @@ export async function search(query: string): Promise<SearchResults> {
     total: ordered.length,
     truncated: ordered.length > SEARCH_LIMIT,
   };
+}
+
+/** Somewhere you can actually buy a ticket for this event, verified by hand. */
+export interface TicketSeller {
+  label: string;
+  note: string;
+  url: string;
+}
+
+/**
+ * Official sellers only (see `lib/data/tickets.ts`) — never a search page.
+ * For a football match that's the home club's ticket office, plus the away
+ * club's for away fans. (The F1 store is part of the race price comparison.)
+ */
+export async function getTicketSellers(event: SportEvent): Promise<TicketSeller[]> {
+  const sellers: TicketSeller[] = [];
+
+  if (event.sportId === "soccer") {
+    for (const [teamId, note] of [
+      [event.homeTeamId, "Home and neutral fans — the home club sells most seats."],
+      [event.awayTeamId, "Away fans — your club sells its own away allocation."],
+    ] as const) {
+      const team = teamId ? TEAMS_BY_ID.get(teamId) : undefined;
+      const url = team ? CLUB_TICKETS[team.id] : undefined;
+      if (team && url) sellers.push({ label: `${team.name} ticket office`, note, url });
+    }
+  }
+
+  return sellers;
+}
+
+/** A photo to headline a league's pages. */
+export async function getLeaguePhoto(leagueId: string): Promise<VenuePhoto | null> {
+  return leagueId === "premier-league" ? venuePhotoFor("tottenham") : null;
 }

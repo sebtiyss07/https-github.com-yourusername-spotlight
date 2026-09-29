@@ -1,0 +1,481 @@
+{
+ "note": "Lowest price each site shows buyers for one ticket, fees included where the site shows them (StubHub: its incl.-fees price; Vivid Seats, Gametime, TickPick, Ticombo: all-in prices). In USD, read on 2026-09-28. The F1 store shows face value in its own conversion. SeatGeek was removed: it blocked checking its fee-inclusive price.",
+ "currency": "USD",
+ "checkedOn": "2026-09-28",
+ "races": {
+  "sepang": {
+   "weekend": [
+    {
+     "site": "f1store",
+     "label": "3-day pass",
+     "price": 265,
+     "url": "https://tickets.formula1.com/en/f1-83069-bahrain-in-malaysia"
+    },
+    {
+     "site": "stubhub",
+     "label": "3-day pass",
+     "price": 153,
+     "url": "https://www.stubhub.com/formula-1-selangor-tickets-10-2-2026/event/161687061/"
+    },
+    {
+     "site": "tickpick",
+     "label": "3-day pass",
+     "price": 184,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-bahrain-grand-prix-3-day-pass-tickets-sepang-international-circuit-10-2-26-3am/8164326/"
+    },
+    {
+     "site": "ticombo",
+     "label": "3-day pass",
+     "price": 170,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/bahrain-grand-prix-3-day-pass-formula-1-3001149061/5cc08e79-a21c-48f6-9613-9831b125e035"
+    }
+   ],
+   "raceDay": [
+    {
+     "site": "stubhub",
+     "label": "Sunday",
+     "price": 159,
+     "url": "https://www.stubhub.com/formula-1-selangor-tickets-10-4-2026/event/161687058/"
+    },
+    {
+     "site": "tickpick",
+     "label": "Sunday",
+     "price": null,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-bahrain-grand-prix-sunday-tickets-sepang-international-circuit-10-4-26-3am/8164330/"
+    },
+    {
+     "site": "ticombo",
+     "label": "Sunday",
+     "price": 261,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/bahrain-grand-prix-sunday-ticket-formula-1-3001214011/90f4e2fd-5375-4ef1-834d-8b4885bd28ac"
+    }
+   ]
+  },
+  "marina_bay": {
+   "weekend": [
+    {
+     "site": "f1store",
+     "label": "3-day pass",
+     "price": 715.02,
+     "url": "https://tickets.formula1.com/en/f1-3301-singapore"
+    },
+    {
+     "site": "stubhub",
+     "label": "3-day pass",
+     "price": 357,
+     "url": "https://www.stubhub.com/formula-1-singapore-tickets-10-9-2026/event/158498831/"
+    },
+    {
+     "site": "tickpick",
+     "label": "3-day pass",
+     "price": 357,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-singapore-grand-prix-3-day-pass-tickets-marina-bay-street-circuit-10-9-26-3am/7205105/"
+    },
+    {
+     "site": "gametime",
+     "label": "3-day pass",
+     "price": 744,
+     "url": "https://gametime.co/events/6849cbbabfe77d6d8f99138b"
+    },
+    {
+     "site": "ticombo",
+     "label": "3-day pass",
+     "price": 532,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/singapore-grand-prix-3-day-pass-formula-1-2610091400/3d33ee6e-a7c7-4fc5-826d-146176f8efdb"
+    }
+   ],
+   "raceDay": [
+    {
+     "site": "stubhub",
+     "label": "Sunday",
+     "price": 203,
+     "url": "https://www.stubhub.com/formula-1-singapore-tickets-10-11-2026/event/158509290/"
+    },
+    {
+     "site": "tickpick",
+     "label": "Sunday",
+     "price": 297,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-singapore-grand-prix-sunday-tickets-marina-bay-street-circuit-10-11-26-8pm/7209374/"
+    },
+    {
+     "site": "gametime",
+     "label": "Sunday",
+     "price": 374,
+     "url": "https://gametime.co/events/6849cb94aec9e098cc3d5ebc"
+    },
+    {
+     "site": "ticombo",
+     "label": "Sunday",
+     "price": 443,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/singapore-grand-prix-sunday-ticket-formula-1-2610111525/3f0bf8e3-ef5e-4fcc-9dd4-734d2f1956a9"
+    }
+   ]
+  },
+  "americas": {
+   "weekend": [
+    {
+     "site": "f1store",
+     "label": "3-day pass",
+     "price": 735,
+     "url": "https://tickets.formula1.com/en/f1-3320-united-states"
+    },
+    {
+     "site": "vividseats",
+     "label": "3-day pass",
+     "price": 536,
+     "url": "https://www.vividseats.com/united-states-grand-prix-tickets-circuit-of-the-americas-10-23-2026--sports-f1-racing/production/5809733"
+    },
+    {
+     "site": "stubhub",
+     "label": "3-day pass",
+     "price": 417,
+     "url": "https://www.stubhub.com/formula-1-austin-tickets-10-23-2026/event/158487725/"
+    },
+    {
+     "site": "tickpick",
+     "label": "3-day pass",
+     "price": 525,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-us-grand-prix-3-day-pass-tickets-circuit-of-the-americas-10-23-26-3am/7205106/"
+    },
+    {
+     "site": "gametime",
+     "label": "3-day pass",
+     "price": 607,
+     "url": "https://gametime.co/events/6849cae4e467fab5c1560660"
+    },
+    {
+     "site": "ticombo",
+     "label": "3-day pass",
+     "price": 934,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/united-states-grand-prix-3-day-pass-formula-1-2610222359/9aeadd77-b94c-4a56-b9aa-f774807831b2"
+    }
+   ],
+   "raceDay": [
+    {
+     "site": "vividseats",
+     "label": "Sunday",
+     "price": 293,
+     "url": "https://www.vividseats.com/united-states-grand-prix-tickets-circuit-of-the-americas-10-25-2026--sports-f1-racing/production/5809735"
+    },
+    {
+     "site": "stubhub",
+     "label": "Sunday",
+     "price": 291,
+     "url": "https://www.stubhub.com/formula-1-austin-tickets-10-25-2026/event/158487750/"
+    },
+    {
+     "site": "tickpick",
+     "label": "Sunday",
+     "price": 280,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-us-grand-prix-sunday-tickets-circuit-of-the-americas-10-25-26-2pm/7209153/"
+    },
+    {
+     "site": "gametime",
+     "label": "Sunday",
+     "price": 293,
+     "url": "https://gametime.co/events/6849cae400097789107c25c5"
+    },
+    {
+     "site": "ticombo",
+     "label": "Sunday",
+     "price": 428,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/united-states-grand-prix-sunday-ticket-formula-1-2610252359/ca155169-ea17-4ee7-bd5b-debe1196dc11"
+    }
+   ]
+  },
+  "rodriguez": {
+   "weekend": [
+    {
+     "site": "f1store",
+     "label": "3-day pass",
+     "price": 800,
+     "url": "https://tickets.formula1.com/en/f1-4861-mexico"
+    },
+    {
+     "site": "stubhub",
+     "label": "3-day pass",
+     "price": 435,
+     "url": "https://www.stubhub.com/formula-1-mexico-df-tickets-10-30-2026/event/158498842/"
+    },
+    {
+     "site": "gametime",
+     "label": "3-day pass",
+     "price": 968,
+     "url": "https://gametime.co/events/6849cb94a3ba3190cc60ec99"
+    },
+    {
+     "site": "ticombo",
+     "label": "3-day pass",
+     "price": 998,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/mexican-grand-prix-3-day-pass-formula-1-2610301200/3b20e2e2-4f68-47e8-8b21-dc96e51e14d2"
+    }
+   ],
+   "raceDay": [
+    {
+     "site": "stubhub",
+     "label": "Sunday",
+     "price": 467,
+     "url": "https://www.stubhub.com/formula-1-mexico-df-tickets-11-1-2026/event/158509302/"
+    },
+    {
+     "site": "tickpick",
+     "label": "Sunday",
+     "price": 770,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-mexican-city-grand-prix-sunday-tickets-autodromo-hermanos-rodriguez-11-1-26-2pm/7209356/"
+    },
+    {
+     "site": "gametime",
+     "label": "Sunday",
+     "price": 843,
+     "url": "https://gametime.co/events/6849cb94cc37bb374bdff663"
+    },
+    {
+     "site": "ticombo",
+     "label": "Sunday",
+     "price": 867,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/mexican-grand-prix-sunday-ticket-formula-1-2611011200/0147d8e0-9c24-4afc-b79a-2453122dfc92"
+    }
+   ]
+  },
+  "interlagos": {
+   "weekend": [
+    {
+     "site": "f1store",
+     "label": "3-day pass",
+     "price": 795,
+     "url": "https://tickets.formula1.com/en/f1-3325-brazil"
+    },
+    {
+     "site": "stubhub",
+     "label": "3-day pass",
+     "price": 662,
+     "url": "https://www.stubhub.com/formula-1-sao-paulo-tickets-11-6-2026/event/161148394/"
+    },
+    {
+     "site": "tickpick",
+     "label": "3-day pass",
+     "price": 591,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-sao-paulo-grand-prix-3-day-pass-tickets-autodromo-jose-carlos-pace-11-6-26-3am/7205124/"
+    },
+    {
+     "site": "gametime",
+     "label": "3-day pass",
+     "price": null,
+     "url": "https://gametime.co/events/6849cb943e669e1c9eeef808"
+    },
+    {
+     "site": "ticombo",
+     "label": "3-day pass",
+     "price": 639,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/brazilian-grand-prix-3-day-pass-formula-1-3001626684/b3b5fcd9-bf10-4e08-87d3-3cb43ab71d71"
+    }
+   ],
+   "raceDay": [
+    {
+     "site": "tickpick",
+     "label": "Sunday",
+     "price": 628,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-sao-paulo-grand-prix-sunday-tickets-autodromo-jose-carlos-pace-11-8-26-2pm/7209320/"
+    },
+    {
+     "site": "gametime",
+     "label": "Sunday",
+     "price": null,
+     "url": "https://gametime.co/events/6849cbba0c26f8b5678797cb"
+    },
+    {
+     "site": "ticombo",
+     "label": "Sunday",
+     "price": 624,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/brazilian-grand-prix-sunday-ticket-formula-1-3001877448/5c471138-ab62-4fea-b686-4acb2e9a94d2"
+    }
+   ]
+  },
+  "vegas": {
+   "weekend": [
+    {
+     "site": "f1store",
+     "label": "3-day pass (Thu–Sat)",
+     "price": 809,
+     "url": "https://tickets.formula1.com/en/f1-59007-las-vegas"
+    },
+    {
+     "site": "vividseats",
+     "label": "3-day pass (Thu–Sat)",
+     "price": 863,
+     "url": "https://www.vividseats.com/formula-1-las-vegas-grand-prix-tickets-f1-las-vegas-strip-autodrome-11-19-2026--sports-racing/production/5809768"
+    },
+    {
+     "site": "stubhub",
+     "label": "3-day pass (Thu–Sat)",
+     "price": 863,
+     "url": "https://www.stubhub.com/formula-1-las-vegas-tickets-11-19-2026/event/158487335/"
+    },
+    {
+     "site": "tickpick",
+     "label": "3-day pass (Thu–Sat)",
+     "price": 825,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-las-vegas-grand-prix-3-day-pass-tickets-las-vegas-strip-circuit-11-19-26-3am/7205127/"
+    },
+    {
+     "site": "gametime",
+     "label": "3-day pass (Thu–Sat)",
+     "price": 866,
+     "url": "https://gametime.co/events/6849c9903e669e1c9eeef7a9"
+    },
+    {
+     "site": "ticombo",
+     "label": "3-day pass (Thu–Sat)",
+     "price": 1181,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/las-vegas-grand-prix-3-day-pass-thursday-saturdayticket-formula-1-2611192359/11739a91-4476-45c1-bfd8-596db1a496a7"
+    }
+   ],
+   "raceDay": [
+    {
+     "site": "vividseats",
+     "label": "Saturday (race night)",
+     "price": 615,
+     "url": "https://www.vividseats.com/formula-1-las-vegas-grand-prix-tickets-f1-las-vegas-strip-autodrome-11-21-2026--sports-racing/production/5809772"
+    },
+    {
+     "site": "stubhub",
+     "label": "Saturday (race night)",
+     "price": 504,
+     "url": "https://www.stubhub.com/formula-1-las-vegas-tickets-11-21-2026/event/158487350/"
+    },
+    {
+     "site": "tickpick",
+     "label": "Saturday (race night)",
+     "price": 560,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-las-vegas-grand-prix-saturday-tickets-las-vegas-strip-circuit-11-21-26-8pm/7209142/"
+    },
+    {
+     "site": "gametime",
+     "label": "Saturday (race night)",
+     "price": 571,
+     "url": "https://gametime.co/events/6849c976ce1a119b47590c69"
+    },
+    {
+     "site": "ticombo",
+     "label": "Saturday (race night)",
+     "price": 907,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/las-vegas-grand-prix-saturday-ticket-formula-1-3001179795/c95cf85c-9611-4370-ab85-d46a7d43845f"
+    }
+   ]
+  },
+  "losail": {
+   "weekend": [
+    {
+     "site": "f1store",
+     "label": "3-day pass",
+     "price": 330,
+     "url": "https://tickets.formula1.com/en/f1-56257-qatar"
+    },
+    {
+     "site": "stubhub",
+     "label": "3-day pass",
+     "price": 167,
+     "url": "https://www.stubhub.com/formula-1-doha-tickets-11-27-2026/event/158498853/"
+    },
+    {
+     "site": "tickpick",
+     "label": "3-day pass",
+     "price": 192,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-qatar-grand-prix-3-day-pass-tickets-lusail-international-circuit-11-27-26-3am/7205130/"
+    },
+    {
+     "site": "gametime",
+     "label": "3-day pass",
+     "price": 266,
+     "url": "https://gametime.co/events/6849cb9b8a496f6facf49fad"
+    },
+    {
+     "site": "ticombo",
+     "label": "3-day pass",
+     "price": 254,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/qatar-grand-prix-3-day-pass-formula-1-3001944175/2b61267e-7e49-40ef-9abf-2cf4303573ad"
+    }
+   ],
+   "raceDay": [
+    {
+     "site": "stubhub",
+     "label": "Sunday",
+     "price": 195,
+     "url": "https://www.stubhub.com/formula-1-doha-tickets-11-29-2026/event/158509384/"
+    },
+    {
+     "site": "tickpick",
+     "label": "Sunday",
+     "price": 205,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-qatar-grand-prix-sunday-tickets-lusail-international-circuit-11-29-26-7pm/7209299/"
+    },
+    {
+     "site": "gametime",
+     "label": "Sunday",
+     "price": 266,
+     "url": "https://gametime.co/events/6849cbfeba17bdcfacef7770"
+    },
+    {
+     "site": "ticombo",
+     "label": "Sunday",
+     "price": 296,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/qatar-grand-prix-sunday-ticket-formula-1-3001793720/eff6bc4a-8886-4331-9730-53951c421ce6"
+    }
+   ]
+  },
+  "yas_marina": {
+   "weekend": [
+    {
+     "site": "f1store",
+     "label": "4-day pass (Thu–Sun)",
+     "price": 2355,
+     "url": "https://tickets.formula1.com/en/f1-3312-abu-dhabi"
+    },
+    {
+     "site": "stubhub",
+     "label": "4-day pass (Thu–Sun)",
+     "price": 401,
+     "url": "https://www.stubhub.com/formula-1-abu-dhabi-tickets-12-3-2026/event/160472156/"
+    },
+    {
+     "site": "tickpick",
+     "label": "4-day pass (Thu–Sun)",
+     "price": 550,
+     "url": "https://www.tickpick.com/buy-2026-formula-1-abu-dhabi-grand-prix-4-day-pass-tickets-yas-marina-circuit-12-3-26-3am/7805805/"
+    },
+    {
+     "site": "gametime",
+     "label": "3-day pass (Fri–Sun)",
+     "price": 641,
+     "url": "https://gametime.co/events/6849cbfe9013041470af3810"
+    },
+    {
+     "site": "ticombo",
+     "label": "4-day pass (Thu–Sun)",
+     "price": 454,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/abu-dhabi-grand-prix-4-day-pass-formula-1-2612032359/040560af-5b41-4039-b97a-e6db7aac2384"
+    }
+   ],
+   "raceDay": [
+    {
+     "site": "stubhub",
+     "label": "Sunday",
+     "price": 416,
+     "url": "https://www.stubhub.com/formula-1-abu-dhabi-tickets-12-6-2026/event/158509416/"
+    },
+    {
+     "site": "gametime",
+     "label": "Sunday",
+     "price": 656,
+     "url": "https://gametime.co/events/6849cc005ea411b5fc00c30b"
+    },
+    {
+     "site": "ticombo",
+     "label": "Sunday",
+     "price": 504,
+     "url": "https://www.ticombo.com/en/sports-tickets/motorsports-tickets/abu-dhabi-grand-prix-sunday-ticket-formula-1-2612062359/fe7bf755-81a5-4e7a-90f5-e5235ef86c4d"
+    }
+   ]
+  }
+ }
+}

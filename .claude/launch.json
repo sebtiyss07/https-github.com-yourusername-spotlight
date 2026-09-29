@@ -4,8 +4,25 @@
     {
       "name": "spotlight",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000
+    },
+    {
+      "name": "transferwindow",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/yanis/TransferWindow/app",
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "4610"
+      ],
+      "port": 4610
     }
   ]
 }

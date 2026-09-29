@@ -159,7 +159,7 @@ export function buildListings(eventId: string): TicketListing[] {
   );
 
   // Small venues price up: less supply for the same demand.
-  const scarcity = venue ? Math.min(1.6, 45_000 / Math.max(8_000, venue.capacity)) : 1;
+  const scarcity = venue ? Math.min(1.6, 45_000 / Math.max(8_000, venue.capacity ?? 45_000)) : 1;
 
   const eventMultiplier =
     demandMultiplier(event.demandScore) * timingMultiplier(daysOut) * scarcity;

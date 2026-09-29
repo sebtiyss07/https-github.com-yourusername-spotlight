@@ -1,5 +1,6 @@
 import type { Money, StayKind, StayOption } from "@/lib/domain/types";
-import { intBetween, pick, rngFrom, shuffled } from "@/lib/data/random";
+import { intBetween, rngFrom, shuffled } from "@/lib/data/random";
+import { expediaHotelsUrl } from "@/lib/providers/expedia";
 import type {
   ProviderResult,
   StayProvider,
@@ -16,15 +17,18 @@ import type {
  * obvious.
  */
 
-const HOTEL_BRANDS = [
-  "The Warwick", "Hyatt Place", "Kimpton", "Marriott Courtyard", "Hilton Garden Inn",
-  "AC Hotel", "Moxy", "Aloft", "Le Méridien", "The Ridgeline", "Canopy",
-  "Residence Inn", "The Quarter", "Novotel", "citizenM",
-];
-
-const HOSTEL_BRANDS = ["Generator", "HI Hostel", "Wombat's", "The Circus", "Selina"];
-const APARTMENT_BRANDS = ["Sonder", "Locke", "Blueground", "Native Places"];
-const RENTAL_BRANDS = ["Private host", "Entire flat", "Loft rental", "Guest suite"];
+/**
+ * Example stays carry a plain description, not a name. Earlier versions
+ * invented "Hyatt Place Stadium District" and the like: real brands at
+ * addresses that don't exist, which is exactly the kind of detail that sends
+ * someone searching for a hotel that isn't there.
+ */
+const KIND_NAME: Record<StayKind, string> = {
+  hotel: "Hotel",
+  apartment: "Apartment",
+  rental: "Private rental",
+  hostel: "Hostel",
+};
 
 const AMENITIES = [
   "Free Wi-Fi", "Breakfast included", "Gym", "24h reception", "Bar",
@@ -34,7 +38,6 @@ const AMENITIES = [
 
 interface KindProfile {
   kind: StayKind;
-  brands: string[];
   /** Nightly rate multiplier vs. the market baseline. */
   priceMul: number;
   ratingFloor: number;
@@ -42,10 +45,10 @@ interface KindProfile {
 }
 
 const PROFILES: KindProfile[] = [
-  { kind: "hotel", brands: HOTEL_BRANDS, priceMul: 1.0, ratingFloor: 7.4, count: 7 },
-  { kind: "apartment", brands: APARTMENT_BRANDS, priceMul: 0.86, ratingFloor: 8.0, count: 3 },
-  { kind: "rental", brands: RENTAL_BRANDS, priceMul: 0.72, ratingFloor: 7.8, count: 3 },
-  { kind: "hostel", brands: HOSTEL_BRANDS, priceMul: 0.3, ratingFloor: 7.0, count: 2 },
+  { kind: "hotel", priceMul: 1.0, ratingFloor: 7.4, count: 7 },
+  { kind: "apartment", priceMul: 0.86, ratingFloor: 8.0, count: 3 },
+  { kind: "rental", priceMul: 0.72, ratingFloor: 7.8, count: 3 },
+  { kind: "hostel", priceMul: 0.3, ratingFloor: 7.0, count: 2 },
 ];
 
 function money(amount: number): Money {
@@ -94,6 +97,17 @@ export function buildStayOptions(query: StayQuery): StayOption[] {
   );
   const options: StayOption[] = [];
 
+  // An example stay has no page of its own to link to, so every one opens the
+  // same real Expedia search: this venue, these dates, this many people.
+  const deepLink = expediaHotelsUrl({
+    destination: query.destination,
+    lat: query.lat,
+    lon: query.lon,
+    checkIn: query.checkIn,
+    checkOut: query.checkOut,
+    adults: query.guests,
+  });
+
   for (const profile of PROFILES) {
     for (let i = 0; i < profile.count; i++) {
       const seed = `stay:${query.lat.toFixed(3)}:${query.lon.toFixed(3)}:${profile.kind}:${i}`;
@@ -104,14 +118,12 @@ export function buildStayOptions(query: StayQuery): StayOption[] {
         baseline *
         profile.priceMul *
         distancePremium(distance) *
-        (0.78 + rng() * 0.55) *
-        // Larger parties need larger rooms.
-        (query.guests > 2 ? 1.35 : 1);
+        (0.78 + rng() * 0.55);
 
       options.push({
         id: seed,
         kind: profile.kind,
-        name: `${pick(rng, profile.brands)} ${["Central", "Stadium District", "Riverside", "Old Town", "Downtown", "North Quarter"][intBetween(rng, 0, 5)]}`,
+        name: KIND_NAME[profile.kind],
         distanceToVenueM: distance,
         rating: Number(
           (profile.ratingFloor + rng() * (9.7 - profile.ratingFloor)).toFixed(1),
@@ -119,9 +131,7 @@ export function buildStayOptions(query: StayQuery): StayOption[] {
         reviewCount: intBetween(rng, 84, 4_200),
         pricePerNight: money(rate),
         amenities: shuffled(rng, AMENITIES).slice(0, intBetween(rng, 3, 5)),
-        deepLink: `https://www.google.com/travel/hotels?q=${encodeURIComponent(
-          `hotels near ${query.lat.toFixed(4)},${query.lon.toFixed(4)}`,
-        )}`,
+        deepLink,
       });
     }
   }

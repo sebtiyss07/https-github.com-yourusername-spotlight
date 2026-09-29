@@ -64,16 +64,21 @@ export interface TravelQuery {
   origin: string;
   /** IATA of the airport nearest the venue. */
   destinationAirport: string;
-  /** ISO date the traveller needs to arrive by. */
+  /** ISO instant the traveller needs to arrive by. */
   arriveBy: string;
-  returnOn?: string;
+  /** Local calendar dates (`YYYY-MM-DD`) of the outbound and return flights. */
+  departOn: string;
+  returnOn: string;
   passengers: number;
 }
 
 export interface StayQuery {
+  /** Venue name and city, e.g. "AT&T Stadium, Arlington" — for booking links. */
+  destination: string;
   /** Venue coordinates — stays are ranked by walking distance to the gate. */
   lat: number;
   lon: number;
+  /** Local calendar dates, `YYYY-MM-DD`. */
   checkIn: string;
   checkOut: string;
   guests: number;

@@ -7,8 +7,10 @@ import type {
   Venue,
 } from "@/lib/domain/types";
 import { searchStays, searchTickets, searchTravel } from "@/lib/providers";
-import { transportSurchargePerNight } from "@/lib/providers/stays/seeded";
-import { displayBreakdown, money, multiplyMoney, sumMoney } from "@/lib/money";
+import type { ProviderResult } from "@/lib/providers/types";
+import { displayBreakdown, multiplyMoney, sumMoney } from "@/lib/money";
+import { addDays, localDate } from "@/lib/dates";
+import { adultsPerRoom } from "@/lib/providers/expedia";
 
 /**
  * Trip assembly — the product's actual thesis.
@@ -45,6 +47,12 @@ export interface TripResult {
    * live quote is the one thing this product cannot do.
    */
   ticketsSynthetic: boolean;
+  /** Same, for the flight and hotel prices. */
+  travelSynthetic: boolean;
+  staysSynthetic: boolean;
+  /** Local calendar dates: fly out and check in; fly home and check out. */
+  dates: { checkIn: string; checkOut: string };
+  rooms: number;
 }
 
 /**
@@ -55,11 +63,7 @@ export interface TripResult {
  * first and the total is their sum, which guarantees the visible column adds up
  * — see `displayBreakdown`.
  */
-export function tripBreakdown(
-  estimate: TripEstimate,
-  travellers: number,
-  nights: number,
-) {
+export function tripBreakdown(estimate: TripEstimate, travellers: number) {
   return displayBreakdown([
     {
       label: "Tickets",
@@ -67,48 +71,56 @@ export function tripBreakdown(
         ? multiplyMoney(estimate.ticket.total, travellers)
         : null,
     },
-    { label: "Getting there", value: estimate.travel?.price ?? null },
+    { label: "Flight", value: estimate.travel?.price ?? null },
     {
-      label: "Stay",
+      label: "Hotel",
       value: estimate.stay
-        ? multiplyMoney(estimate.stay.pricePerNight, nights)
+        ? multiplyMoney(estimate.stay.pricePerNight, estimate.nights * roomsFor(travellers))
         : null,
     },
-    { label: "Local transport", value: estimate.localTransport },
   ]);
 }
 
-/** Check in the day before an evening event; check out `nights` later. */
-function stayWindow(event: SportEvent, nights: number) {
-  const start = Date.parse(event.startsAt);
-  const checkIn = new Date(start - 86_400_000);
-  const checkOut = new Date(checkIn.getTime() + nights * 86_400_000);
-  return { checkIn: checkIn.toISOString(), checkOut: checkOut.toISOString() };
+/** Two people to a room; an odd one out gets their own. */
+export function roomsFor(travellers: number): number {
+  return adultsPerRoom(travellers).length;
 }
 
 /**
- * Best value ≠ cheapest. A ticket that's 20% more for materially better seats
- * is usually the right answer, so rank by quality per dollar and let the raw
- * cheapest option stand on its own.
+ * The trip's calendar, in the venue's own time zone.
+ *
+ * The last night booked is the night of the game — you sleep there after it —
+ * so you check out, and fly home, the morning after. Check-in (and the flight
+ * out) is `nights` before that. With one night, that's game day itself.
+ *
+ * The previous version checked in the day *before* the game and counted
+ * forward, so a one-night stay checked out on the morning of an evening game.
+ *
+ * Check-in never lands in the past: for a game in two days, "3 nights"
+ * becomes 2, and `nights` in the result is the number actually booked.
  */
-export function bestValue(listings: TicketListing[]): TicketListing | null {
-  // Only listings whose seat quality is actually known can be ranked this way.
-  // Live marketplaces mostly report aggregate prices with no seat detail, so
-  // rather than treat "unknown" as zero — which would bury every real listing —
-  // we simply don't claim a best-value pick when nobody reports quality.
-  const rankable = listings.filter(
-    (l): l is TicketListing & { seatQuality: number } => l.seatQuality !== null,
-  );
-  if (rankable.length === 0) return null;
+export function tripDates(
+  event: SportEvent,
+  venue: Venue,
+  nights: number,
+  now: Date = new Date(),
+) {
+  const gameDay = localDate(event.startsAt, venue.timeZone);
+  const today = localDate(now.toISOString(), venue.timeZone);
+  const checkOut = addDays(gameDay, 1);
+  const wanted = addDays(checkOut, -nights);
+  const checkIn = wanted < today ? today : wanted;
+  return { checkIn, checkOut, nights: daysBetween(checkIn, checkOut) };
+}
 
-  return [...rankable].sort(
-    (a, b) => b.seatQuality / b.total.amount - a.seatQuality / a.total.amount,
-  )[0];
+function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 }
 
 export async function buildTrip(options: TripOptions): Promise<TripResult> {
   const { event, venue, origin, travellers, nights } = options;
-  const window = stayWindow(event, nights);
+  const dates = tripDates(event, venue, nights);
+  const rooms = roomsFor(travellers);
 
   const wantsTravel = origin.trim().length > 0;
 
@@ -119,14 +131,22 @@ export async function buildTrip(options: TripOptions): Promise<TripResult> {
           origin,
           destinationAirport: venue.nearestAirport,
           arriveBy: event.startsAt,
+          departOn: dates.checkIn,
+          returnOn: dates.checkOut,
           passengers: travellers,
         })
-      : Promise.resolve({ items: [], sources: [], errors: [], fetchedAt: "" }),
+      : Promise.resolve<ProviderResult<TravelOption>>({
+          items: [],
+          sources: [],
+          errors: [],
+          fetchedAt: "",
+        }),
     searchStays({
+      destination: `${venue.name}, ${venue.city}`,
       lat: venue.lat,
       lon: venue.lon,
-      checkIn: window.checkIn,
-      checkOut: window.checkOut,
+      checkIn: dates.checkIn,
+      checkOut: dates.checkOut,
       guests: travellers,
     }),
   ]);
@@ -137,27 +157,24 @@ export async function buildTrip(options: TripOptions): Promise<TripResult> {
 
   const cheapestTicket = tickets[0] ?? null;
   const cheapestTravel = travel[0] ?? null;
-  const cheapestStay = stays[0] ?? null;
+  // The headline stay is an actual hotel. Hostels and private rentals are
+  // often cheaper, but pricing "the hotel" off a hostel bunk isn't the trip
+  // anyone pictured; they're still listed as alternatives.
+  const cheapestStay = stays.find((s) => s.kind === "hotel") ?? stays[0] ?? null;
 
-  // Local transport is part of the cost of being there, so it belongs in a
-  // total that claims to be everything. It's zero for a walkable stay, which is
-  // the point of ranking stays the way we do. Priced in the stay's currency,
-  // since that's the market it's incurred in.
-  const localTransport = cheapestStay
-    ? money(
-        transportSurchargePerNight(cheapestStay.distanceToVenueM) * nights,
-        cheapestStay.pricePerNight.currency,
-      )
-    : null;
-
+  // The total is exactly ticket + flight + hotel — the three things shown on
+  // the page. An extra "local transport" line was dropped: a fourth, estimated
+  // component made the headline number harder to follow than it was worth.
+  //
   // Deliberately not coerced. If the ticket is priced in GBP and the flight in
   // USD, there is no honest single figure, and `sumMoney` returns null rather
   // than inventing one. See `lib/money.ts`.
   const { total, currencies } = sumMoney([
     cheapestTicket ? multiplyMoney(cheapestTicket.total, travellers) : null,
     cheapestTravel?.price ?? null,
-    cheapestStay ? multiplyMoney(cheapestStay.pricePerNight, nights) : null,
-    localTransport,
+    cheapestStay
+      ? multiplyMoney(cheapestStay.pricePerNight, dates.nights * rooms)
+      : null,
   ]);
 
   // Spread is computed within a comparable seat band, not across the whole
@@ -204,10 +221,9 @@ export async function buildTrip(options: TripOptions): Promise<TripResult> {
       ticket: cheapestTicket,
       travel: cheapestTravel,
       stay: cheapestStay,
-      nights,
+      nights: dates.nights,
       total,
       totalCurrencies: currencies,
-      localTransport,
     },
     tickets,
     travel,
@@ -217,5 +233,9 @@ export async function buildTrip(options: TripOptions): Promise<TripResult> {
     spreadPct,
     savingVsWorst: dearestComparable - cheapestComparable,
     ticketsSynthetic: ticketResult.synthetic !== false,
+    travelSynthetic: travelResult.synthetic !== false,
+    staysSynthetic: stayResult.synthetic !== false,
+    dates,
+    rooms,
   };
 }

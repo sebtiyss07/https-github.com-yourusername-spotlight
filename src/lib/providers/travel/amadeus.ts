@@ -385,6 +385,8 @@ export class AmadeusProvider implements TravelProvider {
         durationMinutes,
         stops: segments.length - 1,
         price,
+        // This adapter only ever requested one-way offers.
+        roundTrip: false,
         deepLink: `https://www.google.com/travel/flights?q=${first.departure?.iataCode ?? originIata}+to+${query.destinationAirport}`,
       },
     };

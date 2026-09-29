@@ -94,7 +94,7 @@ function generateFixtures(config: ScheduleConfig): SportEvent[] {
 
       // Demand tracks silverware and stadium size, with enough jitter that the
       // "cheapest ticket" ranking isn't just a title count in disguise.
-      const pedigree = Math.min(60, (home.titles + away.titles) * 3);
+      const pedigree = Math.min(60, ((home.titles ?? 0) + (away.titles ?? 0)) * 3);
       const demandScore = Math.max(
         12,
         Math.min(99, 25 + pedigree + intBetween(rng, -12, 18) + (isPlayoff ? 20 : 0)),
@@ -551,5 +551,7 @@ export function eventTitle(event: SportEvent): string {
   const home = TEAMS_BY_ID.get(event.homeTeamId);
   const away = TEAMS_BY_ID.get(event.awayTeamId);
   if (!home || !away) return event.name;
-  return `${away.name} at ${home.name}`;
+  return event.sportId === "soccer"
+    ? `${home.name} vs ${away.name}`
+    : `${away.name} at ${home.name}`;
 }

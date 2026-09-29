@@ -71,10 +71,13 @@ export interface Venue {
   /** Used for distance maths and flight-route lookups. */
   lat: number;
   lon: number;
-  capacity: number;
+  /** Omitted when the source doesn't supply it — never estimated. */
+  capacity?: number;
   /** IATA code of the nearest major airport — the travel provider's entry point. */
   nearestAirport: string;
-  opened: number;
+  opened?: number;
+  /** IANA zone, e.g. "America/Chicago". Every date shown or booked is local to this. */
+  timeZone: string;
 }
 
 export interface Team {
@@ -97,11 +100,11 @@ export interface Team {
   city: string;
   country: CountryCode;
   venueId: string;
-  founded: number;
+  founded?: number;
   primaryColor: string;
   secondaryColor: string;
   /** Championships won in the team's top-level competition. */
-  titles: number;
+  titles?: number;
   /**
    * Licensed crest image, if you have one.
    *
@@ -211,9 +214,12 @@ export interface TravelOption {
   carrier: string;
   departsAt: string;
   arrivesAt: string;
+  /** One way, per direction. */
   durationMinutes: number;
   stops: number;
+  /** Covers the whole party, and both directions when `roundTrip`. */
   price: Money;
+  roundTrip: boolean;
   deepLink: string;
 }
 
@@ -249,6 +255,4 @@ export interface TripEstimate {
   total: Money | null;
   /** Currencies involved, so the UI can explain a missing total. */
   totalCurrencies: string[];
-  /** Local transport to the venue, included in `total` when it's computable. */
-  localTransport: Money | null;
 }

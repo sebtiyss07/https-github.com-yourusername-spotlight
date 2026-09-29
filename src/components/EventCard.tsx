@@ -1,110 +1,90 @@
 import Link from "next/link";
 import type { EventContext } from "@/lib/repositories";
-import { getFromPrice } from "@/lib/providers/priceIndex";
-import {
-  formatCountdown,
-  formatDate,
-  formatDateRange,
-  formatMoney,
-  formatTime,
-} from "@/lib/format";
-import { Badge } from "@/components/ui";
+import { dateParts, formatDateRange, formatPrice, formatTime } from "@/lib/format";
 import { TeamMark } from "@/components/TeamMark";
 
+/** A calendar-page tile: weekday, big day number, month — readable at a glance. */
+function DateTile({ iso, timeZone }: { iso: string; timeZone: string }) {
+  const { weekday, day, month } = dateParts(iso, timeZone);
+  return (
+    <div className="flex w-14 shrink-0 flex-col items-center overflow-hidden rounded-xl border border-line bg-surface text-center">
+      <span className="w-full bg-accent py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+        {month}
+      </span>
+      <span className="font-display text-[22px] font-semibold leading-tight">{day}</span>
+      <span className="pb-1 text-[11px] font-medium text-ink-3">{weekday}</span>
+    </div>
+  );
+}
+
 /**
- * Compact event row for list pages.
- *
- * Carries no border or background of its own — callers place these inside a
- * `divide-y` group so the list reads as one table rather than a stack of
- * floating cards.
- *
- * The "from" price comes from the cached price index, never a live provider
- * fan-out — see `lib/providers/priceIndex.ts` for why that distinction matters.
+ * One game in a list: when, who, where, and the cheapest ticket any site
+ * listed — so matches can be compared without opening each one.
  */
 export function EventRow({ context }: { context: EventContext }) {
-  const { event, venue, homeTeam, awayTeam, title } = context;
-  const price = getFromPrice(event.id);
+  const { event, venue, homeTeam, awayTeam, title, prices } = context;
+  const pricedSites = prices.offers.filter((o) => o.amount !== null).length;
+  // Venue-local, so a Thursday-night game reads as Thursday.
+  const timeZone = venue?.timeZone ?? "UTC";
 
   return (
     <Link
       href={`/events/${event.id}`}
-      className="group -mx-4 flex items-center gap-5 rounded-lg px-4 py-4 transition-colors hover:bg-surface-2/70"
+      className="group flex items-center gap-4 rounded-2xl border border-line bg-surface p-3.5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-line-bright hover:shadow-md sm:gap-5 sm:p-4"
     >
-      <div className="w-[74px] shrink-0">
-        <p className="text-[13px] font-semibold">{formatDate(event.startsAt)}</p>
-        <p className="tabular text-[12px] text-ink-3">
-          {formatTime(event.startsAt)}
-        </p>
-      </div>
+      <DateTile iso={event.startsAt} timeZone={timeZone} />
 
-      {homeTeam && awayTeam ? (
-        <div className="flex shrink-0 items-center -space-x-1.5">
-          <TeamMark
-            name={awayTeam.name}
-            abbreviation={awayTeam.abbreviation}
-            logoUrl={awayTeam.logoUrl}
-            primary={awayTeam.primaryColor}
-            secondary={awayTeam.secondaryColor}
-            size={28}
-          />
+      {homeTeam && awayTeam && (
+        <div className="hidden shrink-0 items-center -space-x-2 sm:flex">
           <TeamMark
             name={homeTeam.name}
             abbreviation={homeTeam.abbreviation}
             logoUrl={homeTeam.logoUrl}
             primary={homeTeam.primaryColor}
             secondary={homeTeam.secondaryColor}
-            size={28}
+            size={36}
+          />
+          <TeamMark
+            name={awayTeam.name}
+            abbreviation={awayTeam.abbreviation}
+            logoUrl={awayTeam.logoUrl}
+            primary={awayTeam.primaryColor}
+            secondary={awayTeam.secondaryColor}
+            size={36}
           />
         </div>
-      ) : (
-        <span
-          aria-hidden
-          className="h-7 w-7 shrink-0 rounded-full border border-line-bright"
-        />
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[14.5px] font-medium tracking-tight">
-          {title}
-        </p>
-        <p className="truncate text-[12.5px] text-ink-3">
-          {venue ? `${venue.name} · ${venue.city}` : "Venue to be confirmed"}
+        <p className="truncate text-[15px] font-semibold">{title}</p>
+        <p className="truncate text-[13px] text-ink-3">
+          {event.endsAt
+            ? formatDateRange(event.startsAt, event.endsAt, timeZone)
+            : formatTime(event.startsAt, timeZone)}
+          {venue && ` · ${venue.name}, ${venue.city}`}
         </p>
       </div>
 
-      <div className="hidden shrink-0 items-center gap-2 lg:flex">
-        {event.isMarquee && <Badge tone="warn">Marquee</Badge>}
-        {event.demandScore >= 85 && !event.isMarquee && (
-          <Badge tone="hot">High demand</Badge>
-        )}
-        {event.kind === "playoff" && <Badge tone="accent">Playoff</Badge>}
-      </div>
+      {prices.cheapest && (
+        <div className="shrink-0 text-right">
+          <p className="text-[11px] font-medium text-ink-3">from</p>
+          <p className="tabular text-[17px] font-semibold leading-tight text-positive">
+            {formatPrice(prices.cheapest.amount!, prices.currency)}
+          </p>
+          <p className="hidden text-[11px] text-ink-3 sm:block">
+            {pricedSites > 1 ? `cheapest of ${pricedSites} sites` : prices.cheapest.label}
+          </p>
+        </div>
+      )}
 
-      <div className="w-[104px] shrink-0 text-right">
-        {price ? (
-          <>
-            <p className="tabular text-[15px] font-semibold">
-              {formatMoney(price.from)}
-            </p>
-            <p className="text-[11.5px] text-ink-3">
-              each · {price.marketplaceCount} sites
-            </p>
-          </>
-        ) : (
-          <p className="text-[12.5px] text-ink-3">Not on sale</p>
-        )}
-      </div>
+      <span className="hidden shrink-0 rounded-full bg-surface-2 px-3.5 py-2 text-[13px] font-semibold text-ink transition-colors group-hover:bg-accent group-hover:text-white sm:inline-block">
+        {prices.offers.length > 1 ? "Compare →" : "Plan trip →"}
+      </span>
     </Link>
   );
 }
 
-/**
- * Championship card.
- *
- * Also chrome-less: callers place these in a `gap-px` grid over a hairline
- * background, so divisions between cards are single-pixel rules rather than six
- * separate rounded boxes each with its own border and shadow.
- */
+/** A final or championship, as a card with a floodlit header in the sport's colour. */
 export function MarqueeCard({
   context,
   accent,
@@ -113,48 +93,35 @@ export function MarqueeCard({
   accent: string;
 }) {
   const { event, venue, title, league } = context;
-  const price = getFromPrice(event.id);
+  const timeZone = venue?.timeZone ?? "UTC";
 
   return (
     <Link
       href={`/events/${event.id}`}
-      className="group flex flex-col bg-surface p-6 transition-colors hover:bg-surface-2/60"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
     >
-      <div className="mb-4 flex items-center gap-2.5">
-        <span
-          aria-hidden
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ background: accent }}
-        />
-        <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-3">
-          {event.kind === "race" ? "Race weekend" : "Championship"}
-        </span>
-        <span className="ml-auto shrink-0 text-[12px] text-ink-3">
-          {formatCountdown(event.startsAt)}
-        </span>
+      <div
+        className="glow px-5 pb-5 pt-4"
+        style={{ ["--glow" as string]: accent }}
+      >
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-white/70">
+          {league?.name}
+        </p>
+        <h3 className="mt-1 text-[19px] font-semibold leading-snug">{title}</h3>
       </div>
-
-      <h3 className="text-[17px] font-semibold leading-snug tracking-tight">
-        {title}
-      </h3>
-
-      <p className="mt-2 text-[13.5px] text-ink-2">
-        {formatDateRange(event.startsAt, event.endsAt)}
-      </p>
-      <p className="text-[13.5px] text-ink-3">
-        {venue ? `${venue.name}, ${venue.city}` : "Venue TBC"}
-      </p>
-
-      <div className="mt-auto flex items-end justify-between gap-3 pt-8">
-        <span className="truncate text-[12.5px] text-ink-3">{league?.name}</span>
-        {price && (
-          <span className="shrink-0 text-right">
-            <span className="block text-[11px] text-ink-3">from</span>
-            <span className="tabular text-[17px] font-semibold">
-              {formatMoney(price.from)}
-            </span>
+      <div className="flex flex-1 flex-col p-5">
+        <p className="text-[14px] text-ink-2">
+          {formatDateRange(event.startsAt, event.endsAt, timeZone)}
+          {!event.endsAt && ` · ${formatTime(event.startsAt, timeZone)} local`}
+        </p>
+        <p className="text-[13px] text-ink-3">
+          {venue ? `${venue.name}, ${venue.city}` : "Venue to be confirmed"}
+        </p>
+        <div className="mt-auto flex justify-end pt-5">
+          <span className="rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-white transition-colors group-hover:bg-accent">
+            Plan trip →
           </span>
-        )}
+        </div>
       </div>
     </Link>
   );

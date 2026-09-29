@@ -95,7 +95,7 @@ export const LEAGUES: League[] = [
     teamCount: 30,
     seasonMonths: [2, 12],
     description:
-      "North America's top division, running opposite the European calendar.",
+      "30 clubs across the US and Canada. The season runs from February to November.",
     hasDepth: false,
   },
   {
@@ -111,6 +111,21 @@ export const LEAGUES: League[] = [
     seasonMonths: [9, 5],
     description:
       "Europe's premier club competition. The final is a one-city, one-night event people book flights for a year out.",
+    hasDepth: false,
+  },
+  {
+    id: "europa-league",
+    sportId: "soccer",
+    name: "UEFA Europa League",
+    shortName: "UEL",
+    tier: "continental",
+    country: "EU",
+    region: "Europe",
+    founded: 1971,
+    teamCount: 36,
+    seasonMonths: [9, 5],
+    description:
+      "Europe's second club competition: Thursday nights, cities you might not otherwise visit, and cheaper tickets than the Champions League.",
     hasDepth: false,
   },
   {
@@ -217,7 +232,7 @@ export const LEAGUES: League[] = [
     teamCount: 30,
     seasonMonths: [10, 6],
     description:
-      "82 regular-season games per team and a two-month playoff. The deepest ticket market in sport.",
+      "30 teams, 82 regular-season games each from October to April, then the playoffs.",
     hasDepth: true,
   },
   {
@@ -506,7 +521,7 @@ export const LEAGUES: League[] = [
     teamCount: 32,
     seasonMonths: [9, 2],
     description:
-      "Just 17 home-and-away games per team, which is exactly why every ticket is expensive.",
+      "32 teams, 17 regular-season games each from September to January, then the playoffs.",
     hasDepth: true,
   },
   {
@@ -575,4 +590,27 @@ export const LEAGUES_BY_ID = new Map(LEAGUES.map((l) => [l.id, l]));
 
 export function leaguesForSport(sportId: string): League[] {
   return LEAGUES.filter((l) => l.sportId === sportId);
+}
+
+/**
+ * The homepage's league tiles, in order, labelled the way people say them out
+ * loud — "Champions League", not "UEFA Champions League". Leagues outside the
+ * current scope (`scope.ts`) are filtered out by the repository.
+ */
+const FEATURED: { id: string; label: string }[] = [
+  { id: "premier-league", label: "Premier League" },
+  { id: "champions-league", label: "Champions League" },
+  { id: "europa-league", label: "Europa League" },
+  { id: "formula-1", label: "Formula 1" },
+  { id: "nfl", label: "NFL" },
+  { id: "nba", label: "NBA" },
+  { id: "mls", label: "MLS" },
+];
+
+/** The ten leagues plus the everyday name people actually call them by. */
+export function featuredLeagues(): { league: League; label: string }[] {
+  return FEATURED.flatMap(({ id, label }) => {
+    const league = LEAGUES_BY_ID.get(id);
+    return league ? [{ league, label }] : [];
+  });
 }

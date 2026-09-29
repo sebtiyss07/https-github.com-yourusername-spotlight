@@ -33,86 +33,107 @@ export function formatMoney(money: Money, decimals = 0): string {
   );
 }
 
+/** A price exactly as a site listed it, in whole units: $310, $214.23. */
+export function formatPrice(amount: number, currency = "USD"): string {
+  return formatMoney(
+    { amount: Math.round(amount * 100), currency },
+    Number.isInteger(amount) ? 0 : 2,
+  );
+}
+
 export function formatMoneyCents(amount: number, currency = "USD"): string {
   return formatMoney({ amount, currency });
 }
 
-const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
-
-const DATE_FULL_FMT = new Intl.DateTimeFormat("en-GB", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-const TIME_FMT = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-  timeZone: "UTC",
-});
-
-export function formatDate(iso: string): string {
-  return DATE_FMT.format(new Date(iso));
-}
-
-export function formatFullDate(iso: string): string {
-  return DATE_FULL_FMT.format(new Date(iso));
-}
-
 /**
- * Kick-off time. Not labelled "local" — the seed generator writes plain UTC
- * instants, so claiming a venue-local time would be wrong. Once a real feed
- * supplies proper venue offsets (see `SportEvent.startsAt`), format against the
- * venue's IANA zone and the label can come back.
+ * Dates and times are always shown in the venue's own time zone. Stored
+ * instants are UTC, and printing them as-is put Thursday-night US games on
+ * "Friday". Formatters are built per zone and cached.
  */
-export function formatTime(iso: string): string {
-  return `${TIME_FMT.format(new Date(iso))} UTC`;
-}
+const FORMATTERS = new Map<string, Intl.DateTimeFormat>();
 
-export function formatDateRange(startIso: string, endIso?: string): string {
-  if (!endIso) return formatFullDate(startIso);
-  const start = new Date(startIso);
-  const end = new Date(endIso);
-  const sameMonth =
-    start.getUTCMonth() === end.getUTCMonth() &&
-    start.getUTCFullYear() === end.getUTCFullYear();
-
-  if (sameMonth) {
-    const month = new Intl.DateTimeFormat("en-GB", {
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(start);
-    return `${start.getUTCDate()}–${end.getUTCDate()} ${month}`;
+function fmt(
+  key: string,
+  timeZone: string,
+  options: Intl.DateTimeFormatOptions,
+  locale = "en-GB",
+): Intl.DateTimeFormat {
+  const id = `${key}:${timeZone}`;
+  let f = FORMATTERS.get(id);
+  if (!f) {
+    f = new Intl.DateTimeFormat(locale, { ...options, timeZone });
+    FORMATTERS.set(id, f);
   }
-  return `${formatDate(startIso)} – ${formatFullDate(endIso)}`;
+  return f;
 }
 
-/** "in 3 days" / "in 4 months" — the framing that matters when booking. */
-export function formatCountdown(iso: string): string {
-  const diffMs = Date.parse(iso) - Date.now();
-  if (diffMs < 0) return "Started";
+/** "Thursday 24 September 2026" */
+export function formatFullDate(iso: string, timeZone: string): string {
+  return fmt("full", timeZone, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(iso));
+}
 
-  const hours = Math.floor(diffMs / 3600_000);
-  if (hours < 1) return "Starting soon";
-  if (hours < 24) return `in ${hours}h`;
+/** "Thursday 24 September" — spelled out, no abbreviations to decode. */
+export function formatDayMonth(iso: string, timeZone: string): string {
+  return fmt("daymonth", timeZone, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(iso));
+}
 
-  const days = Math.floor(hours / 24);
-  if (days < 31) return `in ${days} day${days === 1 ? "" : "s"}`;
+/** "4:00 PM" at the venue. */
+export function formatTime(iso: string, timeZone: string): string {
+  return fmt(
+    "time",
+    timeZone,
+    { hour: "numeric", minute: "2-digit", hour12: true },
+    "en-US",
+  ).format(new Date(iso));
+}
 
-  const months = Math.round(days / 30.4);
-  if (months < 12) return `in ${months} month${months === 1 ? "" : "s"}`;
+/** "29 October – 12 November 2026", in the venue's zone. */
+export function formatDateRange(
+  startIso: string,
+  endIso: string | undefined,
+  timeZone: string,
+): string {
+  if (!endIso) return formatFullDate(startIso, timeZone);
+  const dayMonth = fmt("dm", timeZone, { day: "numeric", month: "long" });
+  return `${dayMonth.format(new Date(startIso))} – ${fmt("dmy", timeZone, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(endIso))}`;
+}
 
-  const years = (days / 365).toFixed(1);
-  return `in ${years} years`;
+/** Pieces for a calendar tile: { weekday: "Thu", day: "24", month: "Sep" }. */
+export function dateParts(iso: string, timeZone: string) {
+  const parts = fmt("parts", timeZone, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).formatToParts(new Date(iso));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return { weekday: get("weekday"), day: get("day"), month: get("month") };
+}
+
+/** A calendar date like "2026-09-30" → "Wed 30 Sep". */
+export function formatShortDate(date: string): string {
+  return fmt("shortdate", "UTC", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
+
+/** A calendar date like "2026-09-30" → "Wednesday 30 September". */
+export function formatLocalDate(date: string): string {
+  return formatDayMonth(`${date}T12:00:00Z`, "UTC");
 }
 
 export function formatDuration(minutes: number): string {
@@ -122,10 +143,6 @@ export function formatDuration(minutes: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-export function formatDistance(metres: number): string {
-  if (metres < 1000) return `${metres}m`;
-  return `${(metres / 1000).toFixed(1)}km`;
-}
 
 /** Walking time at a realistic 80 m/min through event-day crowds. */
 export function walkingMinutes(metres: number): number {
@@ -145,18 +162,4 @@ export function approachDescription(metres: number): string {
     return `~${Math.max(8, Math.round(metres / 380))} min by transit`;
   }
   return `~${Math.max(12, Math.round(metres / 600))} min by cab`;
-}
-
-export function formatCompactNumber(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
-
-export function formatFans(value: number): string {
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B fans`;
-  }
-  return `${Math.round(value / 1_000_000)}M fans`;
 }
