@@ -17,6 +17,10 @@ import usSnapshot from "./us-ticket-prices.json";
  * TickPick, Gametime and Ticombo, compared as full-weekend passes and race-day
  * tickets. (Motorsport Tickets was checked and left out: it has stopped trading
  * and is in liquidation.)
+ *
+ * NFL, NBA and MLS sellers: TickPick, Gametime, Vivid Seats, StubHub,
+ * TicketSmarter, TicketNetwork and Ticket Liquidator (prices read), plus
+ * SeatGeek and Ticketmaster (exact links; they don't share prices).
  */
 export type PriceSite =
   | "vividseats"
@@ -30,7 +34,10 @@ export type PriceSite =
   | "ticket4football"
   | "footballticketpad"
   | "f1store"
-  | "ticketmaster";
+  | "ticketmaster"
+  | "ticketsmarter"
+  | "ticketnetwork"
+  | "ticketliquidator";
 
 export const PRICE_SITE_LABELS: Record<PriceSite, string> = {
   vividseats: "Vivid Seats",
@@ -45,6 +52,9 @@ export const PRICE_SITE_LABELS: Record<PriceSite, string> = {
   footballticketpad: "Football Ticket Pad",
   f1store: "Official F1 store",
   ticketmaster: "Ticketmaster",
+  ticketsmarter: "TicketSmarter",
+  ticketnetwork: "TicketNetwork",
+  ticketliquidator: "Ticket Liquidator",
 };
 
 export interface SitePrice {

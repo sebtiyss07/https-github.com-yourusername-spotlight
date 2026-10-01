@@ -26,7 +26,8 @@ import { ACTIVE_SPORTS, isLeagueActive } from "@/lib/data/scope";
 import { venuePhotoFor, type VenuePhoto } from "@/lib/data/photos";
 import { getCurrency, type Currency } from "@/lib/currency";
 import { SITE_FEES, type SiteFees } from "@/lib/data/fees";
-import { LIVE_TICKET_SOURCES, withLiveOfficialPrices } from "@/lib/providers/officialTickets";
+import { withLiveOfficialPrices } from "@/lib/providers/officialTickets";
+import { withLiveResalePrices } from "@/lib/providers/resaleTickets";
 
 export type { SiteFees };
 
@@ -346,7 +347,7 @@ async function eventPrices(
     };
   }
   const isUs = US_LEAGUE_IDS.has(event.leagueId);
-  const useLive = live && isUs && LIVE_TICKET_SOURCES;
+  const useLive = live && isUs;
   // Saved prices only change on a new deploy, so each game's comparison is
   // worked out once per currency and reused (lists show hundreds of games).
   const memoKey = `${event.id}|${currency}`;
@@ -360,7 +361,9 @@ async function eventPrices(
   if (useLive) {
     const home = event.homeTeamId ? (TEAMS_BY_ID.get(event.homeTeamId) ?? null) : null;
     const before = rows;
-    rows = await withLiveOfficialPrices(event, home, rows);
+    const [official, resale] = await Promise.all([withLiveOfficialPrices(event, home, rows), withLiveResalePrices(rows)]);
+    // SeatGeek and Ticketmaster from the first; TicketNetwork and Ticket Liquidator from the second.
+    rows = official.map((r) => resale.find((x) => x.site === r.site && !before.includes(x)) ?? r);
     for (const r of rows) if (!before.includes(r) && r.price !== null) liveSites.add(r.site);
   }
   const today = new Date().toISOString().slice(0, 10);
@@ -375,8 +378,9 @@ async function eventPrices(
 const SAVED_PRICES_MEMO = new Map<string, Pick<EventContext, "prices" | "raceDayPrices">>();
 
 /**
- * `live` fetches SeatGeek's and Ticketmaster's current prices through their
- * official APIs (when keys are set). Only a single game's page asks for it;
+ * `live` fetches today's prices from TicketNetwork and Ticket Liquidator, and
+ * SeatGeek's and Ticketmaster's through their official APIs (when keys are
+ * set). Only a single game's page asks for it;
  * lists of games use the saved prices.
  */
 export async function getEventContext(

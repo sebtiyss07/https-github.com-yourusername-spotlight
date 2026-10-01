@@ -4,7 +4,8 @@ import type { PriceSite } from "./prices";
  * What each ticket site adds in fees, and whether the price we show already
  * includes them. Every figure says where it comes from: measured by us on the
  * site's own pages, stated by the site, or reported by independent reviews.
- * Checked 2026-09-28. Where nobody publishes a number, we say so.
+ * Checked 2026-09-28; TicketSmarter, TicketNetwork and Ticket Liquidator on
+ * 2026-10-01. Where nobody publishes a number, we say so.
  */
 export interface SiteFees {
   /** Does the price we show already include the site's buyer fees? */
@@ -81,6 +82,24 @@ export const SITE_FEES: Record<PriceSite, SiteFees> = {
     typical: "Price not read by us; shown on Ticketmaster",
     basis: "not published",
     source: "https://www.ticketmaster.com",
+  },
+  ticketsmarter: {
+    included: "yes",
+    typical: "About 10% (Crew at Orlando City: $12.99 + $1.30 fee)",
+    basis: "measured",
+    source: "https://www.ticketsmarter.com",
+  },
+  ticketnetwork: {
+    included: "yes",
+    typical: "About 15% (Hawks at Knicks: $184 + $27.60 fee)",
+    basis: "measured",
+    source: "https://www.ticketnetwork.com",
+  },
+  ticketliquidator: {
+    included: "yes",
+    typical: "About 31% (Hawks at Knicks: $199 + $61.69 fee)",
+    basis: "measured",
+    source: "https://www.ticketliquidator.com",
   },
   f1store: {
     included: "unknown",
