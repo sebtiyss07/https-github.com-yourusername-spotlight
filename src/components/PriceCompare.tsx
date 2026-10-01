@@ -151,7 +151,13 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
         {prices.currency !== "USD" || prices.offers.some((o) => o.original)
           ? `, shown in ${prices.currency} at the European Central Bank rate`
           : ", in US dollars"}
-        {prices.checkedOn && <>, checked {formatLocalDate(prices.checkedOn)}</>}.{" "}
+        {prices.checkedOn &&
+          (prices.checkedFrom ? (
+            <>, checked between {formatLocalDate(prices.checkedFrom)} and {formatLocalDate(prices.checkedOn)}</>
+          ) : (
+            <>, checked {formatLocalDate(prices.checkedOn)}</>
+          ))}
+        .{" "}
         {prices.offers.every((o) => o.fees.included === "yes")
           ? "Every price here already includes the site's fees (taxes and delivery may be extra). Prices move fast, so confirm the total before you buy."
           : "Prices move fast and some sites add fees at checkout, so confirm the total before you buy."}

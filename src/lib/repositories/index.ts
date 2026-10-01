@@ -262,6 +262,8 @@ export interface PriceComparison {
   currency: Currency;
   /** When these prices were read (YYYY-MM-DD), or null with no offers. */
   checkedOn: string | null;
+  /** The earliest of those dates, when sites were checked on different days. */
+  checkedFrom: string | null;
 }
 
 /** A USD amount in the visitor's currency, at the stored ECB rate. */
@@ -317,12 +319,14 @@ function comparePrices(
     note: p.note,
   }));
   offers.sort((a, b) => (a.amount ?? Infinity) - (b.amount ?? Infinity));
-  const dates = offers.map((o) => checkedOn(o.site)).sort();
+  // Only sites that showed a price count towards "checked on".
+  const dates = offers.filter((o) => o.amount !== null).map((o) => checkedOn(o.site)).sort();
   return {
     offers,
     cheapest: offers[0]?.amount != null ? offers[0] : null,
     currency,
     checkedOn: dates.at(-1) ?? null,
+    checkedFrom: dates[0] && dates[0] !== dates.at(-1) ? dates[0] : null,
   };
 }
 
@@ -357,7 +361,7 @@ async function eventPrices(
     const home = event.homeTeamId ? (TEAMS_BY_ID.get(event.homeTeamId) ?? null) : null;
     const before = rows;
     rows = await withLiveOfficialPrices(event, home, rows);
-    for (const r of rows) if (!before.includes(r)) liveSites.add(r.site);
+    for (const r of rows) if (!before.includes(r) && r.price !== null) liveSites.add(r.site);
   }
   const today = new Date().toISOString().slice(0, 10);
   const result = {
