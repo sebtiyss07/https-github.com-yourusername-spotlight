@@ -73,7 +73,8 @@ export function TripTotal({
         ? round(flight.quote.perPerson * travellers)
         : null;
   // Booking.com's price for the whole stay, one room; times the rooms needed.
-  const hotelAmount = includeHotel && hotel ? round(hotel.total * rooms) : null;
+  // Only a price for the visitor's own nights goes into the total.
+  const hotelAmount = includeHotel && hotel?.forYourDates ? round(hotel.total * rooms) : null;
 
   const parts = [
     tickets,
@@ -138,7 +139,7 @@ export function TripTotal({
                   ? "Choose where you fly from above."
                   : flight?.status === "ok"
                     ? `${money(flight.quote.perPerson)} per person · ${flight.quote.airline}${flight.quote.stopsLabel ? `, ${flight.quote.stopsLabel.toLowerCase()}` : ""} · ${flight.quote.source}`
-                    : "No recent fare saved for these dates. Check the price on:"
+                    : "Today's fares for your dates, one tap away:"
             }
             href={flight?.status === "ok" ? flight.quote.url : undefined}
             action="See flight"
@@ -162,9 +163,17 @@ export function TripTotal({
           <Line
             icon={icons.hotel}
             label={`Hotel · ${nights} ${nights === 1 ? "night" : "nights"}${rooms > 1 ? ` · ${rooms} rooms` : ""}`}
-            value={hotelAmount !== null ? money(hotelAmount) : "—"}
+            value={hotelAmount !== null ? money(hotelAmount) : hotel ? `${money(hotel.perNight)}/night` : "—"}
             detail={
-              hotel ? (
+              hotel && !hotel.forYourDates ? (
+                <>
+                  <span className="block text-[14px] font-semibold text-ink">{hotel.name}</span>
+                  <span className="block">
+                    {money(hotel.total)} for {hotel.nights} {hotel.nights === 1 ? "night" : "nights"} ({shortDate(hotel.checkIn)} to {shortDate(hotel.checkOut)}){travellers > 1 ? ", per room for 2 people" : ""}, the stay we checked on {hotel.site}, before taxes.
+                  </span>
+                  <span className="block text-[12px]">For your {nights} {nights === 1 ? "night" : "nights"}, see today&apos;s price:</span>
+                </>
+              ) : hotel ? (
                 <>
                   <span className="block text-[14px] font-semibold text-ink">{hotel.name}</span>
                   <span className="block">
@@ -173,7 +182,7 @@ export function TripTotal({
                       .join(" · ")}
                   </span>
                   <span className="block text-[12px]">
-                    Cheapest on {hotel.site}, before taxes{travellers > 1 ? ", per room for 2 people" : ""}. Checked {hotel.checkedOn}.
+                    Cheapest on {hotel.site}, before taxes{travellers > 1 ? ", per room for up to 2 people" : ""}. Checked {hotel.checkedOn}.
                   </span>
                 </>
               ) : (
@@ -257,6 +266,11 @@ function Line({
       </div>
     </div>
   );
+}
+
+/** "3 Oct" from YYYY-MM-DD. */
+function shortDate(iso: string): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 const GROUND = {

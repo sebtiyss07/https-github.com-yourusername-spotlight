@@ -68,6 +68,14 @@ export interface HotelQuote {
   found: number | null;
   /** When the price was read (YYYY-MM-DD). */
   checkedOn: string;
+  /** The stay this price is for. */
+  checkIn: string;
+  checkOut: string;
+  /**
+   * False when the visitor picked other nights than the stay we priced: the
+   * price is then shown for reference only, not added to their total.
+   */
+  forYourDates: boolean;
 }
 
 export interface FlightQuote {
@@ -123,10 +131,10 @@ function bookingSearchUrl(stay: { name: string; lat: number; lon: number; checkI
 
 /**
  * The cheapest hotel Booking.com listed near the venue for this game's stay.
- * Only answers for the exact dates and room sharing we read: one traveller
- * (1 adult) or an even group (2 adults to each room). Anything else returns
- * null, so the page shows booking links rather than a price for a different
- * stay. The quote is for one room.
+ * The price we read for this game's default stay: 1 adult for one traveller,
+ * 2 adults to a room for groups. When the visitor picks other nights,
+ * `forYourDates` is false and the page shows it for reference only, beside
+ * links for their own dates. The quote is for one room.
  */
 export async function cheapestHotelNear(stay: {
   eventId: string;
@@ -138,13 +146,17 @@ export async function cheapestHotelNear(stay: {
   adults: number;
 }): Promise<HotelQuote | null> {
   const snap = HOTELS[stay.eventId];
-  if (!snap || snap.checkIn !== stay.checkIn || snap.checkOut !== stay.checkOut) return null;
-  const search = stay.adults === 1 ? snap : stay.adults % 2 === 0 ? snap.pair : undefined;
+  if (!snap) return null;
+  const forYourDates = snap.checkIn === stay.checkIn && snap.checkOut === stay.checkOut;
+  // One traveller: a room for 1. Groups: rooms for 2 (an odd one out gets a
+  // room for 2 as well, so their price is that room's).
+  const search = stay.adults === 1 ? snap : snap.pair;
   const best = search?.hotels[0];
   if (!search || !best) return null;
   const [name, perNight, total, distance, room, path] = best;
-  const nights = Math.round((Date.parse(stay.checkOut) - Date.parse(stay.checkIn)) / 86_400_000);
+  const nights = Math.round((Date.parse(snap.checkOut) - Date.parse(snap.checkIn)) / 86_400_000);
   const perRoom = stay.adults === 1 ? 1 : 2;
+  // Links always use the visitor's own dates, so they land on today's price.
   const dates = new URLSearchParams({
     checkin: stay.checkIn,
     checkout: stay.checkOut,
@@ -164,6 +176,9 @@ export async function cheapestHotelNear(stay: {
     searchUrl: bookingSearchUrl({ name: stay.venueName, lat: stay.lat, lon: stay.lon, checkIn: stay.checkIn, checkOut: stay.checkOut, adults: perRoom, wide: search.wide }),
     found: search.found ? Number(search.found.replace(/,/g, "")) : null,
     checkedOn: hotelSnapshot.checkedOn,
+    checkIn: snap.checkIn,
+    checkOut: snap.checkOut,
+    forYourDates,
   };
 }
 
