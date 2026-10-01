@@ -130,7 +130,15 @@ export function TripTotal({
             icon={icons.flight}
             label="Round-trip flight"
             value={
-              noFlightNeeded ? money(0) : needsOrigin ? "Add city" : flightAmount !== null ? money(flightAmount) : "—"
+              noFlightNeeded
+                ? money(0)
+                : needsOrigin
+                  ? "Add city"
+                  : flightAmount !== null
+                    ? money(flightAmount)
+                    : flight?.status === "nearby"
+                      ? `${money(flight.quote.perPerson)} pp`
+                      : "—"
             }
             detail={
               noFlightNeeded
@@ -139,10 +147,12 @@ export function TripTotal({
                   ? "Choose where you fly from above."
                   : flight?.status === "ok"
                     ? `${money(flight.quote.perPerson)} per person · ${flight.quote.airline}${flight.quote.stopsLabel ? `, ${flight.quote.stopsLabel.toLowerCase()}` : ""} · ${flight.quote.source}`
-                    : "Today's fares for your dates, one tap away:"
+                    : flight?.status === "nearby"
+                      ? `Closest fare found: ${money(flight.quote.perPerson)} per person for ${shortDate(flight.quote.departOn!)} to ${shortDate(flight.quote.returnOn!)} (${flight.quote.airline}, ${flight.quote.stopsLabel.toLowerCase()}). Nobody searched your exact dates recently, so it isn't in your total. Your dates:`
+                      : "Today's fares for your dates, one tap away:"
             }
-            href={flight?.status === "ok" ? flight.quote.url : undefined}
-            action="See flight"
+            href={flight?.status === "ok" || flight?.status === "nearby" ? flight.quote.url : undefined}
+            action={flight?.status === "nearby" ? "See that fare" : "See flight"}
             links={flight?.status === "ok" || needsOrigin || noFlightNeeded ? [] : flightLinks}
           />
         )}
