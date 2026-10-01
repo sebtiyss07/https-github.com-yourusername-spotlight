@@ -45,14 +45,17 @@ async function seatGeek(event: SportEvent, home: Team | null, known?: SitePrice)
   const key = process.env.SEATGEEK_CLIENT_ID;
   if (!key) return null;
   const base = "https://api.seatgeek.com/2/events";
+  // The account's secret, when set, is sent too (SeatGeek's API accepts both).
+  const secret = process.env.SEATGEEK_CLIENT_SECRET;
+  const auth = new URLSearchParams({ client_id: key, ...(secret ? { client_secret: secret } : {}) });
   const knownId = known?.url.match(/events\/(\d+)/)?.[1];
   let ev: SgEvent | null = null;
-  if (knownId) ev = await getJson<SgEvent>(`${base}/${knownId}?client_id=${key}`);
+  if (knownId) ev = await getJson<SgEvent>(`${base}/${knownId}?${auth}`);
   if (!ev && home) {
     // Not matched yet: the home team's game within a few hours of kick-off.
     const around = (h: number) => new Date(Date.parse(event.startsAt) + h * 3_600_000).toISOString().slice(0, 19);
     const q = new URLSearchParams({
-      client_id: key,
+      ...Object.fromEntries(auth),
       "performers[home_team].slug": slug(home.name),
       "datetime_utc.gte": around(-6),
       "datetime_utc.lte": around(6),
