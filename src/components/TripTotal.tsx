@@ -148,7 +148,7 @@ export function TripTotal({
                   : flight?.status === "ok"
                     ? `${money(flight.quote.perPerson)} per person · ${flight.quote.airline}${flight.quote.stopsLabel ? `, ${flight.quote.stopsLabel.toLowerCase()}` : ""} · ${flight.quote.source}`
                     : flight?.status === "nearby"
-                      ? `Closest fare found: ${money(flight.quote.perPerson)} per person for ${shortDate(flight.quote.departOn!)} to ${shortDate(flight.quote.returnOn!)} (${flight.quote.airline}, ${flight.quote.stopsLabel.toLowerCase()}). Nobody searched your exact dates recently, so it isn't in your total. Your dates:`
+                      ? `Closest fare found: ${money(flight.quote.perPerson)} per person${flight.quote.viaOrigin ? ` from ${flight.quote.viaOrigin.name} (${flight.quote.viaOrigin.code}), ${flight.quote.viaOrigin.miles} miles from you,` : ""}${flight.quote.viaAirport ? ` to ${flight.quote.viaAirport.name} (${flight.quote.viaAirport.code}), ${flight.quote.viaAirport.miles} miles from the venue,` : ""} for ${shortDate(flight.quote.departOn!)} to ${shortDate(flight.quote.returnOn!)} (${flight.quote.airline}, ${flight.quote.stopsLabel.toLowerCase()}). ${flight.quote.viaAirport || flight.quote.viaOrigin ? "No recent fares between your own airports. " : ""}Nobody searched your exact dates recently, so it isn't in your total. Your dates:`
                       : "Today's fares for your dates, one tap away:"
             }
             href={flight?.status === "ok" || flight?.status === "nearby" ? flight.quote.url : undefined}

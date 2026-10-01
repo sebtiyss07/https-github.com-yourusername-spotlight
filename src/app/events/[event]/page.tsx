@@ -8,6 +8,7 @@ import { roomsFor, tripDates } from "@/lib/trip";
 import {
   AIRPORTS_BY_IATA,
   flightSearchCode,
+  nearbyAirports,
   resolveOrigin,
 } from "@/lib/providers/geo";
 import { flightLinks, hotelLinks, type TravelLink } from "@/lib/providers/travelLinks";
@@ -173,6 +174,8 @@ export default async function EventPage({
           to: flightSearchCode(destination),
           departOn: dates.checkIn,
           returnOn: dates.checkOut,
+          alternates: nearbyAirports(destination, 320).slice(0, 2).filter((a) => a.code !== flightSearchCode(resolvedOrigin)),
+          originAlternates: nearbyAirports(resolvedOrigin, 320).slice(0, 2).filter((a) => a.code !== flightSearchCode(destination)),
         })
       : Promise.resolve(null),
     wantHotel

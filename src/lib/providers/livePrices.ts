@@ -91,6 +91,10 @@ export interface FlightQuote {
   /** The dates this fare is for (YYYY-MM-DD). */
   departOn?: string;
   returnOn?: string;
+  /** Set when the fare is to a nearby airport instead of the venue's own. */
+  viaAirport?: { code: string; name: string; miles: number };
+  /** Set when the fare leaves from a nearby airport instead of the traveller's. */
+  viaOrigin?: { code: string; name: string; miles: number };
 }
 
 export type FlightResult =
@@ -193,6 +197,10 @@ export async function cheapestFlight(trip: {
   to: string;
   departOn: string;
   returnOn: string;
+  /** Other airports near the venue, tried when `to` has no fares at all. */
+  alternates?: { code: string; name: string; miles: number }[];
+  /** Other airports near the traveller, tried after those. */
+  originAlternates?: { code: string; name: string; miles: number }[];
 }): Promise<FlightResult> {
   const token = process.env.TRAVELPAYOUTS_TOKEN;
   if (!token) {
@@ -202,62 +210,88 @@ export async function cheapestFlight(trip: {
   }
 
   type Fare = { price: number; airline: string; transfers: number; link: string; departure_at: string; return_at: string };
-  const search = async (departure_at: string, return_at: string, limit: number) => {
-    const params = new URLSearchParams({ origin: trip.from, destination: trip.to, departure_at, return_at, currency: "usd", sorting: "price", one_way: "false", limit: String(limit), token });
-    const r = await getJson<{ data?: Fare[] }>(`https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${params}`);
-    return r?.data ?? [];
-  };
-  const toQuote = (f: Fare): FlightQuote => ({
-    perPerson: f.price,
-    airline: f.airline,
-    stopsLabel: f.transfers === 0 ? "Nonstop" : `${f.transfers} stop${f.transfers > 1 ? "s" : ""}`,
-    url: `https://www.aviasales.com${f.link}`,
-    source: "Aviasales, found by travellers in the last few days",
-    departOn: f.departure_at.slice(0, 10),
-    returnOn: f.return_at.slice(0, 10),
-  });
-
-  // 1. The exact dates.
-  const [exact] = await search(trip.departOn, trip.returnOn, 1);
-  if (exact) return { status: "ok", quote: toQuote(exact) };
-  const saved = expediaFareFor(trip);
-  if (saved) return { status: "ok", quote: saved };
-
-  // 2. Fares are only known for dates someone searched recently, so otherwise
-  // show the closest real fare (same months), labelled with its own dates.
-  const fares = await search(trip.departOn.slice(0, 7), trip.returnOn.slice(0, 7), 60);
   const days = (a: string, b: string) => Math.abs(Date.parse(a.slice(0, 10)) - Date.parse(b)) / 864e5;
-  const near = fares
-    .map((f) => ({ f, gap: days(f.departure_at, trip.departOn) + days(f.return_at, trip.returnOn) }))
-    // Only trips you could still take: leaving tomorrow or later.
-    .filter((x) => x.gap <= 14 && Date.parse(x.f.departure_at.slice(0, 10)) > Date.now())
-    .sort((a, b) => a.gap - b.gap || a.f.price - b.f.price)[0];
-  if (near) return { status: "nearby", quote: toQuote(near.f) };
+  const stops = (n: number) => (n === 0 ? "Nonstop" : `${n} stop${n > 1 ? "s" : ""}`);
+  const future = (iso: string) => Date.parse(iso.slice(0, 10)) > Date.now();
 
-  // 3. Still nothing near those dates: the latest fares found on this route
-  // over the next year, closest trip first.
-  const latest = await getJson<{
-    data?: { depart_date: string; return_date: string; value: number; number_of_changes: number; gate: string }[];
-  }>(`https://api.travelpayouts.com/aviasales/v3/get_latest_prices?${new URLSearchParams({ origin: trip.from, destination: trip.to, period_type: "year", one_way: "false", currency: "usd", limit: "100", token })}`);
-  const closest = (latest?.data ?? [])
-    .filter((f) => f.return_date && Date.parse(f.depart_date.slice(0, 10)) > Date.now())
-    .map((f) => ({ f, gap: days(f.depart_date, trip.departOn) + days(f.return_date, trip.returnOn) }))
-    .filter((x) => x.gap <= 120)
-    .sort((a, b) => a.gap - b.gap || a.f.value - b.f.value)[0];
-  if (!closest) return { status: "none" };
-  const ddmm = (iso: string) => `${iso.slice(8, 10)}${iso.slice(5, 7)}`;
-  const out = closest.f.depart_date.slice(0, 10), back = closest.f.return_date.slice(0, 10);
-  return {
-    status: "nearby",
-    quote: {
-      perPerson: closest.f.value,
-      airline: `via ${closest.f.gate}`,
-      stopsLabel: closest.f.number_of_changes === 0 ? "Nonstop" : `${closest.f.number_of_changes} stop${closest.f.number_of_changes > 1 ? "s" : ""}`,
-      // Aviasales' own search link for those dates (format as in its API links).
-      url: `https://www.aviasales.com/search/${trip.from}${ddmm(out)}${trip.to}${ddmm(back)}1`,
-      source: "Aviasales, found by travellers recently",
-      departOn: out,
-      returnOn: back,
-    },
+  const fareTo = async (to: string, from = trip.from): Promise<FlightResult> => {
+    const search = async (departure_at: string, return_at: string, limit: number) => {
+      const params = new URLSearchParams({ origin: from, destination: to, departure_at, return_at, currency: "usd", sorting: "price", one_way: "false", limit: String(limit), token });
+      const r = await getJson<{ data?: Fare[] }>(`https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${params}`);
+      return r?.data ?? [];
+    };
+    const toQuote = (f: Fare): FlightQuote => ({
+      perPerson: f.price,
+      airline: f.airline,
+      stopsLabel: stops(f.transfers),
+      url: `https://www.aviasales.com${f.link}`,
+      source: "Aviasales, found by travellers in the last few days",
+      departOn: f.departure_at.slice(0, 10),
+      returnOn: f.return_at.slice(0, 10),
+    });
+
+    // 1. The exact dates.
+    const [exact] = await search(trip.departOn, trip.returnOn, 1);
+    if (exact) return { status: "ok", quote: toQuote(exact) };
+    const saved = to === trip.to && from === trip.from ? expediaFareFor(trip) : null;
+    if (saved) return { status: "ok", quote: saved };
+
+    // 2. Fares are only known for dates someone searched recently, so otherwise
+    // show the closest real fare (same months), labelled with its own dates.
+    const fares = await search(trip.departOn.slice(0, 7), trip.returnOn.slice(0, 7), 60);
+    const near = fares
+      .map((f) => ({ f, gap: days(f.departure_at, trip.departOn) + days(f.return_at, trip.returnOn) }))
+      // Only trips you could still take: leaving tomorrow or later.
+      .filter((x) => x.gap <= 14 && future(x.f.departure_at))
+      .sort((a, b) => a.gap - b.gap || a.f.price - b.f.price)[0];
+    if (near) return { status: "nearby", quote: toQuote(near.f) };
+
+    // 3. Still nothing near those dates: the latest fares found on this route
+    // over the next year, closest trip first, whatever its dates.
+    const latest = await getJson<{
+      data?: { depart_date: string; return_date: string; value: number; number_of_changes: number; gate: string }[];
+    }>(`https://api.travelpayouts.com/aviasales/v3/get_latest_prices?${new URLSearchParams({ origin: from, destination: to, period_type: "year", one_way: "false", currency: "usd", limit: "100", token })}`);
+    const closest = (latest?.data ?? [])
+      .filter((f) => f.return_date && future(f.depart_date))
+      .map((f) => ({ f, gap: days(f.depart_date, trip.departOn) + days(f.return_date, trip.returnOn) }))
+      .sort((a, b) => a.gap - b.gap || a.f.value - b.f.value)[0];
+    if (!closest) return { status: "none" };
+    const ddmm = (iso: string) => `${iso.slice(8, 10)}${iso.slice(5, 7)}`;
+    const out = closest.f.depart_date.slice(0, 10), back = closest.f.return_date.slice(0, 10);
+    return {
+      status: "nearby",
+      quote: {
+        perPerson: closest.f.value,
+        airline: `via ${closest.f.gate}`,
+        stopsLabel: stops(closest.f.number_of_changes),
+        // Aviasales' own search link for those dates (format as in its API links).
+        url: `https://www.aviasales.com/search/${from}${ddmm(out)}${to}${ddmm(back)}1`,
+        source: "Aviasales, found by travellers recently",
+        departOn: out,
+        returnOn: back,
+      },
+    };
   };
+
+  const main = await fareTo(trip.to);
+  if (main.status !== "none") return main;
+  // 4. No fares at all to the venue's airport: a nearby bigger airport,
+  // named with its distance so the visitor knows it's a different airport.
+  for (const alt of trip.alternates ?? []) {
+    const r = await fareTo(alt.code);
+    if (r.status === "ok" || r.status === "nearby") {
+      return { status: "nearby", quote: { ...r.quote, viaAirport: alt } };
+    }
+  }
+  // 5. Then a bigger airport near the traveller (to the venue's airport, or
+  // the nearest alternative to it), also named with its distance.
+  for (const from of trip.originAlternates ?? []) {
+    for (const to of [{ code: trip.to }, ...(trip.alternates ?? []).slice(0, 1)]) {
+      const r = await fareTo(to.code, from.code);
+      if (r.status === "ok" || r.status === "nearby") {
+        return { status: "nearby", quote: { ...r.quote, viaOrigin: from, ...("name" in to ? { viaAirport: to } : {}) } };
+      }
+    }
+  }
+  return main;
 }
