@@ -181,7 +181,7 @@ export function MatchFinder({
       {/* Summary */}
       <p className="mt-4 text-[14px] text-ink-2">
         <span className="font-semibold text-ink">
-          {filtered.length} {noun}
+          {filtered.length.toLocaleString("en-US")} {noun}
         </span>
         {cheapest && (
           <>
@@ -268,7 +268,7 @@ function FinderRowView({ row, currency }: { row: FinderRow; currency: string }) 
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold group-hover:text-accent">{row.title}</p>
+        <p className="line-clamp-2 text-[15px] font-semibold leading-snug group-hover:text-accent">{row.title}</p>
         <p className="truncate text-[13px] text-ink-3">
           {row.time} · {row.place}
         </p>
@@ -280,11 +280,11 @@ function FinderRowView({ row, currency }: { row: FinderRow; currency: string }) 
             {formatPrice(row.price, currency)}
           </p>
           <p className="text-[11px] text-ink-3">
-            {row.sites > 1 ? `cheapest of ${row.sites}` : row.site}
+            {row.sites > 1 ? `cheapest of ${row.sites} sites` : row.site}
           </p>
         </div>
       ) : (
-        <p className="shrink-0 text-[12px] text-ink-3">No price yet</p>
+        <p className="shrink-0 text-right text-[12px] text-ink-3">See sites</p>
       )}
 
       <span aria-hidden className="hidden shrink-0 rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold transition-colors group-hover:bg-accent group-hover:text-white sm:inline-block">

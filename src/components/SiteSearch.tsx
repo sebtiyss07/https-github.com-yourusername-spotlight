@@ -36,18 +36,18 @@ export function SiteSearch({ large = false }: { large?: boolean }) {
         name="q"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Search a team or city"
+        placeholder="Team, league or city"
         aria-label="Search for a team, league or city"
         className={
           large
-            ? "w-full rounded-full border-0 bg-white py-4 pl-12 pr-24 text-[16px] sm:pl-14 sm:pr-32 text-ink shadow-lg outline-none ring-accent placeholder:text-ink-3 focus:ring-4"
-            : "w-full rounded-full border border-line bg-surface-2 py-2 pl-10 pr-4 text-[14px] text-ink placeholder:text-ink-3 outline-none transition-colors focus:border-accent focus:bg-surface"
+            ? "w-full rounded-2xl border-0 bg-white py-[18px] pl-12 pr-28 text-[17px] text-ink shadow-lg outline-none ring-sun placeholder:text-ink-3 focus:ring-4 sm:pl-14 sm:pr-36"
+            : "w-full rounded-full border border-line bg-surface-2 py-2.5 pl-10 pr-4 text-[15px] text-ink placeholder:text-ink-3 outline-none transition-colors focus:border-accent focus:bg-surface"
         }
       />
       {large && (
         <button
           type="submit"
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-accent px-3.5 py-2.5 text-[14px] font-semibold sm:px-5 sm:text-[15px] text-white transition-colors hover:bg-ink"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl bg-accent px-4 py-3 text-[15px] font-bold text-white transition-colors hover:bg-accent-2 sm:px-6 sm:text-[16px]"
         >
           Search
         </button>

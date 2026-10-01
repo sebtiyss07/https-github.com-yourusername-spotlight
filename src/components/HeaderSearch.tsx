@@ -7,10 +7,10 @@ import { SiteSearch } from "@/components/SiteSearch";
 export function HeaderSearch() {
   const path = usePathname();
   // Home: keep the space, so the currency buttons stay at the right edge.
-  if (path === "/") return <div aria-hidden className="hidden sm:block sm:ml-auto" />;
+  if (path === "/") return <div aria-hidden className="hidden sm:block sm:flex-1" />;
   return (
     // Phones: its own full-width row under the logo.
-    <div className="order-last w-full sm:order-none sm:ml-auto sm:w-auto sm:max-w-sm sm:flex-1">
+    <div className="order-last w-full sm:order-none sm:ml-4 sm:w-auto sm:max-w-md sm:flex-1">
       <SiteSearch />
     </div>
   );

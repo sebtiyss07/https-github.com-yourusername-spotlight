@@ -212,9 +212,12 @@ export default async function EventPage({
   const accent = context.sport?.accent ?? "#4f46e5";
   const photo = context.photo;
 
+  const ticketNoun = isRace ? "weekend pass" : "ticket";
+  const pricedSites = prices.offers.filter((o) => o.amount !== null).length;
+
   return (
     <>
-      {/* The event, under its own floodlights */}
+      {/* The event, and the answer: its cheapest ticket */}
       <section className="glow relative overflow-hidden" style={{ ["--glow" as string]: accent }}>
         {photo && !isRace && (
           <>
@@ -224,7 +227,7 @@ export default async function EventPage({
               alt={`${venue.name}, ${venue.city}`}
               className="absolute inset-0 h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0b0d1a]/95 via-[#0b0d1a]/75 to-[#0b0d1a]/35" />
+            <div className="absolute inset-0 bg-gradient-to-r from-night/95 via-night/85 to-night/50" />
           </>
         )}
         {photo && isRace && (
@@ -233,254 +236,122 @@ export default async function EventPage({
           <img
             src={photo.large}
             alt={`${venue.name} track map`}
-            className="pointer-events-none absolute -right-10 top-1/2 hidden h-[125%] -translate-y-1/2 opacity-30 [filter:brightness(0)_invert(1)] md:block"
+            className="pointer-events-none absolute -right-10 top-1/2 hidden h-[125%] -translate-y-1/2 opacity-25 [filter:brightness(0)_invert(1)] md:block"
           />
         )}
-        {photo && <PhotoCredit photo={photo} className="absolute right-4 top-3 z-10" />}
-        <div className="relative mx-auto max-w-6xl px-5 pb-24 pt-10 sm:px-8">
-          <Link
-            href={`/leagues/${event.leagueId}`}
-            className="text-[14px] font-medium text-white/70 transition-colors hover:text-white"
-          >
-            ← All {context.league?.shortName ?? ""} {isRace ? "races" : isFootball ? "matches" : "games"}
-          </Link>
-          <p className="mt-8 text-[13px] font-semibold uppercase tracking-wide text-white/60">
-            {context.league?.name}
-          </p>
-          <h1 className="mt-2 max-w-3xl text-[32px] font-semibold leading-[1.08] sm:text-[46px]">
-            {context.title}
-          </h1>
-          <p className="mt-4 text-[16px] text-white/85">
-            {event.endsAt
-              ? formatDateRange(event.startsAt, event.endsAt, venue.timeZone)
-              : `${formatFullDate(event.startsAt, venue.timeZone)} · ${isRace ? "Race starts" : isFootball ? "Kick-off" : "Starts"} ${formatTime(event.startsAt, venue.timeZone)} local time`}
-          </p>
-          <p className="text-[15px] text-white/60">
-            {venue.name}, {venue.city}
-          </p>
+        {photo && <PhotoCredit photo={photo} className="absolute bottom-3 right-3 z-10" />}
+        <div className="relative mx-auto grid max-w-6xl gap-8 px-5 pb-14 pt-6 sm:px-6 md:grid-cols-[1fr_340px] md:items-end md:pt-8">
+          <div className="min-w-0">
+            <Link
+              href={`/leagues/${event.leagueId}`}
+              className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-white/75 transition-colors hover:text-white"
+            >
+              ← All {context.league?.shortName ?? ""} {isRace ? "races" : isFootball ? "matches" : "games"}
+            </Link>
+            <p className="mt-6 text-[13px] font-semibold uppercase tracking-wide text-white/65">
+              {context.league?.name}
+            </p>
+            <h1 className="mt-2 text-[30px] font-extrabold leading-[1.08] text-white sm:text-[44px]">
+              {context.title}
+            </h1>
+            <ul className="mt-5 space-y-1.5 text-[16px] text-white/90">
+              <li className="flex items-start gap-2.5">
+                <CalendarIcon />
+                <span>
+                  {event.endsAt
+                    ? formatDateRange(event.startsAt, event.endsAt, venue.timeZone)
+                    : `${formatFullDate(event.startsAt, venue.timeZone)} · ${formatTime(event.startsAt, venue.timeZone)} local time`}
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <PinIcon />
+                <span>
+                  {venue.name}, {venue.city}
+                </span>
+              </li>
+            </ul>
+          </div>
 
-          {/* The answer first: the cheapest ticket, one tap from buying or
-              comparing, before the trip planner below. */}
-          {prices.cheapest && (
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <p className="rounded-2xl bg-white/12 px-4 py-2 ring-1 ring-white/20 backdrop-blur">
-                <span className="block text-[12px] font-medium text-white/70">
-                  {isRace ? "Cheapest weekend pass" : "Cheapest ticket"}
-                </span>
-                <span className="tabular text-[24px] font-semibold leading-tight">
-                  {formatPrice(prices.cheapest.amount!, prices.currency)}
-                </span>
-                <span className="text-[14px] text-white/80"> on {prices.cheapest.label}</span>
-              </p>
-              <a
-                href="#tickets"
-                className="rounded-full bg-white px-5 py-3 text-[15px] font-semibold text-ink transition-colors hover:bg-accent hover:text-white"
-              >
-                Compare {prices.offers.length} ticket sites ↓
-              </a>
-              <a
-                href={prices.cheapest.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-full px-3 py-3 text-[15px] font-semibold text-white/90 underline-offset-4 hover:underline"
-              >
-                Buy on {prices.cheapest.label} ↗
-              </a>
-            </div>
-          )}
+          {/* The answer first: the cheapest ticket, one tap from buying. */}
+          <div className="rounded-2xl bg-surface p-5 text-ink shadow-lg">
+            {prices.cheapest ? (
+              <>
+                <p className="text-[14px] font-semibold text-ink-3">
+                  Cheapest {ticketNoun}
+                  {pricedSites > 1 ? ` · ${pricedSites} sites compared` : ""}
+                </p>
+                <p className="mt-1 flex items-baseline gap-2">
+                  <span className="tabular font-display text-[40px] font-extrabold leading-none text-positive">
+                    {formatPrice(prices.cheapest.amount!, prices.currency)}
+                  </span>
+                  <span className="text-[15px] text-ink-2">on {prices.cheapest.label}</span>
+                </p>
+                <a
+                  href={prices.cheapest.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white transition-colors hover:bg-accent-2"
+                >
+                  Buy on {prices.cheapest.label} ↗
+                </a>
+                <a
+                  href="#tickets"
+                  className="mt-2 flex w-full items-center justify-center rounded-xl border border-line px-5 py-3 text-[15px] font-semibold text-ink transition-colors hover:border-accent hover:text-accent"
+                >
+                  Compare all {prices.offers.length} sites ↓
+                </a>
+              </>
+            ) : (
+              <>
+                <p className="text-[16px] font-bold">No price listed yet</p>
+                <p className="mt-1 text-[14px] text-ink-3">
+                  None of the sites we read had a price when we checked. See each site below.
+                </p>
+                <a
+                  href="#tickets"
+                  className="mt-4 flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white hover:bg-accent-2"
+                >
+                  See ticket sites ↓
+                </a>
+              </>
+            )}
+          </div>
         </div>
       </section>
 
-      <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        {/* Step 1: what the visitor needs. Plain links and a GET form, so it
-            works without JavaScript and every trip is a link you can send. */}
-        <section className="relative -mt-10 rounded-2xl border border-line bg-surface p-4 shadow-lg sm:p-5">
-          <h2 className="text-[18px] font-semibold">What do you need?</h2>
-          <p className="text-[14px] text-ink-2">
-            Tap to add or remove. Live nearby? Turn off the flight and hotel to see just the tickets.
-          </p>
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <NeedTile icon={<TicketIcon />} label={isRace ? "Race tickets" : isFootball ? "Match tickets" : "Game tickets"} on />
-            <NeedTile
-              icon={<PlaneIcon />}
-              label="Travel"
-              on={wantTravel}
-              href={tripHref({ go: wantTravel ? "none" : "" })}
-            />
-            <NeedTile
-              icon={<BedIcon />}
-              label="Hotel"
-              on={wantHotel}
-              href={tripHref({ hotel: wantHotel ? "0" : "" })}
-            />
-          </div>
-
-          <form method="get" className="mt-3 flex flex-col gap-2 rounded-xl bg-surface-2 p-2 sm:flex-row">
-            {(query.go || query.flight === "0") && <input type="hidden" name="go" value={go} />}
-            {!wantHotel && <input type="hidden" name="hotel" value="0" />}
-            {wantTravel && (
-              <Field label="Travelling from" className="sm:flex-[2]">
-                <input
-                  name="origin"
-                  defaultValue={origin}
-                  placeholder="Your city, e.g. New York"
-                  className="w-full bg-transparent text-[15px] font-medium text-ink placeholder:font-normal placeholder:text-ink-3 outline-none"
-                />
-              </Field>
-            )}
-            <Field label="Tickets" className="sm:flex-1">
-              <select
-                name="travellers"
-                defaultValue={travellers}
-                className="w-full bg-transparent text-[15px] font-medium text-ink outline-none"
-              >
-                {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n} {n === 1 ? "ticket" : "tickets"} · {people(n)}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            {(wantTravel || wantHotel) && (
-              <Field label={wantHotel ? "Hotel" : "Time away"} className="sm:flex-1">
-                <select
-                  name="nights"
-                  defaultValue={nights}
-                  className="w-full bg-transparent text-[15px] font-medium text-ink outline-none"
-                >
-                  {Array.from({ length: 7 }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      {nightsLabel(n)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            )}
-            <button
-              type="submit"
-              className="rounded-xl bg-accent px-6 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-accent-2"
-            >
-              Update total
-            </button>
-          </form>
-
-          {wantTravel && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px]">
-              <span className="text-ink-3">How are you getting there?</span>
-              {available.map((mode) => (
-                <Link
-                  key={mode}
-                  href={tripHref({ go: mode })}
-                  scroll={false}
-                  className={`rounded-full border px-3.5 py-1 font-semibold transition-colors ${
-                    go === mode
-                      ? "border-ink bg-ink text-white"
-                      : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
-                  }`}
-                >
-                  {MODE_LABEL[mode]}
-                </Link>
-              ))}
-              {!resolvedOrigin && (
-                <span className="text-ink-3">
-                  {venue.country === "GB"
-                    ? "Train, coach and drive appear once you pick a UK city."
-                    : "Driving appears once you pick where you're travelling from."}
-                </span>
-              )}
-            </div>
-          )}
-
-          {wantTravel && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px]">
-              <span className="text-ink-3">Travelling from</span>
-              {POPULAR_ORIGINS.map((city) => (
-                <Link
-                  key={city}
-                  href={tripHref({ origin: city })}
-                  scroll={false}
-                  className={`rounded-full border px-3 py-1 font-medium transition-colors ${
-                    resolvedOrigin?.city === city
-                      ? "border-accent bg-accent text-white"
-                      : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
-                  }`}
-                >
-                  {city}
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {wantTravel && originUnresolved && (
-            <p className="mt-3 text-[14px] font-medium text-hot">
-              We couldn&apos;t find &ldquo;{origin}&rdquo;. Try a big city nearby,
-              like New York, London or Paris.
-            </p>
-          )}
-        </section>
-
-        {/* Step 2: the answer. Everything added up, one button per thing to book. */}
-        <div className="mt-6">
-          <TripTotal
-            currency={prices.currency}
-            ticketPrice={prices.cheapest?.amount ?? null}
-            ticketSite={prices.cheapest?.label ?? null}
-            ticketUrl={prices.cheapest?.url ?? null}
-            ticketNoun={isRace ? "Race ticket" : isFootball ? "Match ticket" : "Game ticket"}
-            travellers={travellers}
-            nights={dates.nights}
-            rooms={rooms}
-            venueName={venue.name}
-            travelMode={go}
-            includeHotel={wantHotel}
-            flight={
-              flightQuote?.status === "ok"
-                ? { ...flightQuote, quote: { ...flightQuote.quote, perPerson: convertUsd(flightQuote.quote.perPerson, prices.currency) } }
-                : flightQuote
-            }
-            hotel={hotelQuote && { ...hotelQuote, perNight: convertUsd(hotelQuote.perNight, prices.currency), total: convertUsd(hotelQuote.total, prices.currency) }}
-            flightLinks={flights}
-            groundLinks={groundLinks}
-            hotelLinks={hotels}
-            needsOrigin={!resolvedOrigin}
-            noFlightNeeded={sameCity}
-            icons={{ ticket: <TicketIcon />, flight: <PlaneIcon />, hotel: <BedIcon /> }}
-          />
-        </div>
-
-        {/* Tickets in detail. */}
-        <section
-          id="tickets"
-          className="mt-6 mb-10 min-w-0 scroll-mt-32 sm:scroll-mt-24 rounded-2xl border border-line bg-surface p-5 shadow-xs sm:p-6"
-        >
-          <h2 className="text-[20px] font-semibold">Compare ticket prices</h2>
-          <p className="mt-1 text-[14px] text-ink-2">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6">
+        {/* 1. Every site's price, cheapest first. */}
+        <section id="tickets" className="mt-8 min-w-0 scroll-mt-32">
+          <h2 className="text-[24px] font-extrabold sm:text-[28px]">
+            Ticket prices on every site
+          </h2>
+          <p className="mt-1 max-w-3xl text-ink-2">
             {isRace
               ? "The lowest price for one ticket on every site that sells this race, cheapest first. Switch between full-weekend passes and race-day tickets."
               : isFootball
                 ? "The lowest price for one ticket on every site that sells this match, cheapest first."
-                : "The cheapest single ticket on every site that sells this game, cheapest first. Parking, tailgate passes and add-ons are left out. Where the venue sells standing room, the cheapest ticket may be standing room, not a seat."}
+                : "The cheapest single ticket on every site, fees included, cheapest first. Parking, tailgate passes and add-ons are left out. The cheapest ticket may be standing room where the venue sells it."}
           </p>
           <div className="mt-5">
             <PriceCompare groups={priceGroups} />
           </div>
 
           {sellers.length > 0 && (
-            <details className="group mt-6 rounded-xl border border-line">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-[14px] font-semibold">
+            <details className="group mt-4 rounded-2xl border border-line bg-surface">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[15px] font-semibold">
                 Official club ticket offices
                 <span className="text-[13px] font-normal text-ink-3 group-open:hidden">
                   Face value, usually members first ▾
                 </span>
               </summary>
-              <div className="space-y-2 border-t border-line p-3">
+              <div className="space-y-1 border-t border-line p-3">
                 {sellers.map((seller) => (
                   <a
                     key={seller.url}
                     href={seller.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group/row flex items-center gap-4 rounded-lg px-3 py-2.5 transition-colors hover:bg-accent/5"
+                    className="group/row flex items-center gap-4 rounded-xl px-3 py-2.5 transition-colors hover:bg-surface-2"
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block text-[15px] font-semibold group-hover/row:text-accent">
@@ -488,12 +359,172 @@ export default async function EventPage({
                       </span>
                       <span className="block text-[13px] text-ink-3">{seller.note}</span>
                     </span>
-                    <span className="shrink-0 text-[13px] font-semibold text-accent">Visit ↗</span>
+                    <span className="shrink-0 text-[14px] font-semibold text-accent">Visit ↗</span>
                   </a>
                 ))}
               </div>
             </details>
           )}
+        </section>
+
+        {/* 2. The whole trip. Plain links and a GET form, so it works without
+            JavaScript and every trip is a link you can send. */}
+        <section id="trip" className="mt-14 scroll-mt-32">
+          <h2 className="text-[24px] font-extrabold sm:text-[28px]">Plan the whole trip</h2>
+          <p className="mt-1 text-ink-2">
+            Travelling to the {isRace ? "race" : isFootball ? "match" : "game"}? Add a hotel and a
+            flight for the same dates and we&apos;ll add it all up. Live nearby? Switch them off.
+          </p>
+
+          <div className="mt-5 rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+            <div className="grid gap-2 sm:grid-cols-3">
+              <NeedTile icon={<TicketIcon />} label={isRace ? "Race tickets" : isFootball ? "Match tickets" : "Game tickets"} on />
+              <NeedTile
+                icon={<PlaneIcon />}
+                label="Travel"
+                on={wantTravel}
+                href={tripHref({ go: wantTravel ? "none" : "" })}
+              />
+              <NeedTile
+                icon={<BedIcon />}
+                label="Hotel"
+                on={wantHotel}
+                href={tripHref({ hotel: wantHotel ? "0" : "" })}
+              />
+            </div>
+
+            <form method="get" action="#trip" className="mt-3 flex flex-col gap-2 rounded-xl bg-surface-2 p-2 sm:flex-row">
+              {(query.go || query.flight === "0") && <input type="hidden" name="go" value={go} />}
+              {!wantHotel && <input type="hidden" name="hotel" value="0" />}
+              {wantTravel && (
+                <Field label="Travelling from" className="sm:flex-[2]">
+                  <input
+                    name="origin"
+                    defaultValue={origin}
+                    placeholder="Your city, e.g. Chicago"
+                    autoComplete="address-level2"
+                    className="w-full bg-transparent text-[16px] font-medium text-ink placeholder:font-normal placeholder:text-ink-3 outline-none"
+                  />
+                </Field>
+              )}
+              <Field label="Tickets" className="sm:flex-1">
+                <select
+                  name="travellers"
+                  defaultValue={travellers}
+                  className="w-full bg-transparent text-[16px] font-medium text-ink outline-none"
+                >
+                  {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n} {n === 1 ? "ticket" : "tickets"} · {people(n)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {(wantTravel || wantHotel) && (
+                <Field label={wantHotel ? "Hotel" : "Time away"} className="sm:flex-1">
+                  <select
+                    name="nights"
+                    defaultValue={nights}
+                    className="w-full bg-transparent text-[16px] font-medium text-ink outline-none"
+                  >
+                    {Array.from({ length: 7 }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {nightsLabel(n)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+              <button
+                type="submit"
+                className="rounded-xl bg-accent px-6 py-3.5 text-[16px] font-bold text-white transition-colors hover:bg-accent-2"
+              >
+                Update total
+              </button>
+            </form>
+
+            {wantTravel && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[14px]">
+                <span className="text-ink-3">Travelling from:</span>
+                {POPULAR_ORIGINS.map((city) => (
+                  <Link
+                    key={city}
+                    href={`${tripHref({ origin: city })}#trip`}
+                    scroll={false}
+                    className={`rounded-full border px-3 py-1 font-semibold transition-colors ${
+                      resolvedOrigin?.city === city
+                        ? "border-accent bg-accent text-white"
+                        : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
+                    }`}
+                  >
+                    {city}
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {wantTravel && (available.length > 1 || !resolvedOrigin) && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[14px]">
+                <span className="text-ink-3">Getting there by:</span>
+                {available.map((mode) => (
+                  <Link
+                    key={mode}
+                    href={`${tripHref({ go: mode })}#trip`}
+                    scroll={false}
+                    className={`rounded-full border px-3.5 py-1 font-semibold transition-colors ${
+                      go === mode
+                        ? "border-ink bg-ink text-white"
+                        : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
+                    }`}
+                  >
+                    {MODE_LABEL[mode]}
+                  </Link>
+                ))}
+                {!resolvedOrigin && (
+                  <span className="text-ink-3">
+                    {venue.country === "GB"
+                      ? "Train, coach and driving appear once you pick a UK city."
+                      : "Driving appears once you pick where you're travelling from."}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {wantTravel && originUnresolved && (
+              <p className="mt-3 text-[15px] font-semibold text-hot">
+                We couldn&apos;t find &ldquo;{origin}&rdquo;. Try a big city nearby, like New York,
+                London or Paris.
+              </p>
+            )}
+          </div>
+
+          <div className="mt-4">
+            <TripTotal
+              currency={prices.currency}
+              ticketPrice={prices.cheapest?.amount ?? null}
+              ticketSite={prices.cheapest?.label ?? null}
+              ticketUrl={prices.cheapest?.url ?? null}
+              ticketNoun={isRace ? "Race ticket" : isFootball ? "Match ticket" : "Game ticket"}
+              travellers={travellers}
+              nights={dates.nights}
+              rooms={rooms}
+              venueName={venue.name}
+              travelMode={go}
+              includeHotel={wantHotel}
+              flight={
+                flightQuote?.status === "ok" || flightQuote?.status === "nearby"
+                  ? { ...flightQuote, quote: { ...flightQuote.quote, perPerson: convertUsd(flightQuote.quote.perPerson, prices.currency) } }
+                  : flightQuote
+              }
+              hotel={hotelQuote && { ...hotelQuote, perNight: convertUsd(hotelQuote.perNight, prices.currency), total: convertUsd(hotelQuote.total, prices.currency) }}
+              flightLinks={flights}
+              groundLinks={groundLinks}
+              hotelLinks={hotels}
+              needsOrigin={!resolvedOrigin}
+              noFlightNeeded={sameCity}
+              icons={{ ticket: <TicketIcon />, flight: <PlaneIcon />, hotel: <BedIcon /> }}
+            />
+          </div>
         </section>
       </div>
     </>
@@ -598,6 +629,24 @@ function PlaneIcon() {
         d="M11.2 4.2l1.1 5.6 6-1.8c.8-.24 1.5.5 1.2 1.26-.16.4-.5.7-.9.82l-5.9 1.77.9 4.56 2 1.1c.3.16.3.6 0 .78l-1.5.8-1.9-1.4-1.9 1.4-1.5-.8c-.3-.18-.3-.62 0-.78l2-1.1.9-4.56-5.9-1.77a1.08 1.08 0 0 1-.9-.82c-.3-.76.4-1.5 1.2-1.26l6 1.8 1.1-5.6a1.08 1.08 0 0 1 2.1 0z"
         {...ICON_STROKE}
       />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden className="mt-0.5 shrink-0 text-white/60">
+      <rect x="3.5" y="5" width="17" height="15" rx="2" {...ICON_STROKE} />
+      <path d="M3.5 10h17M8 3v4M16 3v4" {...ICON_STROKE} />
+    </svg>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden className="mt-0.5 shrink-0 text-white/60">
+      <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" {...ICON_STROKE} />
+      <circle cx="12" cy="10" r="2.3" {...ICON_STROKE} />
     </svg>
   );
 }

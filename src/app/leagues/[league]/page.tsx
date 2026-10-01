@@ -14,7 +14,7 @@ import { MatchFinder, type FinderRow } from "@/components/MatchFinder";
 import { localDate } from "@/lib/dates";
 import { dateParts, formatDateRange, formatTime } from "@/lib/format";
 import { SportIcon } from "@/components/SportIcon";
-import { BackLink, EmptyState, PhotoCredit } from "@/components/ui";
+import { EmptyState, PhotoCredit } from "@/components/ui";
 
 export async function generateStaticParams() {
   const leagues = await getLeagues();
@@ -61,48 +61,42 @@ export default async function LeaguePage({
   const initialTeam = teamOptions.some((t) => t.id === query.team) ? query.team : "";
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8">
-      <BackLink href="/">Home</BackLink>
-
+    <>
       <header
-        className="glow relative mt-5 overflow-hidden rounded-3xl"
-        style={{ ["--glow" as string]: sport?.accent ?? "#4f46e5" }}
+        className="glow relative overflow-hidden"
+        style={{ ["--glow" as string]: sport?.accent ?? "#1d4ed8" }}
       >
         {photo && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photo.large}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0b0d1a]/95 via-[#0b0d1a]/70 to-[#0b0d1a]/25" />
+            <img src={photo.large} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-r from-night/95 via-night/80 to-night/40" />
             <PhotoCredit photo={photo} className="absolute bottom-3 right-3 z-10" />
           </>
         )}
-        <div className="relative px-6 py-9 sm:px-9 sm:py-12">
+        <div className="relative mx-auto max-w-4xl px-5 pb-14 pt-8 sm:px-6 sm:pt-10">
           <div className="flex items-center gap-3">
             {sport && (
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 text-white backdrop-blur-sm">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 text-white">
                 <SportIcon sport={sport.id} size={22} />
               </span>
             )}
             <p className="text-[13px] font-semibold uppercase tracking-wide text-white/75">
-              {events.length} {noun} left this season
+              {events.length.toLocaleString("en-US")} {noun} left this season
             </p>
           </div>
-          <h1 className="mt-3 text-[32px] font-semibold leading-tight text-white sm:text-[44px]">
+          <h1 className="mt-3 text-[32px] font-extrabold leading-tight text-white sm:text-[44px]">
             {league.name}
           </h1>
-          <p className="mt-2 max-w-xl text-[15px] text-white/85">
+          <p className="mt-2 max-w-xl text-[16px] text-white/85">
             {isRace
-              ? "The cheapest weekend pass for every race, across every site that sells it. Pick a race to compare sites and see the whole trip."
-              : `The cheapest ticket for every ${noun.slice(0, -1).replace(/che$/, "ch")}, across every site that sells it. Filter by team, month or budget, then pick one to see the whole trip.`}
+              ? "The cheapest weekend pass for every race, across every site that sells it. Pick a race to compare prices."
+              : `The cheapest ticket for every ${noun.slice(0, -1).replace(/che$/, "ch")}, across every site that sells it. Filter by team, month or budget, then pick one to compare prices.`}
           </p>
         </div>
       </header>
 
-      <div className="mt-6">
+      <div className="mx-auto mt-6 max-w-4xl px-5 sm:px-6">
         {events.length === 0 ? (
           <EmptyState
             title={`No ${noun} coming up`}
@@ -118,7 +112,7 @@ export default async function LeaguePage({
           />
         )}
       </div>
-    </div>
+    </>
   );
 }
 

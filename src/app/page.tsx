@@ -8,15 +8,16 @@ import {
 } from "@/lib/repositories";
 import { PhotoCredit } from "@/components/ui";
 import { SiteSearch } from "@/components/SiteSearch";
-import { GameCard as EventCard, LEAGUE_COLORS } from "@/components/GameCard";
+import { GameCard, LEAGUE_COLORS } from "@/components/GameCard";
 import { formatPrice } from "@/lib/format";
 
 /**
  * Home: one clear path, top to bottom.
- * 1. Search a team, or pick a competition (with its lowest real price).
- * 2. How it works, in three steps.
- * 3. The cheapest game this month in each league.
- * 4. The next F1 races.
+ * 1. Search a team, or tap a popular one.
+ * 2. Which ticket sites we compare.
+ * 3. Pick a league (with its lowest real price).
+ * 4. How it works, the cheapest game this month per league, the next F1 races.
+ * 5. Plain answers to the questions people ask first.
  */
 export default async function HomePage() {
   const [pl, ucl, uel, races, nfl, nba, mls, photo] = await Promise.all([
@@ -30,16 +31,23 @@ export default async function HomePage() {
     getLeaguePhoto("premier-league"),
   ]);
 
-  const currency = pl[0]?.prices.currency ?? nfl[0]?.prices.currency ?? "USD";
+  const all = [nfl, nba, mls, pl, ucl, uel, races];
+  const currency = nfl[0]?.prices.currency ?? pl[0]?.prices.currency ?? "USD";
   const lowest = (list: EventContext[]) =>
     list.reduce<number | null>((min, c) => {
       const p = c.prices.cheapest?.amount;
       return p != null && (min === null || p < min) ? p : min;
     }, null);
-  const from = (list: EventContext[], noun = "Tickets") => {
+  const from = (list: EventContext[]) => {
     const p = lowest(list);
-    return p !== null ? `${noun} from ${formatPrice(p, currency)}` : null;
+    return p !== null ? formatPrice(p, currency) : null;
   };
+
+  // Every ticket site that appears in our comparisons, most-used first.
+  const siteCounts = new Map<string, number>();
+  for (const list of all)
+    for (const c of list) for (const o of c.prices.offers) siteCounts.set(o.label, (siteCounts.get(o.label) ?? 0) + 1);
+  const sites = [...siteCounts.entries()].sort((a, b) => b[1] - a[1]).map(([label]) => label);
 
   // The cheapest priced game in the next 30 days, one per league.
   const soon = Date.now() + 30 * 24 * 60 * 60 * 1000;
@@ -51,152 +59,226 @@ export default async function HomePage() {
     .map(cheapestSoon)
     .filter((c): c is EventContext => Boolean(c));
 
-  const us: LeagueChoice[] = [
-    { href: "/leagues/nfl", title: "NFL", sport: "american-football", color: LEAGUE_COLORS["nfl"], detail: `${nfl.length} games left`, price: from(nfl) },
-    { href: "/leagues/nba", title: "NBA", sport: "basketball", color: LEAGUE_COLORS["nba"], detail: `${nba.length} games left`, price: from(nba) },
-    { href: "/leagues/mls", title: "MLS", sport: "soccer", color: LEAGUE_COLORS["mls"], detail: `${mls.length} games left`, price: from(mls) },
-  ];
-  const world: LeagueChoice[] = [
-    { href: "/leagues/premier-league", title: "Premier League", sport: "soccer", color: LEAGUE_COLORS["premier-league"], detail: `${pl.length} matches left`, price: from(pl) },
-    { href: "/leagues/champions-league", title: "Champions League", sport: "soccer", color: LEAGUE_COLORS["champions-league"], detail: `${ucl.length} matches left`, price: from(ucl) },
-    { href: "/leagues/europa-league", title: "Europa League", sport: "soccer", color: LEAGUE_COLORS["europa-league"], detail: `${uel.length} matches left`, price: from(uel) },
-    { href: "/leagues/formula-1", title: "Formula 1", sport: "racing", color: LEAGUE_COLORS["formula-1"], detail: `${races.length} races left`, price: from(races, "Weekend passes") },
+  const count = (n: number, noun: string) => `${n.toLocaleString("en-US")} ${noun}`;
+  const leagues: LeagueChoice[] = [
+    { id: "nfl", title: "NFL", sport: "american-football", detail: count(nfl.length, "games"), price: from(nfl) },
+    { id: "nba", title: "NBA", sport: "basketball", detail: count(nba.length, "games"), price: from(nba) },
+    { id: "mls", title: "MLS", sport: "soccer", detail: count(mls.length, "games"), price: from(mls) },
+    { id: "premier-league", title: "Premier League", sport: "soccer", detail: count(pl.length, "matches"), price: from(pl) },
+    { id: "champions-league", title: "Champions League", sport: "soccer", detail: count(ucl.length, "matches"), price: from(ucl) },
+    { id: "europa-league", title: "Europa League", sport: "soccer", detail: count(uel.length, "matches"), price: from(uel) },
+    { id: "formula-1", title: "Formula 1", sport: "racing", detail: count(races.length, "race weekends"), price: from(races) },
   ];
 
   return (
     <>
-      {/* 1. Search, or pick a competition */}
-      <section className="relative overflow-hidden bg-[#0b0d1a] text-white">
+      {/* 1. Search */}
+      <section className="relative overflow-hidden bg-night text-white">
         {photo?.large && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photo.large} alt="" className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-b from-[#0b0d1a]/85 via-[#0b0d1a]/75 to-[#0b0d1a]" />
-            <PhotoCredit photo={photo} className="absolute right-4 top-4 z-10" />
+            <div className="absolute inset-0 bg-gradient-to-b from-night/90 via-night/80 to-night" />
+            <PhotoCredit photo={photo} className="absolute bottom-3 right-3 z-10" />
           </>
         )}
-        <div className="relative mx-auto max-w-5xl px-5 pb-16 pt-14 sm:px-8 sm:pt-20">
-          <div className="text-center">
-            <h1 className="mx-auto max-w-3xl text-[36px] font-semibold leading-[1.05] sm:text-[54px]">
-              See the game for less.
-            </h1>
-            <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-white/80">
-              Every ticket site compared, cheapest first, plus the hotel and flight for the
-              same dates.
-            </p>
-            <div className="mx-auto mt-8 max-w-xl text-left">
-              <SiteSearch large />
-            </div>
+        <div className="relative mx-auto max-w-3xl px-5 pb-16 pt-12 text-center sm:px-6 sm:pb-20 sm:pt-20">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-semibold text-white/90 ring-1 ring-white/20">
+            <span className="h-2 w-2 rounded-full bg-sun" aria-hidden />
+            Sports ticket price comparison
+          </p>
+          <h1 className="mt-5 text-[36px] font-extrabold leading-[1.05] sm:text-[56px]">
+            Find the cheapest ticket to any game.
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-white/80 sm:text-[18px]">
+            We compare {sites.length} ticket sites side by side, cheapest first, so you never
+            overpay. Then add a hotel and flight for the same dates.
+          </p>
+          <div className="mx-auto mt-8 max-w-xl text-left">
+            <SiteSearch large />
           </div>
-
-          <LeagueGroup title="US sports" choices={us} columns="sm:grid-cols-3" />
-          <LeagueGroup title="Football and Formula 1" choices={world} columns="sm:grid-cols-2 xl:grid-cols-4" />
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[14px]">
+            <span className="text-white/60">Popular:</span>
+            {POPULAR.map(([q, href]) => (
+              <Link
+                key={q}
+                href={href}
+                className="rounded-full bg-white/10 px-3.5 py-1.5 font-semibold text-white ring-1 ring-white/20 transition-colors hover:bg-white hover:text-ink"
+              >
+                {q}
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* 2. How it works */}
+      {/* 2. The sites we compare */}
       <section className="border-b border-line bg-surface">
-        <ol className="mx-auto grid max-w-5xl gap-6 px-5 py-10 sm:grid-cols-3 sm:px-8">
-          <Step n={1} title="Pick a game or race">
-            Search a team, or filter by month or budget.
+        <div className="mx-auto max-w-6xl px-5 py-6 sm:px-6">
+          <p className="text-center text-[13px] font-semibold uppercase tracking-wide text-ink-3">
+            Prices compared from
+          </p>
+          <ul className="mt-3 flex flex-wrap justify-center gap-x-6 gap-y-2">
+            {sites.map((s) => (
+              <li key={s} className="font-display text-[16px] font-bold text-ink-2">
+                {s}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* 3. Leagues */}
+      <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-6">
+        <h2 className="text-[26px] font-extrabold sm:text-[30px]">Choose a league</h2>
+        <p className="mt-1 text-ink-3">Every game this season, with the cheapest ticket on each.</p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {leagues.map((c) => (
+            <LeagueCard key={c.id} choice={c} />
+          ))}
+        </div>
+      </section>
+
+      {/* 4. How it works */}
+      <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
+        <h2 className="text-[26px] font-extrabold sm:text-[30px]">How it works</h2>
+        <ol className="mt-6 grid gap-4 sm:grid-cols-3">
+          <Step n={1} title="Find your game">
+            Search a team or pick a league, then filter by month or budget.
           </Step>
-          <Step n={2} title="Compare ticket sites">
-            Every site that sells it, cheapest first.
+          <Step n={2} title="See every price">
+            Every ticket site that sells it, side by side, cheapest at the top.
           </Step>
-          <Step n={3} title="See the whole trip">
-            Ticket, flight and hotel added up for you.
+          <Step n={3} title="Buy where it's cheapest">
+            Tap through and buy on that site. Add a hotel and flight if you&apos;re travelling.
           </Step>
         </ol>
       </section>
 
-      {/* 3. Cheapest game this month in each league */}
+      {/* 5. Cheapest game this month in each league */}
       {deals.length > 0 && (
-        <section className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
-          <div>
-            <p className="text-[13px] font-semibold text-accent">Deals</p>
-            <h2 className="mt-1 text-[24px] font-semibold sm:text-[28px]">
-              Cheapest game this month in each league
-            </h2>
-          </div>
+        <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
+          <h2 className="text-[26px] font-extrabold sm:text-[30px]">Cheapest game this month</h2>
+          <p className="mt-1 text-ink-3">One per league, in the next 30 days.</p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {deals.map((c) => (
-              <EventCard key={c.event.id} context={c} />
+              <GameCard key={c.event.id} context={c} />
             ))}
           </div>
         </section>
       )}
 
-      {/* 4. Next F1 races */}
+      {/* 6. Next F1 races */}
       {races.length > 0 && (
-        <section className="border-t border-line">
-          <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="text-[13px] font-semibold text-accent">Formula 1</p>
-                <h2 className="mt-1 text-[24px] font-semibold sm:text-[28px]">Next race weekends</h2>
-              </div>
-              <Link href="/leagues/formula-1" className="text-[14px] font-semibold text-accent hover:underline">
-                All races →
-              </Link>
+        <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-[26px] font-extrabold sm:text-[30px]">Next Formula 1 weekends</h2>
+              <p className="mt-1 text-ink-3">The cheapest full-weekend pass for each race.</p>
             </div>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {races.slice(0, 3).map((c) => (
-                <EventCard key={c.event.id} context={c} race />
-              ))}
-            </div>
+            <Link href="/leagues/formula-1" className="font-semibold text-accent hover:underline">
+              All races →
+            </Link>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {races.slice(0, 3).map((c) => (
+              <GameCard key={c.event.id} context={c} race />
+            ))}
           </div>
         </section>
       )}
+
+      {/* 7. Questions */}
+      <section className="mx-auto max-w-3xl px-5 pt-16 sm:px-6">
+        <h2 className="text-[26px] font-extrabold sm:text-[30px]">Questions</h2>
+        <div className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
+          {FAQ.map(([q, a]) => (
+            <details key={q} className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[16px] font-semibold">
+                {q}
+                <span aria-hidden className="text-[20px] text-ink-3 transition-transform group-open:rotate-45">
+                  +
+                </span>
+              </summary>
+              <p className="px-5 pb-5 text-ink-2">{a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
     </>
   );
 }
 
+const POPULAR: [string, string][] = [
+  ["Lakers", "/teams/nba-lal"],
+  ["Knicks", "/teams/nba-ny"],
+  ["Chiefs", "/teams/nfl-kc"],
+  ["Arsenal", "/teams/arsenal"],
+  ["Inter Miami", "/teams/mls-mia"],
+];
+
+const FAQ: [string, string][] = [
+  [
+    "Where do the prices come from?",
+    "From each ticket site's own listings for that game. We show the cheapest single ticket each site listed when we checked, and the date we checked. We never estimate a price: if we couldn't read a site's price, we say so and link to it.",
+  ],
+  [
+    "Do the prices include fees?",
+    "For NFL, NBA and MLS games, yes: every price shown includes the site's fees (taxes and delivery may be extra). Where a site adds fees at checkout, we label it. Each game page lists what every site charges.",
+  ],
+  [
+    "Do I buy tickets from Spotlight?",
+    "No. You tap through and buy directly on the ticket site, under its own guarantee. Spotlight never handles your payment.",
+  ],
+  [
+    "Why can the price change when I click?",
+    "Ticket prices move all the time as seats sell. Some sites update on the game page every 15 minutes; others are from our last check. Always confirm the final price before you pay.",
+  ],
+];
+
 type Sport = "american-football" | "basketball" | "soccer" | "racing";
 
-
-
 interface LeagueChoice {
-  href: string;
+  id: string;
   title: string;
   sport: Sport;
-  /** The competition's colour, for its icon tile. */
-  color: string;
   detail: string;
   price: string | null;
 }
 
-function LeagueGroup({ title, choices, columns }: { title: string; choices: LeagueChoice[]; columns: string }) {
+function LeagueCard({ choice: c }: { choice: LeagueChoice }) {
   return (
-    <div className="mt-10">
-      <h2 className="text-[13px] font-semibold uppercase tracking-wide text-white/60">{title}</h2>
-      <div className={`mt-3 grid gap-3 ${columns}`}>
-        {choices.map((c) => (
-          <Link
-            key={c.href}
-            href={c.href}
-            className="group flex items-center gap-3.5 rounded-2xl bg-white p-4 text-ink shadow-lg transition-transform hover:-translate-y-1"
-          >
-            <span
-              aria-hidden
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-white"
-              style={{ backgroundColor: c.color }}
-            >
-              <SportIcon sport={c.sport} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-display text-[19px] font-semibold leading-tight">{c.title}</span>
-              <span className="block text-[13px] text-ink-3">{c.detail}</span>
-              {c.price && (
-                <span className="mt-1 block text-[13px] font-semibold text-positive">{c.price}</span>
-              )}
-            </span>
-            <span aria-hidden className="text-[20px] text-ink-3 transition-colors group-hover:text-accent">
-              →
-            </span>
-          </Link>
-        ))}
-      </div>
-    </div>
+    <Link
+      href={`/leagues/${c.id}`}
+      className="group flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-xs transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md"
+    >
+      <span
+        aria-hidden
+        className="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-white"
+        style={{ backgroundColor: LEAGUE_COLORS[c.id] }}
+      >
+        <SportIcon sport={c.sport} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[18px] font-bold leading-tight">{c.title}</span>
+        <span className="block text-[14px] text-ink-3">{c.detail}</span>
+        {c.price && (
+          <span className="mt-0.5 block text-[14px] font-semibold text-positive">From {c.price}</span>
+        )}
+      </span>
+      <Arrow />
+    </Link>
+  );
+}
+
+function Arrow() {
+  return (
+    <span
+      aria-hidden
+      className="grid h-8 w-8 shrink-0 place-items-center lg:hidden rounded-full bg-surface-2 text-ink-2 transition-colors group-hover:bg-accent group-hover:text-white"
+    >
+      →
+    </span>
   );
 }
 
@@ -236,15 +318,16 @@ function SportIcon({ sport }: { sport: Sport }) {
   }
 }
 
+
 function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
-    <li className="flex gap-3">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-[14px] font-semibold text-white">
+    <li className="flex gap-4 rounded-2xl border border-line bg-surface p-5 sm:block">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent font-display text-[18px] font-extrabold text-white">
         {n}
       </span>
-      <span>
-        <span className="block text-[15px] font-semibold">{title}</span>
-        <span className="block text-[14px] text-ink-3">{children}</span>
+      <span className="block">
+        <span className="block font-display text-[18px] font-bold sm:mt-3">{title}</span>
+        <span className="mt-1 block text-ink-3">{children}</span>
       </span>
     </li>
   );

@@ -222,7 +222,7 @@ export async function cheapestFlight(trip: {
     };
     const toQuote = (f: Fare): FlightQuote => ({
       perPerson: f.price,
-      airline: f.airline,
+      airline: AIRLINES[f.airline] ?? f.airline,
       stopsLabel: stops(f.transfers),
       url: `https://www.aviasales.com${f.link}`,
       source: "Aviasales, found by travellers in the last few days",
@@ -295,3 +295,17 @@ export async function cheapestFlight(trip: {
   }
   return main;
 }
+
+/** Airline names for the two-letter codes Aviasales returns ("F9" → Frontier). */
+const AIRLINES: Record<string, string> = {
+  AA: "American Airlines", DL: "Delta", UA: "United", WN: "Southwest", B6: "JetBlue",
+  AS: "Alaska Airlines", F9: "Frontier", NK: "Spirit", G4: "Allegiant", SY: "Sun Country",
+  MX: "Breeze Airways", HA: "Hawaiian Airlines", AC: "Air Canada", WS: "WestJet", PD: "Porter",
+  AM: "Aeroméxico", Y4: "Volaris", VB: "Viva Aerobus", BA: "British Airways", VS: "Virgin Atlantic",
+  U2: "easyJet", FR: "Ryanair", W6: "Wizz Air", LS: "Jet2", EI: "Aer Lingus", LH: "Lufthansa",
+  AF: "Air France", KL: "KLM", IB: "Iberia", VY: "Vueling", TP: "TAP Air Portugal", LX: "Swiss",
+  OS: "Austrian", SN: "Brussels Airlines", SK: "SAS", AY: "Finnair", DY: "Norwegian",
+  AZ: "ITA Airways", TK: "Turkish Airlines", EK: "Emirates", QR: "Qatar Airways", EY: "Etihad",
+  SQ: "Singapore Airlines", MH: "Malaysia Airlines", AK: "AirAsia", CX: "Cathay Pacific",
+  LA: "LATAM", CM: "Copa Airlines", AV: "Avianca", NH: "ANA", JL: "Japan Airlines",
+};

@@ -22,12 +22,13 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
   if (!group) return null;
 
   const prices = group.comparison;
-  const priced = prices.offers.filter((o) => o.amount !== null);
-  const highest = Math.max(...priced.map((o) => o.amount!));
+  const pricedOffers = prices.offers.filter((o) => o.amount !== null);
+  const pricedCount = pricedOffers.length;
   const cheapest = prices.cheapest;
-  const dearest = priced.at(-1);
+  // The honest saving: against the next-cheapest site, not the dearest one.
+  const runnerUp = pricedOffers[1];
   const saving =
-    cheapest && dearest && priced.length > 1 ? dearest.amount! - cheapest.amount! : 0;
+    cheapest && runnerUp ? Math.round((runnerUp.amount! - cheapest.amount!) * 100) / 100 : 0;
 
   return (
     <div>
@@ -49,63 +50,52 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
         </div>
       )}
 
-      {cheapest && (
-        <div className="mb-3 rounded-xl bg-positive/10 px-4 py-3">
-          <p className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-[14px] font-semibold text-positive">Cheapest:</span>
-            <span className="tabular text-[22px] font-semibold">
-              {formatPrice(cheapest.amount!, prices.currency)}
-            </span>
-            <span className="text-[14px] text-ink-2">on {cheapest.label}</span>
-          </p>
-          {saving >= 1 && dearest && (
-            <p className="text-[14px] text-ink-2">
-              That&apos;s {formatPrice(Math.round(saving * 100) / 100, prices.currency)} less
-              than {dearest.label}.
-            </p>
-          )}
-        </div>
+      {cheapest && runnerUp && saving >= 1 && (
+        <p className="mb-3 rounded-xl bg-positive/10 px-4 py-2 text-[14px] text-ink-2 sm:inline-block sm:rounded-full sm:py-1.5">
+          <span className="font-semibold text-positive">
+            {cheapest.label} is {formatPrice(saving, prices.currency)} cheaper
+          </span>{" "}
+          than the next site, {runnerUp.label}.
+        </p>
       )}
 
-      <ol className="overflow-hidden rounded-xl border border-line">
+      <ol className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
         {prices.offers.map((offer, i) => {
           const isCheapest = offer === cheapest;
+          const priced = offer.amount !== null;
           return (
             <li key={offer.site} className="border-b border-line last:border-b-0">
               <a
                 href={offer.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`group flex items-center gap-3 px-3 py-3.5 transition-colors hover:bg-accent/5 sm:gap-4 sm:px-4 ${isCheapest ? "bg-positive/5" : ""}`}
+                className={`group flex items-center gap-3 px-3 py-4 transition-colors hover:bg-surface-2 sm:gap-4 sm:px-5 ${
+                  isCheapest ? "bg-positive/[0.06] shadow-[inset_4px_0_0_var(--color-positive)]" : ""
+                }`}
               >
                 <span
-                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-semibold ${isCheapest ? "bg-positive text-white" : "bg-surface-2 text-ink-2"}`}
+                  aria-hidden
+                  className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-[14px] font-bold ${
+                    isCheapest ? "bg-positive text-white" : priced ? "bg-surface-2 text-ink-2" : "bg-surface-2 text-ink-3"
+                  }`}
                 >
-                  {offer.amount === null ? "–" : i + 1}
+                  {priced ? i + 1 : "–"}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="flex min-w-0 items-center gap-2 text-[15px] font-semibold group-hover:text-accent">
-                    <span className="truncate">{offer.label}</span>
-                    {isCheapest && priced.length > 1 && (
-                      <span className="hidden shrink-0 rounded-full bg-positive/15 px-2 py-0.5 text-[11px] font-semibold text-positive sm:inline">
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span className="text-[16px] font-bold text-ink group-hover:text-accent">{offer.label}</span>
+                    {isCheapest && pricedCount > 1 && (
+                      <span className="rounded-full bg-positive px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
                         Cheapest
                       </span>
                     )}
                   </span>
-                  {offer.ticket && (
-                    <span className="block truncate text-[12px] text-ink-3">{offer.ticket}</span>
-                  )}
-                  {offer.amount !== null && offer.fees.included === "no" && (
-                    <span className="mt-0.5 inline-block rounded-full bg-hot/10 px-2 py-0.5 text-[11px] font-semibold text-hot">
-                      + fees at checkout
-                    </span>
-                  )}
-                  {offer.amount !== null ? (
-                    <span className="mt-1.5 block h-1.5 max-w-56 overflow-hidden rounded-full bg-surface-2">
-                      <span
-                        className={`block h-full rounded-full ${isCheapest ? "bg-positive" : "bg-ink-3/50"}`}
-                        style={{ width: `${Math.max(8, (offer.amount / highest) * 100)}%` }}
-                      />
+                  {priced ? (
+                    <span className="block text-[13px] text-ink-3">
+                      {offer.ticket ?? (offer.fees.included === "yes" ? "Fees included" : "")}
+                      {offer.fees.included === "no" && (
+                        <span className="font-semibold text-hot">Fees added at checkout</span>
+                      )}
                     </span>
                   ) : (
                     <span className="block text-[13px] text-ink-3">
@@ -113,30 +103,30 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
                     </span>
                   )}
                 </span>
-                <span className="shrink-0 text-right">
-                  {offer.amount !== null ? (
-                    <>
-                      <span className="tabular block text-[18px] font-semibold">
-                        {formatPrice(offer.amount, prices.currency)}
-                      </span>
-                      <span className="block text-[12px] text-ink-3">
-                        {offer.original
-                          ? `${formatPrice(offer.original.amount, offer.original.currency)} on site`
-                          : "per ticket"}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-[14px] font-medium text-ink-3">—</span>
-                  )}
-                </span>
+                {priced && (
+                  <span className="shrink-0 text-right">
+                    <span className={`tabular block text-[20px] font-extrabold leading-tight ${isCheapest ? "text-positive" : "text-ink"}`}>
+                      {formatPrice(offer.amount!, prices.currency)}
+                    </span>
+                    <span className="block text-[12px] text-ink-3">
+                      {offer.original
+                        ? `${formatPrice(offer.original.amount, offer.original.currency)} on site`
+                        : "per ticket"}
+                    </span>
+                  </span>
+                )}
                 <span
-                  className={`hidden shrink-0 rounded-full px-4 py-2 text-[13px] font-semibold transition-colors sm:inline-block ${
-                    offer.amount !== null
-                      ? "bg-ink text-white group-hover:bg-accent"
+                  className={`shrink-0 rounded-xl px-3 py-2 text-[14px] font-bold transition-colors sm:px-4 ${
+                    priced
+                      ? isCheapest
+                        ? "bg-accent text-white group-hover:bg-accent-2"
+                        : "bg-ink text-white group-hover:bg-accent"
                       : "border border-line text-ink-2 group-hover:border-accent group-hover:text-accent"
                   }`}
                 >
-                  {offer.amount !== null ? "View tickets ↗" : "Check site ↗"}
+                  {priced ? "Buy" : "Visit"}
+                  <span aria-hidden> ↗</span>
+                  <span className="sr-only"> on {offer.label} (opens in a new tab)</span>
                 </span>
               </a>
             </li>
@@ -146,7 +136,7 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
 
       <FeeTable offers={prices.offers} />
 
-      <p className="mt-3 text-[13px] text-ink-3">
+      <p className="mt-3 text-[14px] text-ink-3">
         Lowest price each site listed for one ticket
         {prices.currency !== "USD" || prices.offers.some((o) => o.original)
           ? `, shown in ${prices.currency} at the European Central Bank rate`
@@ -158,7 +148,7 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
             <>, checked {formatLocalDate(prices.checkedOn)}</>
           ))}
         .{" "}
-        {prices.offers.every((o) => o.fees.included === "yes")
+        {pricedOffers.every((o) => o.fees.included === "yes")
           ? "Every price here already includes the site's fees (taxes and delivery may be extra). Prices move fast, so confirm the total before you buy."
           : "Prices move fast and some sites add fees at checkout, so confirm the total before you buy."}
       </p>
@@ -176,10 +166,10 @@ const BASIS: Record<string, string> = {
 /** Every site's fees in one place, with where each figure comes from. */
 function FeeTable({ offers }: { offers: PriceComparison["offers"] }) {
   return (
-    <details className="group mt-4 rounded-xl border border-line">
+    <details className="group mt-4 rounded-2xl border border-line bg-surface">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[14px] font-semibold">
         Fees by site
-        <span className="text-[12px] font-normal text-ink-3 group-open:hidden">
+        <span className="hidden text-[12px] font-normal text-ink-3 sm:inline sm:group-open:hidden">
           What each site adds, and where the number comes from ▾
         </span>
       </summary>

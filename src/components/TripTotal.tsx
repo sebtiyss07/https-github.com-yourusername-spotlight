@@ -187,7 +187,7 @@ export function TripTotal({
                 <>
                   <span className="block text-[14px] font-semibold text-ink">{hotel.name}</span>
                   <span className="block">
-                    {[hotel.room, `${hotel.distance} from ${venueName}`, `${money(hotel.perNight)} a night`]
+                    {[tidyRoom(hotel.room), `${hotel.distance} from ${venueName}`, `${money(hotel.perNight)} a night`]
                       .filter(Boolean)
                       .join(" · ")}
                   </span>
@@ -276,6 +276,13 @@ function Line({
       </div>
     </div>
   );
+}
+
+/** Booking.com room names sometimes arrive cut off mid-bracket: drop the dangling part. */
+function tidyRoom(room: string | undefined): string | undefined {
+  if (!room) return room;
+  const open = room.lastIndexOf("(");
+  return open > 0 && room.indexOf(")", open) < 0 ? room.slice(0, open).trim() : room;
 }
 
 /** "3 Oct" from YYYY-MM-DD. */
