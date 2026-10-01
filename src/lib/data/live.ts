@@ -4,6 +4,8 @@ import { TEAMS_BY_ID } from "@/lib/data/teams";
 import { F1_CIRCUITS } from "@/lib/data/tickets";
 import { loadUefa } from "@/lib/data/uefa";
 import { US_EVENTS } from "@/lib/data/us-sports";
+import savedPremierLeague from "@/lib/data/fixtures/premier-league.json";
+import savedFormula1 from "@/lib/data/fixtures/formula-1.json";
 
 /**
  * Real fixtures, from public sources — nothing here is generated.
@@ -15,8 +17,10 @@ import { US_EVENTS } from "@/lib/data/us-sports";
  * - NFL, NBA and MLS: ESPN's public scoreboard data (us-sports.ts).
  *
  * Both are cached by Next's fetch cache and refreshed every six hours. If a
- * source can't be reached the error propagates: showing no fixtures with an
- * error beats quietly showing stale or invented ones.
+ * source can't be reached or limits us (the F1 API answered HTTP 429 on
+ * 1 Oct 2026 and took every page down with it), the copy of that same source
+ * saved in fixtures/ is used instead. It's the real published calendar, only
+ * older; past matches are dropped from every list anyway.
  */
 
 const REFRESH_SECONDS = 6 * 60 * 60;
@@ -68,14 +72,20 @@ interface JolpicaRace {
   };
 }
 
-async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { next: { revalidate: REFRESH_SECONDS } });
-  if (!res.ok) throw new Error(`Fixture source ${url} answered HTTP ${res.status}`);
-  return (await res.json()) as T;
+/** The live source, or the saved copy of it if the source fails. */
+async function getJson<T>(url: string, saved: unknown): Promise<T> {
+  try {
+    const res = await fetch(url, { next: { revalidate: REFRESH_SECONDS }, signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as T;
+  } catch (e) {
+    console.warn(`Fixture source ${url} failed (${(e as Error).message}); using the saved copy.`);
+    return saved as T;
+  }
 }
 
 async function premierLeague(): Promise<SportEvent[]> {
-  const data = await getJson<{ matches: OpenFootballMatch[] }>(PREMIER_LEAGUE_URL);
+  const data = await getJson<{ matches: OpenFootballMatch[] }>(PREMIER_LEAGUE_URL, savedPremierLeague);
   const events: SportEvent[] = [];
 
   for (const m of data.matches) {
@@ -84,9 +94,10 @@ async function premierLeague(): Promise<SportEvent[]> {
     const home = homeId ? TEAMS_BY_ID.get(homeId) : undefined;
     const away = awayId ? TEAMS_BY_ID.get(awayId) : undefined;
     if (!home || !away) {
-      // A club name we don't recognise means the mapping is out of date —
-      // fail loudly rather than drop real matches silently.
-      throw new Error(`Unknown Premier League club in fixtures: "${m.team1}" / "${m.team2}"`);
+      // A club name we don't recognise means the mapping is out of date. Log
+      // it loudly, but keep every other page working.
+      console.error(`Unknown Premier League club in fixtures: "${m.team1}" / "${m.team2}"`);
+      continue;
     }
     // Every published fixture carries a kick-off time. One that doesn't is
     // left out rather than given a time we made up.
@@ -110,7 +121,7 @@ async function premierLeague(): Promise<SportEvent[]> {
 }
 
 async function formula1(): Promise<{ events: SportEvent[]; venues: Venue[] }> {
-  const data = await getJson<{ MRData: { RaceTable: { Races: JolpicaRace[] } } }>(F1_URL);
+  const data = await getJson<{ MRData: { RaceTable: { Races: JolpicaRace[] } } }>(F1_URL, savedFormula1);
   const events: SportEvent[] = [];
   const venues: Venue[] = [];
 

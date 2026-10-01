@@ -1,4 +1,5 @@
 import type { SportEvent, Venue } from "@/lib/domain/types";
+import savedUefa from "@/lib/data/fixtures/uefa.json";
 import { TEAMS_BY_ID } from "@/lib/data/teams";
 import europeAirports from "./europe-airports.json";
 
@@ -124,18 +125,24 @@ function nearestAirport(lat: number, lon: number): string {
 
 /**
  * The feed is over 1 MB, and a download cut off mid-transfer once got cached
- * and broke every page. An unreadable copy is fetched again, uncached.
+ * and broke every page. An unreadable copy is fetched again, uncached; if the
+ * feed still fails, the copy saved in fixtures/uefa.json is used.
  */
-async function fetchMatches(url: string): Promise<UefaMatch[]> {
+async function fetchMatches(url: string, competitionId: number): Promise<UefaMatch[]> {
   const read = async (init: RequestInit) => {
-    const res = await fetch(url, { headers: { Accept: "application/json" }, ...init });
+    const res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000), ...init });
     if (!res.ok) throw new Error(`UEFA fixtures answered HTTP ${res.status}`);
     return JSON.parse(await res.text()) as UefaMatch[];
   };
   try {
     return await read({ next: { revalidate: REFRESH_SECONDS } });
   } catch {
-    return await read({ cache: "no-store" });
+    try {
+      return await read({ cache: "no-store" });
+    } catch (e) {
+      console.warn(`UEFA fixtures failed (${(e as Error).message}); using the saved copy.`);
+      return (savedUefa.competitions as unknown as Record<string, UefaMatch[]>)[String(competitionId)] ?? [];
+    }
   }
 }
 
@@ -146,10 +153,11 @@ export async function loadUefa(): Promise<{ events: SportEvent[]; venues: Venue[
 
   for (const comp of UEFA_COMPETITIONS) {
     const url = `https://match.uefa.com/v5/matches?competitionId=${comp.competitionId}&seasonYear=${SEASON_YEAR}&fromDate=${today}&limit=500&offset=0&order=ASC`;
-    const matches = await fetchMatches(url);
+    const matches = await fetchMatches(url, comp.competitionId);
 
     for (const m of matches) {
-      if (!m.stadium || m.status !== "UPCOMING") continue;
+      // The saved copy can be days old, so also drop anything already played.
+      if (!m.stadium || m.status !== "UPCOMING" || Date.parse(m.kickOffTime.dateTime) < Date.now()) continue;
       const country = COUNTRIES[m.stadium.countryCode];
       // A country we can't place in a time zone is left out rather than
       // shown at a guessed local time.

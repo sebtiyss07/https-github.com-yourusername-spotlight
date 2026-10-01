@@ -143,7 +143,12 @@ async function livePrice(row: SitePrice): Promise<number | null | undefined> {
     const text = await getText(
       `https://mapwidget3.seatics.com/Api/TicketsByEvent?callback=cb&eventId=${id}&websiteConfigId=${SEATICS_CONFIG[row.site]}`,
     );
-    return text ? cheapestSeatics(text) : undefined;
+    if (!text) return undefined;
+    try {
+      return cheapestSeatics(text);
+    } catch {
+      return undefined; // an answer we can't read keeps the saved price
+    }
   }
   return undefined;
 }
