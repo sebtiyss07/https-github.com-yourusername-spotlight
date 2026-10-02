@@ -14,10 +14,9 @@ import { formatPrice } from "@/lib/format";
 /**
  * Home: one clear path, top to bottom.
  * 1. Search a team, or tap a popular one.
- * 2. Which ticket sites we compare.
- * 3. Pick a league (with its lowest real price).
- * 4. How it works, the cheapest game this month per league, the next F1 races.
- * 5. Plain answers to the questions people ask first.
+ * 2. Pick a league (with its lowest real price).
+ * 3. How it works, the cheapest game this month per league, the next F1 races.
+ * 4. Plain answers to the questions people ask first.
  */
 export default async function HomePage() {
   const [pl, ucl, uel, races, nfl, nba, mls, photo] = await Promise.all([
@@ -31,7 +30,6 @@ export default async function HomePage() {
     getLeaguePhoto("premier-league"),
   ]);
 
-  const all = [nfl, nba, mls, pl, ucl, uel, races];
   const currency = nfl[0]?.prices.currency ?? pl[0]?.prices.currency ?? "USD";
   const lowest = (list: EventContext[]) =>
     list.reduce<number | null>((min, c) => {
@@ -43,11 +41,6 @@ export default async function HomePage() {
     return p !== null ? formatPrice(p, currency) : null;
   };
 
-  // Every ticket site that appears in our comparisons, most-used first.
-  const siteCounts = new Map<string, number>();
-  for (const list of all)
-    for (const c of list) for (const o of c.prices.offers) siteCounts.set(o.label, (siteCounts.get(o.label) ?? 0) + 1);
-  const sites = [...siteCounts.entries()].sort((a, b) => b[1] - a[1]).map(([label]) => label);
 
   // The cheapest priced game in the next 30 days, one per league.
   const soon = Date.now() + 30 * 24 * 60 * 60 * 1000;
@@ -112,23 +105,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 2. The sites we compare */}
-      <section className="border-b border-line bg-surface">
-        <div className="mx-auto max-w-6xl px-5 py-6 sm:px-6">
-          <p className="text-center text-[13px] font-semibold uppercase tracking-wide text-ink-3">
-            Prices compared from
-          </p>
-          <ul className="mt-3 flex flex-wrap justify-center gap-x-6 gap-y-2">
-            {sites.map((s) => (
-              <li key={s} className="font-display text-[16px] font-bold text-ink-2">
-                {s}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
 
-      {/* 3. Leagues */}
+      {/* 2. Leagues */}
       <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-6">
         <h2 className="text-[26px] font-extrabold sm:text-[30px]">Choose a league</h2>
         <p className="mt-1 text-ink-3">Every game this season, with the cheapest ticket on each.</p>
@@ -139,7 +117,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 4. How it works */}
+      {/* 3. How it works */}
       <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
         <h2 className="text-[26px] font-extrabold sm:text-[30px]">How it works</h2>
         <ol className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -155,7 +133,7 @@ export default async function HomePage() {
         </ol>
       </section>
 
-      {/* 5. Cheapest game this month in each league */}
+      {/* 4. Cheapest game this month in each league */}
       {deals.length > 0 && (
         <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
           <h2 className="text-[26px] font-extrabold sm:text-[30px]">Cheapest game this month</h2>
@@ -168,7 +146,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* 6. Next F1 races */}
+      {/* 5. Next F1 races */}
       {races.length > 0 && (
         <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -188,7 +166,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* 7. Questions */}
+      {/* 6. Questions */}
       <section className="mx-auto max-w-3xl px-5 pt-16 sm:px-6">
         <h2 className="text-[26px] font-extrabold sm:text-[30px]">Questions</h2>
         <div className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
