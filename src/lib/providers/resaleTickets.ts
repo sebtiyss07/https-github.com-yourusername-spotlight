@@ -16,7 +16,7 @@ import type { SitePrice } from "@/lib/data/prices";
  */
 
 const REVALIDATE = 900; // seconds
-const UA = "Mozilla/5.0 (compatible; SpotlightPriceCheck/1.0; +https://spotlight-steel.vercel.app/about)";
+const UA = "Mozilla/5.0 (compatible; SpotlightPriceCheck/1.0; +https://www.spotlightkt.com/about)";
 
 const NON = /tailgate|parking|\blot\b|garage|not a game ticket|not a ticket|does not include admission|add[\s-]?on|photo|camp|meet|experience|hospitality|package|pass only|no game ticket|merch|pre-?game|post-?game|food|beverage|hotel|early entry|entry pass/i;
 const WC = /\bWC\b|wheelchair|\bADA\b|accessible|companion/i;

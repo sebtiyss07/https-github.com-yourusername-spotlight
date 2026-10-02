@@ -21,7 +21,7 @@ const body = Inter({
   display: "swap",
 });
 
-const SITE_URL = "https://spotlight-steel.vercel.app";
+const SITE_URL = "https://www.spotlightkt.com";
 const DESCRIPTION =
   "Compare ticket prices across every major ticket site for NFL, NBA, MLS, Premier League, Champions League and Formula 1, cheapest first, then add the cheapest hotel and flight for the same dates.";
 

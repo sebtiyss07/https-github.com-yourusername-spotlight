@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getLeagues, getTeams, getUpcomingEvents } from "@/lib/repositories";
 
-const BASE = "https://spotlight-steel.vercel.app";
+const BASE = "https://www.spotlightkt.com";
 
 /** Every page a visitor can reach: leagues, teams and each upcoming game. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
