@@ -222,11 +222,11 @@ export async function cheapestFlight(trip: {
   const token = process.env.TRAVELPAYOUTS_TOKEN;
   if (token) {
     type Fare = { price: number; airline: string; transfers: number; link: string; departure_at: string; return_at: string };
-    const params = new URLSearchParams({ origin: trip.from, destination: trip.to, departure_at: trip.departOn, return_at: trip.returnOn, currency: "usd", sorting: "price", one_way: "false", limit: "1", token });
+    const params = new URLSearchParams({ origin: trip.from, destination: trip.to, departure_at: trip.departOn, return_at: trip.returnOn, currency: "usd", sorting: "price", one_way: "false", limit: "5", token });
     const r = await getJson<{ data?: Fare[] }>(`https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${params}`);
-    const f = r?.data?.[0];
-    // Only a fare for exactly these dates counts.
-    if (f && f.departure_at.slice(0, 10) === trip.departOn && f.return_at.slice(0, 10) === trip.returnOn) {
+    // Only a fare for exactly these dates counts (cheapest first).
+    const f = r?.data?.find((x) => x.departure_at.slice(0, 10) === trip.departOn && x.return_at.slice(0, 10) === trip.returnOn);
+    if (f) {
       return {
         status: "ok",
         quote: {
