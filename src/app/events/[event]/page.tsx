@@ -8,7 +8,6 @@ import { roomsFor, tripDates } from "@/lib/trip";
 import {
   AIRPORTS_BY_IATA,
   flightSearchCode,
-  nearbyAirports,
   resolveOrigin,
 } from "@/lib/providers/geo";
 import { flightLinks, hotelLinks, type TravelLink } from "@/lib/providers/travelLinks";
@@ -174,8 +173,8 @@ export default async function EventPage({
           to: flightSearchCode(destination),
           departOn: dates.checkIn,
           returnOn: dates.checkOut,
-          alternates: nearbyAirports(destination, 320).slice(0, 2).filter((a) => a.code !== flightSearchCode(resolvedOrigin)),
-          originAlternates: nearbyAirports(resolvedOrigin, 320).slice(0, 2).filter((a) => a.code !== flightSearchCode(destination)),
+          adults: travellers,
+          bookUrl: flights[0]?.url ?? "https://www.expedia.com/Flights",
         })
       : Promise.resolve(null),
     wantHotel
@@ -184,6 +183,7 @@ export default async function EventPage({
           venueName: `${venue.name}, ${venue.city}`,
           lat: venue.lat,
           lon: venue.lon,
+          country: venue.country,
           checkIn: dates.checkIn,
           checkOut: dates.checkOut,
           adults: travellers,
@@ -310,11 +310,7 @@ export default async function EventPage({
                   go={go}
                   origin={resolvedOrigin?.city ?? null}
                   sameCity={sameCity}
-                  flight={
-                    flightQuote?.status === "ok" || flightQuote?.status === "nearby"
-                      ? { status: flightQuote.status, perPerson: convertUsd(flightQuote.quote.perPerson, prices.currency) }
-                      : null
-                  }
+                  flight={flightQuote?.status === "ok" ? { perPerson: convertUsd(flightQuote.quote.perPerson, prices.currency) } : null}
                   keep={{ travellers: String(travellers), nights: String(nights), go: query.go || query.flight === "0" ? go : "", hotel: wantHotel ? "" : "0" }}
                 />
               </>
@@ -529,7 +525,7 @@ export default async function EventPage({
               travelMode={go}
               includeHotel={wantHotel}
               flight={
-                flightQuote?.status === "ok" || flightQuote?.status === "nearby"
+                flightQuote?.status === "ok"
                   ? { ...flightQuote, quote: { ...flightQuote.quote, perPerson: convertUsd(flightQuote.quote.perPerson, prices.currency) } }
                   : flightQuote
               }
@@ -638,13 +634,14 @@ function TripPeek({
   go: TravelMode | "none";
   origin: string | null;
   sameCity: boolean;
-  flight: { status: "ok" | "nearby"; perPerson: number } | null;
+  /** A fare for the visitor's exact dates and airports, or null. */
+  flight: { perPerson: number } | null;
   /** The other trip settings, kept when a city is typed here. */
   keep: Record<string, string>;
 }) {
   const hotelPriced = hotel?.forYourDates ? hotel : null;
   const flightNeeded = go === "flight" && !sameCity;
-  const flightPriced = flightNeeded && origin && flight?.status === "ok" ? flight : null;
+  const flightPriced = flightNeeded && origin ? flight : null;
   const parts = [
     ticket * travellers,
     ...(hotel !== undefined ? [hotelPriced ? hotelPriced.total * rooms : null] : []),
@@ -719,11 +716,6 @@ function TripPeek({
                 <>
                   <span className="tabular font-bold">{money(flightPriced.perPerson)}</span>
                   <span className="text-ink-3"> return</span>
-                </>
-              ) : flight?.status === "nearby" ? (
-                <>
-                  <span className="text-ink-3">other dates </span>
-                  <span className="tabular font-bold">{money(flight.perPerson)}</span>
                 </>
               ) : (
                 <span className="font-semibold text-accent">See fares</span>

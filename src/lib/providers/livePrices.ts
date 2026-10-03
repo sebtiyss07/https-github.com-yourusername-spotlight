@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+import { RATES } from "@/lib/data/prices";
 /**
  * Live flight and hotel prices for the trip total.
  *
@@ -88,19 +90,13 @@ export interface FlightQuote {
   url: string;
   /** Where the fare came from, e.g. "Expedia, checked Mon 28 Sep". */
   source: string;
-  /** The dates this fare is for (YYYY-MM-DD). */
+  /** The dates this fare is for (YYYY-MM-DD): always the visitor's own. */
   departOn?: string;
   returnOn?: string;
-  /** Set when the fare is to a nearby airport instead of the venue's own. */
-  viaAirport?: { code: string; name: string; miles: number };
-  /** Set when the fare leaves from a nearby airport instead of the traveller's. */
-  viaOrigin?: { code: string; name: string; miles: number };
 }
 
 export type FlightResult =
   | { status: "ok"; quote: FlightQuote }
-  /** No fare for the exact dates: the closest real fare found, for reference. */
-  | { status: "nearby"; quote: FlightQuote }
   | { status: "no-key" }
   | { status: "none" };
 
@@ -151,6 +147,8 @@ export async function cheapestHotelNear(stay: {
   venueName: string;
   lat: number;
   lon: number;
+  /** The venue's country (ISO code): a hotel across a border isn't offered. */
+  country: string;
   checkIn: string;
   checkOut: string;
   adults: number;
@@ -164,6 +162,10 @@ export async function cheapestHotelNear(stay: {
   const best = search?.hotels[0];
   if (!search || !best) return null;
   const [name, perNight, total, distance, room, path] = best;
+  // Booking.com paths carry the hotel's country ("/hotel/ca/…"). Detroit's
+  // cheapest was in Windsor, Canada: close, but across a border, so the
+  // visitor gets the hotel search for their dates instead.
+  if (path.split("/")[2] !== stay.country.toLowerCase()) return null;
   const nights = Math.round((Date.parse(snap.checkOut) - Date.parse(snap.checkIn)) / 86_400_000);
   const perRoom = stay.adults === 1 ? 1 : 2;
   // Links always use the visitor's own dates, so they land on today's price.
@@ -192,109 +194,121 @@ export async function cheapestHotelNear(stay: {
   };
 }
 
+/**
+ * The cheapest round-trip fare for the visitor's exact dates and airports,
+ * never another day or another airport. In order:
+ *
+ * 1. Duffel (when DUFFEL_ACCESS_TOKEN is set): live airline fares, priced
+ *    the moment we ask. Cached for 3 hours per route, dates and group size.
+ * 2. Travelpayouts (TRAVELPAYOUTS_TOKEN): the cheapest fare travellers found
+ *    for these exact dates in the last few days.
+ * 3. Fares read from Expedia's own results (flight-prices.json).
+ *
+ * Nothing found means no price: the page links to live fares for the dates.
+ */
 export async function cheapestFlight(trip: {
   from: string;
   to: string;
   departOn: string;
   returnOn: string;
-  /** Other airports near the venue, tried when `to` has no fares at all. */
-  alternates?: { code: string; name: string; miles: number }[];
-  /** Other airports near the traveller, tried after those. */
-  originAlternates?: { code: string; name: string; miles: number }[];
+  adults: number;
+  /** Where "see this fare" goes for a live airline fare (a search for the same dates). */
+  bookUrl: string;
 }): Promise<FlightResult> {
+  const live = await duffelFare(trip);
+  if (live) return { status: "ok", quote: live };
+
   const token = process.env.TRAVELPAYOUTS_TOKEN;
-  if (!token) {
-    // No live feed: fall back to fares read from Expedia's own results.
-    const saved = expediaFareFor(trip);
-    return saved ? { status: "ok", quote: saved } : { status: "no-key" };
-  }
-
-  type Fare = { price: number; airline: string; transfers: number; link: string; departure_at: string; return_at: string };
-  const days = (a: string, b: string) => Math.abs(Date.parse(a.slice(0, 10)) - Date.parse(b)) / 864e5;
-  const stops = (n: number) => (n === 0 ? "Nonstop" : `${n} stop${n > 1 ? "s" : ""}`);
-  const future = (iso: string) => Date.parse(iso.slice(0, 10)) > Date.now();
-
-  const fareTo = async (to: string, from = trip.from): Promise<FlightResult> => {
-    const search = async (departure_at: string, return_at: string, limit: number) => {
-      const params = new URLSearchParams({ origin: from, destination: to, departure_at, return_at, currency: "usd", sorting: "price", one_way: "false", limit: String(limit), token });
-      const r = await getJson<{ data?: Fare[] }>(`https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${params}`);
-      return r?.data ?? [];
-    };
-    const toQuote = (f: Fare): FlightQuote => ({
-      perPerson: f.price,
-      airline: AIRLINES[f.airline] ?? f.airline,
-      stopsLabel: stops(f.transfers),
-      url: `https://www.aviasales.com${f.link}`,
-      source: "Aviasales, found by travellers in the last few days",
-      departOn: f.departure_at.slice(0, 10),
-      returnOn: f.return_at.slice(0, 10),
-    });
-
-    // 1. The exact dates.
-    const [exact] = await search(trip.departOn, trip.returnOn, 1);
-    if (exact) return { status: "ok", quote: toQuote(exact) };
-    const saved = to === trip.to && from === trip.from ? expediaFareFor(trip) : null;
-    if (saved) return { status: "ok", quote: saved };
-
-    // 2. Fares are only known for dates someone searched recently, so otherwise
-    // show the closest real fare (same months), labelled with its own dates.
-    const fares = await search(trip.departOn.slice(0, 7), trip.returnOn.slice(0, 7), 60);
-    const near = fares
-      .map((f) => ({ f, gap: days(f.departure_at, trip.departOn) + days(f.return_at, trip.returnOn) }))
-      // Only trips you could still take: leaving tomorrow or later.
-      .filter((x) => x.gap <= 14 && future(x.f.departure_at))
-      .sort((a, b) => a.gap - b.gap || a.f.price - b.f.price)[0];
-    if (near) return { status: "nearby", quote: toQuote(near.f) };
-
-    // 3. Still nothing near those dates: the latest fares found on this route
-    // over the next year, closest trip first, whatever its dates.
-    const latest = await getJson<{
-      data?: { depart_date: string; return_date: string; value: number; number_of_changes: number; gate: string }[];
-    }>(`https://api.travelpayouts.com/aviasales/v3/get_latest_prices?${new URLSearchParams({ origin: from, destination: to, period_type: "year", one_way: "false", currency: "usd", limit: "100", token })}`);
-    const closest = (latest?.data ?? [])
-      .filter((f) => f.return_date && future(f.depart_date))
-      .map((f) => ({ f, gap: days(f.depart_date, trip.departOn) + days(f.return_date, trip.returnOn) }))
-      .sort((a, b) => a.gap - b.gap || a.f.value - b.f.value)[0];
-    if (!closest) return { status: "none" };
-    const ddmm = (iso: string) => `${iso.slice(8, 10)}${iso.slice(5, 7)}`;
-    const out = closest.f.depart_date.slice(0, 10), back = closest.f.return_date.slice(0, 10);
-    return {
-      status: "nearby",
-      quote: {
-        perPerson: closest.f.value,
-        airline: `via ${closest.f.gate}`,
-        stopsLabel: stops(closest.f.number_of_changes),
-        // Aviasales' own search link for those dates (format as in its API links).
-        url: `https://www.aviasales.com/search/${from}${ddmm(out)}${to}${ddmm(back)}1`,
-        source: "Aviasales, found by travellers recently",
-        departOn: out,
-        returnOn: back,
-      },
-    };
-  };
-
-  const main = await fareTo(trip.to);
-  if (main.status !== "none") return main;
-  // 4. No fares at all to the venue's airport: a nearby bigger airport,
-  // named with its distance so the visitor knows it's a different airport.
-  for (const alt of trip.alternates ?? []) {
-    const r = await fareTo(alt.code);
-    if (r.status === "ok" || r.status === "nearby") {
-      return { status: "nearby", quote: { ...r.quote, viaAirport: alt } };
+  if (token) {
+    type Fare = { price: number; airline: string; transfers: number; link: string; departure_at: string; return_at: string };
+    const params = new URLSearchParams({ origin: trip.from, destination: trip.to, departure_at: trip.departOn, return_at: trip.returnOn, currency: "usd", sorting: "price", one_way: "false", limit: "1", token });
+    const r = await getJson<{ data?: Fare[] }>(`https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${params}`);
+    const f = r?.data?.[0];
+    // Only a fare for exactly these dates counts.
+    if (f && f.departure_at.slice(0, 10) === trip.departOn && f.return_at.slice(0, 10) === trip.returnOn) {
+      return {
+        status: "ok",
+        quote: {
+          perPerson: f.price,
+          airline: AIRLINES[f.airline] ?? f.airline,
+          stopsLabel: stopsLabel(f.transfers),
+          url: `https://www.aviasales.com${f.link}`,
+          source: "Aviasales, found by travellers in the last few days",
+          departOn: trip.departOn,
+          returnOn: trip.returnOn,
+        },
+      };
     }
   }
-  // 5. Then a bigger airport near the traveller (to the venue's airport, or
-  // the nearest alternative to it), also named with its distance.
-  for (const from of trip.originAlternates ?? []) {
-    for (const to of [{ code: trip.to }, ...(trip.alternates ?? []).slice(0, 1)]) {
-      const r = await fareTo(to.code, from.code);
-      if (r.status === "ok" || r.status === "nearby") {
-        return { status: "nearby", quote: { ...r.quote, viaOrigin: from, ...("name" in to ? { viaAirport: to } : {}) } };
-      }
-    }
-  }
-  return main;
+
+  const saved = expediaFareFor(trip);
+  if (saved) return { status: "ok", quote: saved };
+  return { status: token || process.env.DUFFEL_ACCESS_TOKEN ? "none" : "no-key" };
 }
+
+const stopsLabel = (n: number) => (n === 0 ? "Nonstop" : `${n} stop${n > 1 ? "s" : ""}`);
+
+interface DuffelOffer {
+  total_amount: string;
+  total_currency: string;
+  owner: { name: string };
+  slices: { segments: unknown[] }[];
+}
+
+/** Live airline fares from Duffel's offer search: the cheapest offer, in US dollars. */
+const duffelFare = unstable_cache(
+  async (trip: { from: string; to: string; departOn: string; returnOn: string; adults: number; bookUrl: string }): Promise<FlightQuote | null> => {
+    const key = process.env.DUFFEL_ACCESS_TOKEN;
+    // A test key returns made-up "Duffel Airways" fares: never on the live site.
+    if (!key || (key.startsWith("duffel_test_") && process.env.NODE_ENV === "production")) return null;
+    try {
+      const res = await fetch("https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Duffel-Version": "v2", "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          data: {
+            slices: [
+              { origin: trip.from, destination: trip.to, departure_date: trip.departOn },
+              { origin: trip.to, destination: trip.from, departure_date: trip.returnOn },
+            ],
+            passengers: Array.from({ length: trip.adults }, () => ({ type: "adult" })),
+            cabin_class: "economy",
+          },
+        }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) return null;
+      const offers = ((await res.json()) as { data?: { offers?: DuffelOffer[] } }).data?.offers ?? [];
+      // In US dollars, converting euros and pounds at the same stored ECB rate
+      // as ticket prices. Any other currency is skipped rather than guessed.
+      const usd = (o: DuffelOffer) =>
+        o.total_currency === "USD" ? Number(o.total_amount)
+        : o.total_currency === "EUR" || o.total_currency === "GBP" ? Number(o.total_amount) / RATES[o.total_currency]
+        : null;
+      const best = offers
+        .map((o) => ({ o, amount: usd(o) }))
+        .filter((x): x is { o: DuffelOffer; amount: number } => x.amount !== null && x.amount > 0)
+        .sort((a, b) => a.amount - b.amount)[0];
+      if (!best) return null;
+      const stops = Math.max(...best.o.slices.map((sl) => sl.segments.length - 1));
+      return {
+        perPerson: Math.round((best.amount / trip.adults) * 100) / 100,
+        airline: best.o.owner.name,
+        stopsLabel: stopsLabel(stops),
+        url: trip.bookUrl,
+        source: "Live airline fare",
+        departOn: trip.departOn,
+        returnOn: trip.returnOn,
+      };
+    } catch {
+      return null;
+    }
+  },
+  ["duffel-fare"],
+  { revalidate: 3 * 60 * 60 },
+);
+
 
 /** Airline names for the two-letter codes Aviasales returns ("F9" → Frontier). */
 const AIRLINES: Record<string, string> = {

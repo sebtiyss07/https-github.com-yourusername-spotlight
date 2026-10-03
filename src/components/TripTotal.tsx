@@ -136,9 +136,7 @@ export function TripTotal({
                   ? "Add city"
                   : flightAmount !== null
                     ? money(flightAmount)
-                    : flight?.status === "nearby"
-                      ? `${money(flight.quote.perPerson)} pp`
-                      : "—"
+                    : "See fares"
             }
             detail={
               noFlightNeeded
@@ -147,12 +145,10 @@ export function TripTotal({
                   ? "Choose where you fly from above."
                   : flight?.status === "ok"
                     ? `${money(flight.quote.perPerson)} per person · ${flight.quote.airline}${flight.quote.stopsLabel ? `, ${flight.quote.stopsLabel.toLowerCase()}` : ""} · ${flight.quote.source}`
-                    : flight?.status === "nearby"
-                      ? `Closest fare found: ${money(flight.quote.perPerson)} per person${flight.quote.viaOrigin ? ` from ${flight.quote.viaOrigin.name} (${flight.quote.viaOrigin.code}), ${flight.quote.viaOrigin.miles} miles from you,` : ""}${flight.quote.viaAirport ? ` to ${flight.quote.viaAirport.name} (${flight.quote.viaAirport.code}), ${flight.quote.viaAirport.miles} miles from the venue,` : ""} for ${shortDate(flight.quote.departOn!)} to ${shortDate(flight.quote.returnOn!)} (${flight.quote.airline}, ${flight.quote.stopsLabel.toLowerCase()}). ${flight.quote.viaAirport || flight.quote.viaOrigin ? "No recent fares between your own airports. " : ""}Nobody searched your exact dates recently, so it isn't in your total. Your dates:`
-                      : "Today's fares for your dates, one tap away:"
+                    : "No fare saved for your exact dates yet. Live fares for your dates, one tap away:"
             }
-            href={flight?.status === "ok" || flight?.status === "nearby" ? flight.quote.url : undefined}
-            action={flight?.status === "nearby" ? "See that fare" : "See flight"}
+            href={flight?.status === "ok" ? flight.quote.url : undefined}
+            action="See flight"
             links={flight?.status === "ok" || needsOrigin || noFlightNeeded ? [] : flightLinks}
           />
         )}
@@ -173,7 +169,7 @@ export function TripTotal({
           <Line
             icon={icons.hotel}
             label={`Hotel · ${nights} ${nights === 1 ? "night" : "nights"}${rooms > 1 ? ` · ${rooms} rooms` : ""}`}
-            value={hotelAmount !== null ? money(hotelAmount) : hotel ? `${money(hotel.perNight)}/night` : "—"}
+            value={hotelAmount !== null ? money(hotelAmount) : hotel ? `${money(hotel.perNight)}/night` : "See prices"}
             detail={
               hotel && !hotel.forYourDates ? (
                 <>
@@ -196,7 +192,7 @@ export function TripTotal({
                   </span>
                 </>
               ) : (
-                "No saved price for these dates and group size. Cheapest hotels near the venue on:"
+                "Hotel prices near the venue for your dates, one tap away:"
               )
             }
             href={hotel?.url}

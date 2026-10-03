@@ -196,39 +196,3 @@ export function haversineKm(
     Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
-
-/** Major international hubs, besides the multi-airport cities in METROS. */
-const HUB_IATA = new Set([
-  "ATL", "DFW", "DEN", "LAX", "SFO", "SEA", "MIA", "BOS", "IAH", "PHX", "MSP", "DTW", "PHL", "CLT", "LAS", "MCO",
-  "YVR", "YYC", "FRA", "MUC", "BER", "AMS", "MAD", "BCN", "ZRH", "VIE", "CPH", "DUB", "IST", "LIS", "BRU", "MAN",
-]);
-const isHub = (a: Airport) => a.city in METROS || HUB_IATA.has(a.iata);
-
-/**
- * Other airports within `km` of this one (same country, different city
- * code): big multi-airport cities first, then nearest. Used when the venue's
- * or traveller's own airport has no fares.
- */
-export function nearbyAirports(airport: Airport, km = 160): { code: string; name: string; miles: number }[] {
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dist = (a: Airport, b: Airport) => {
-    const dLat = toRad(b.lat - a.lat), dLon = toRad(b.lon - a.lon);
-    const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
-    return 2 * 6371 * Math.asin(Math.sqrt(h));
-  };
-  const own = flightSearchCode(airport);
-  const seen = new Set<string>([own]);
-  return [...AIRPORTS_BY_IATA.values()]
-    .filter((a) => a.country === airport.country)
-    .map((a) => ({ a, d: dist(airport, a) }))
-    .filter(({ d }) => d > 0 && d <= km)
-    // Big hubs first (far more fares on record), then nearest.
-    .sort((x, y) => Number(isHub(y.a)) - Number(isHub(x.a)) || x.d - y.d)
-    .flatMap(({ a, d }) => {
-      const code = flightSearchCode(a);
-      if (seen.has(code)) return [];
-      seen.add(code);
-      return [{ code, name: a.city, miles: Math.round(d / 1.609) }];
-    })
-    .slice(0, 3);
-}
