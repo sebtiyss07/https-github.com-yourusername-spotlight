@@ -69,6 +69,8 @@ export interface SitePrice {
   original?: { amount: number; currency: string };
   /** Shown instead of a price when we link a site without reading its price. */
   note?: string;
+  /** When this row was checked (YYYY-MM-DD), if not the site's usual date. */
+  checked?: string;
 }
 
 const EVENTS = {

@@ -321,7 +321,7 @@ function comparePrices(
   }));
   offers.sort((a, b) => (a.amount ?? Infinity) - (b.amount ?? Infinity));
   // Only sites that showed a price count towards "checked on".
-  const dates = offers.filter((o) => o.amount !== null).map((o) => checkedOn(o.site)).sort();
+  const dates = rows.filter((r) => r.price !== null).map((r) => r.checked ?? checkedOn(r.site)).sort();
   return {
     offers,
     cheapest: offers[0]?.amount != null ? offers[0] : null,
