@@ -32,7 +32,15 @@ const compact = (date: string) => date.replaceAll("-", "");
 export function flightLinks(trip: FlightTrip): TravelLink[] {
   const n = Math.max(1, trip.adults);
   const route = `${trip.from}-${trip.to}/${trip.departOn}/${trip.returnOn}/${n}adults`;
+  // Aviasales: "LAX0711DTW09111" = LAX, 7 Nov, DTW, back 9 Nov, 1 adult
+  // (opened 2026-10-03: the page showed those dates and live fares). Listed
+  // first: each search there also records the fare for those exact dates in
+  // the Travelpayouts feed, so the next visitor planning that trip sees it.
+  const ddmm = (date: string) => `${date.slice(8, 10)}${date.slice(5, 7)}`;
+  const marker = process.env.TRAVELPAYOUTS_MARKER;
+  const aviasales = `https://www.aviasales.com/search/${trip.from}${ddmm(trip.departOn)}${trip.to}${ddmm(trip.returnOn)}${Math.min(n, 9)}${marker ? `?marker=${marker}` : ""}`;
   return [
+    { site: "Aviasales", url: aviasales },
     { site: "Expedia", url: expediaFlightsUrl(trip) },
     { site: "KAYAK", url: `https://www.kayak.com/flights/${route}?sort=price_a` },
     { site: "momondo", url: `https://www.momondo.com/flight-search/${route}?sort=price_a` },

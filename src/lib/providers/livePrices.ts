@@ -24,7 +24,8 @@ import expediaFares from "@/lib/data/flight-prices.json";
 import hotelSnapshot from "@/lib/data/hotel-prices.json";
 import { expediaFlightsUrl } from "./expedia";
 
-const CACHE = { next: { revalidate: 60 * 60 * 6 } };
+// One hour, so a fare someone just searched shows up soon after.
+const CACHE = { next: { revalidate: 60 * 60 } };
 
 /**
  * Cheapest round-trip economy fare per traveller, read from Expedia's own
