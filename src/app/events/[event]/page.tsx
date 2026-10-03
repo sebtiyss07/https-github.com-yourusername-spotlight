@@ -240,7 +240,7 @@ export default async function EventPage({
           />
         )}
         {photo && <PhotoCredit photo={photo} className="absolute bottom-3 right-3 z-10" />}
-        <div className="relative mx-auto grid max-w-6xl gap-8 px-5 pb-14 pt-6 sm:px-6 md:grid-cols-[1fr_340px] md:items-end md:pt-8">
+        <div className="relative mx-auto grid max-w-6xl gap-8 px-5 pb-14 pt-6 sm:px-6 md:grid-cols-[1fr_360px] md:items-center md:pt-8">
           <div className="min-w-0">
             <Link
               href={`/leagues/${event.leagueId}`}
@@ -300,6 +300,23 @@ export default async function EventPage({
                 >
                   Compare all {prices.offers.length} sites ↓
                 </a>
+                <TripPeek
+                  money={(n) => formatPrice(n, prices.currency)}
+                  ticket={prices.cheapest.amount!}
+                  travellers={travellers}
+                  nights={dates.nights}
+                  rooms={rooms}
+                  hotel={wantHotel ? (hotelQuote ? { ...hotelQuote, perNight: convertUsd(hotelQuote.perNight, prices.currency), total: convertUsd(hotelQuote.total, prices.currency) } : null) : undefined}
+                  go={go}
+                  origin={resolvedOrigin?.city ?? null}
+                  sameCity={sameCity}
+                  flight={
+                    flightQuote?.status === "ok" || flightQuote?.status === "nearby"
+                      ? { status: flightQuote.status, perPerson: convertUsd(flightQuote.quote.perPerson, prices.currency) }
+                      : null
+                  }
+                  keep={{ travellers: String(travellers), nights: String(nights), go: query.go || query.flight === "0" ? go : "", hotel: wantHotel ? "" : "0" }}
+                />
               </>
             ) : (
               <>
@@ -590,6 +607,148 @@ function NeedTile({
     </Link>
   ) : (
     <div className={cls}>{body}</div>
+  );
+}
+
+/**
+ * The trip at a glance, under the ticket price: the hotel and the flight with
+ * their prices, and the whole-trip total once every part is priced. Each row
+ * jumps to the full trip planner below; a city can be typed right here.
+ */
+function TripPeek({
+  money,
+  ticket,
+  travellers,
+  nights,
+  rooms,
+  hotel,
+  go,
+  origin,
+  sameCity,
+  flight,
+  keep,
+}: {
+  money: (n: number) => string;
+  ticket: number;
+  travellers: number;
+  nights: number;
+  rooms: number;
+  /** undefined: hotel switched off; null: no saved price. */
+  hotel: { perNight: number; total: number; forYourDates?: boolean } | null | undefined;
+  go: TravelMode | "none";
+  origin: string | null;
+  sameCity: boolean;
+  flight: { status: "ok" | "nearby"; perPerson: number } | null;
+  /** The other trip settings, kept when a city is typed here. */
+  keep: Record<string, string>;
+}) {
+  const hotelPriced = hotel?.forYourDates ? hotel : null;
+  const flightNeeded = go === "flight" && !sameCity;
+  const flightPriced = flightNeeded && origin && flight?.status === "ok" ? flight : null;
+  const parts = [
+    ticket * travellers,
+    ...(hotel !== undefined ? [hotelPriced ? hotelPriced.total * rooms : null] : []),
+    ...(flightNeeded ? [flightPriced ? flightPriced.perPerson * travellers : null] : []),
+  ];
+  // Train, coach and driving costs aren't priced, so those trips get no total here.
+  const complete = parts.every((p) => p !== null) && parts.length > 1 && (go === "flight" || go === "none");
+  const total = Math.round(parts.reduce<number>((a, b) => a + (b ?? 0), 0) * 100) / 100;
+
+  const row = "flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2";
+  return (
+    <div className="mt-4 border-t border-line pt-3">
+      <p className="px-2 text-[13px] font-semibold text-ink-3">
+        Your trip · {nights} {nights === 1 ? "night" : "nights"}, {travellers} {travellers === 1 ? "person" : "people"}
+      </p>
+
+      {hotel !== undefined && (
+        <a href="#trip" className={row}>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2">
+            <BedIcon />
+          </span>
+          <span className="min-w-0 flex-1 text-[14px] font-semibold">Hotel near the venue</span>
+          <span className="shrink-0 text-right text-[14px]">
+            {hotelPriced ? (
+              <>
+                <span className="tabular font-bold">{money(hotelPriced.perNight)}</span>
+                <span className="text-ink-3">/night</span>
+              </>
+            ) : (
+              <span className="font-semibold text-accent">See prices</span>
+            )}
+          </span>
+        </a>
+      )}
+
+      {go !== "none" &&
+        (go === "flight" && !origin && !sameCity ? (
+          <form method="get" className="flex items-center gap-2 rounded-xl px-2 py-2">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2">
+              <PlaneIcon />
+            </span>
+            {Object.entries(keep)
+              .filter(([, v]) => v)
+              .map(([k, v]) => (
+                <input key={k} type="hidden" name={k} value={v} />
+              ))}
+            <input
+              name="origin"
+              placeholder="Flying from? Your city"
+              aria-label="Flying from"
+              autoComplete="address-level2"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[14px] outline-none placeholder:text-ink-3 focus:border-accent focus:bg-surface"
+            />
+            <button type="submit" className="shrink-0 rounded-lg bg-ink px-3 py-1.5 text-[14px] font-bold text-white hover:bg-accent">
+              Add
+            </button>
+          </form>
+        ) : (
+          <a href="#trip" className={row}>
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2">
+              <PlaneIcon />
+            </span>
+            <span className="min-w-0 flex-1 text-[14px] font-semibold">
+              {go === "flight" ? (sameCity ? "No flight needed" : `Flight from ${origin}`) : MODE_LABEL[go].replace(/^\S+\s/, "") + (origin ? ` from ${origin}` : "")}
+            </span>
+            <span className="shrink-0 text-right text-[14px]">
+              {go !== "flight" ? (
+                <span className="font-semibold text-accent">{go === "drive" ? "Directions" : "See fares"}</span>
+              ) : sameCity ? (
+                <span className="font-semibold text-ink-3">{money(0)}</span>
+              ) : flightPriced ? (
+                <>
+                  <span className="tabular font-bold">{money(flightPriced.perPerson)}</span>
+                  <span className="text-ink-3"> return</span>
+                </>
+              ) : flight?.status === "nearby" ? (
+                <>
+                  <span className="text-ink-3">other dates </span>
+                  <span className="tabular font-bold">{money(flight.perPerson)}</span>
+                </>
+              ) : (
+                <span className="font-semibold text-accent">See fares</span>
+              )}
+            </span>
+          </a>
+        ))}
+
+      <a
+        href="#trip"
+        className="mt-1 flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-3 py-2.5 text-[14px] transition-colors hover:bg-surface-3"
+      >
+        {complete ? (
+          <>
+            <span className="font-semibold">Whole trip</span>
+            <span className="tabular text-[17px] font-extrabold">{money(total)}</span>
+          </>
+        ) : (
+          <>
+            <span className="font-semibold">Plan the whole trip</span>
+            <span className="font-semibold text-accent">↓</span>
+          </>
+        )}
+      </a>
+    </div>
   );
 }
 
