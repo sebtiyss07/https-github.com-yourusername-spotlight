@@ -1,9 +1,9 @@
 import type { SitePrice } from "@/lib/data/prices";
 
 /**
- * Live prices from TicketNetwork and Ticket Liquidator. Their game pages load
- * listings from the same public Seatics feed (same event, different site
- * config, so each site's own fees).
+ * Live prices from TicketNetwork and Ticket Liquidator (the public Seatics
+ * feed their game pages load: same event, different site config, so each
+ * site's own fees) and Gametime (its public listings feed).
  *
  * The price is the cheapest seat sold as a single ticket, fees included,
  * rounded up to the whole dollar the site shows (checked on both sites' pages,
@@ -150,14 +150,62 @@ async function livePrice(row: SitePrice): Promise<number | null | undefined> {
       return undefined; // an answer we can't read keeps the saved price
     }
   }
+  if (row.site === "gametime") {
+    const id = row.url.match(/\/events\/([\w-]+)/)?.[1];
+    if (!id) return undefined;
+    const text = await getText(`https://mobile.gametime.co/v3/listings/${id}?all_in_pricing=true&jitter_cheapest=0&quantity=1`);
+    if (!text) return undefined;
+    try {
+      return cheapestGametime(JSON.parse(text));
+    } catch {
+      return undefined;
+    }
+  }
+  if (row.site === "livefootballtickets" || row.site === "tickpick") {
+    // Both publish the page's "tickets from" price in its structured data,
+    // in US dollars on these US pages (LiveFootballTickets checked 3 Oct 2026:
+    // "Tickets available from $173.80" = lowPrice 173.8).
+    const text = await getText(row.url);
+    if (!text || !/"priceCurrency"\s*:\s*"USD"/.test(text)) return undefined;
+    const low = Number(text.match(/"lowPrice"\s*:\s*"?(\d+(?:\.\d+)?)/)?.[1]);
+    return low > 0 ? low : undefined;
+  }
   return undefined;
 }
 
-const LIVE_SITES = new Set<SitePrice["site"]>(["ticketnetwork", "ticketliquidator"]);
+interface GametimeListing {
+  available_lots?: number[];
+  price?: { pre_tax_total?: number };
+  spot?: { section?: string; section_group?: string; row?: string };
+  disclosures?: string[];
+}
 
 /**
- * The saved rows, with TicketNetwork's and Ticket Liquidator's replaced by
- * today's prices where their feeds answer. `undefined` from a feed
+ * Cheapest Gametime seat sold as a single ticket, in dollars. Gametime shows
+ * the pre-tax total (fees included), rounded up to the dollar; checked against
+ * its event pages on 29 Sep 2026.
+ */
+export function cheapestGametime(data: { listings?: GametimeListing[] }): number | null | undefined {
+  if (!Array.isArray(data?.listings)) return undefined;
+  let best: number | null = null;
+  for (const l of data.listings) {
+    const cents = l.price?.pre_tax_total ?? 0;
+    if (!(l.available_lots ?? []).includes(1) || !(cents > 0)) continue;
+    const text = `${l.spot?.section ?? ""} ${l.spot?.section_group ?? ""} ${l.spot?.row ?? ""} ${(l.disclosures ?? []).join(" ")}`;
+    if (NON.test(text) || WC.test(text)) continue;
+    if (best === null || cents / 100 < best) best = cents / 100;
+  }
+  return best;
+}
+
+const LIVE_SITES = new Set<SitePrice["site"]>(["ticketnetwork", "ticketliquidator", "gametime", "livefootballtickets", "tickpick"]);
+
+/** Sites whose live price is the cheapest real seat, not a headline "from" figure. */
+const SEAT_CHECKED = new Set<SitePrice["site"]>(["ticketnetwork", "ticketliquidator", "gametime", "vividseats", "stubhub", "ticketsmarter"]);
+
+/**
+ * The saved rows, with TicketNetwork's, Ticket Liquidator's, Gametime's,
+ * LiveFootballTickets' and TickPick's replaced by today's prices where their feeds answer. `undefined` from a feed
  * means it didn't answer, so the saved row stays.
  */
 export async function withLiveResalePrices(rows: SitePrice[]): Promise<SitePrice[]> {
@@ -167,7 +215,26 @@ export async function withLiveResalePrices(rows: SitePrice[]): Promise<SitePrice
       const v = await livePrice(r);
       if (v === undefined) return r;
       if (v === null) return { site: r.site, url: r.url, price: null, note: "No single seat listed right now" };
-      return { site: r.site, url: r.url, price: shown(v) };
+      // LiveFootballTickets shows cents; the others show whole dollars.
+      const price = r.site === "livefootballtickets" ? Math.round(v * 100) / 100 : shown(v);
+      return { site: r.site, url: r.url, price, ...(r.label ? { label: r.label } : {}) };
     }),
+  ).then(holdBackAddOns);
+}
+
+/**
+ * TickPick's listed "from" price sometimes belongs to an add-on, not a seat
+ * ("post-game photo on field" at $23 when the cheapest seat was $74). As in
+ * the saved prices: below 70% of the cheapest seat-checked price on the other
+ * sites, it isn't shown as a ticket price.
+ */
+function holdBackAddOns(rows: SitePrice[]): SitePrice[] {
+  const seats = rows.filter((r) => SEAT_CHECKED.has(r.site) && r.price !== null).map((r) => r.price!);
+  if (!seats.length) return rows;
+  const floor = 0.7 * Math.min(...seats);
+  return rows.map((r) =>
+    r.site === "tickpick" && r.price !== null && r.price < floor
+      ? { site: r.site, url: r.url, price: null, note: "Listed price looked like an add-on, not a seat: open TickPick to check" }
+      : r,
   );
 }

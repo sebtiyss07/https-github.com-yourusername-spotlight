@@ -347,7 +347,8 @@ async function eventPrices(
     };
   }
   const isUs = US_LEAGUE_IDS.has(event.leagueId);
-  const useLive = live && isUs;
+  // Every league's game page reads the live feeds; lists use saved prices.
+  const useLive = live;
   // Saved prices only change on a new deploy, so each game's comparison is
   // worked out once per currency and reused (lists show hundreds of games).
   const memoKey = `${event.id}|${currency}`;
@@ -361,8 +362,11 @@ async function eventPrices(
   if (useLive) {
     const home = event.homeTeamId ? (TEAMS_BY_ID.get(event.homeTeamId) ?? null) : null;
     const before = rows;
-    const [official, resale] = await Promise.all([withLiveOfficialPrices(event, home, rows), withLiveResalePrices(rows)]);
-    // SeatGeek and Ticketmaster from the first; TicketNetwork and Ticket Liquidator from the second.
+    const [official, resale] = await Promise.all([
+      isUs ? withLiveOfficialPrices(event, home, rows) : rows,
+      withLiveResalePrices(rows),
+    ]);
+    // SeatGeek and Ticketmaster from the first; TicketNetwork, Ticket Liquidator and Gametime from the second.
     rows = official.map((r) => resale.find((x) => x.site === r.site && !before.includes(x)) ?? r);
     for (const r of rows) if (!before.includes(r) && r.price !== null) liveSites.add(r.site);
   }
