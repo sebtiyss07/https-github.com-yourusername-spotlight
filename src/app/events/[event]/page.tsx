@@ -314,7 +314,7 @@ export default async function EventPage({
                   keep={{ travellers: String(travellers), nights: String(nights), go: query.go || query.flight === "0" ? go : "", hotel: wantHotel ? "" : "0" }}
                 />
               </>
-            ) : (
+            ) : prices.offers.length > 0 ? (
               <>
                 <p className="text-[16px] font-bold">No price listed yet</p>
                 <p className="mt-1 text-[14px] text-ink-3">
@@ -326,6 +326,20 @@ export default async function EventPage({
                 >
                   See ticket sites ↓
                 </a>
+              </>
+            ) : (
+              <>
+                <p className="text-[16px] font-bold">Not on the ticket sites yet</p>
+                <p className="mt-1 text-[14px] text-ink-3">
+                  None of the ticket sites we compare lists this {isRace ? "race" : isFootball ? "match" : "game"} yet.
+                  Resale tickets usually appear closer to the date, so check back soon.
+                </p>
+                <Link
+                  href={`/leagues/${event.leagueId}`}
+                  className="mt-4 flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white hover:bg-accent-2"
+                >
+                  See other {context.league?.shortName ?? ""} {isRace ? "races" : isFootball ? "matches" : "games"}
+                </Link>
               </>
             )}
           </div>
@@ -346,7 +360,14 @@ export default async function EventPage({
                 : "The cheapest single ticket on every site, fees included, cheapest first. Parking, tailgate passes and add-ons are left out. The cheapest ticket may be standing room where the venue sells it."}
           </p>
           <div className="mt-5">
-            <PriceCompare groups={priceGroups} />
+            {priceGroups.some((g) => g.comparison.offers.length > 0) ? (
+              <PriceCompare groups={priceGroups} />
+            ) : (
+              <p className="rounded-2xl border border-dashed border-line-bright bg-surface px-5 py-6 text-ink-2">
+                No ticket site we compare lists this {isRace ? "race" : isFootball ? "match" : "game"} yet. We check
+                again as sites add it.
+              </p>
+            )}
           </div>
 
           {sellers.length > 0 && (
