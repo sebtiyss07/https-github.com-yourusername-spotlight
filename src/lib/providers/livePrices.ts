@@ -118,7 +118,7 @@ interface SnapshotSearch {
   hotels: SnapshotHotel[];
 }
 /** One search for 1 adult, and (`pair`) one for 2 adults sharing a room. */
-const HOTELS = hotelSnapshot.events as unknown as Record<string, SnapshotSearch & { checkIn: string; checkOut: string; pair?: SnapshotSearch }>;
+const HOTELS = hotelSnapshot.events as unknown as Record<string, SnapshotSearch & { checkIn: string; checkOut: string; pair?: SnapshotSearch; checkedOn?: string }>;
 
 function bookingSearchUrl(stay: { name: string; lat: number; lon: number; checkIn: string; checkOut: string; adults: number; wide?: boolean }) {
   const q = new URLSearchParams({
@@ -188,7 +188,8 @@ export async function cheapestHotelNear(stay: {
     url: `https://www.booking.com${path}?${dates}`,
     searchUrl: bookingSearchUrl({ name: stay.venueName, lat: stay.lat, lon: stay.lon, checkIn: stay.checkIn, checkOut: stay.checkOut, adults: perRoom, wide: search.wide }),
     found: search.found ? Number(search.found.replace(/,/g, "")) : null,
-    checkedOn: hotelSnapshot.checkedOn,
+    // Detroit stays were re-checked on their own date (US-side hotels only).
+    checkedOn: snap.checkedOn ?? hotelSnapshot.checkedOn,
     checkIn: snap.checkIn,
     checkOut: snap.checkOut,
     forYourDates,
