@@ -19,6 +19,7 @@ export function TripTotal({
   ticketPrice,
   ticketSite,
   ticketUrl,
+  ticketFeesExtra = false,
   ticketNoun = "Match ticket",
   travellers,
   nights,
@@ -39,6 +40,8 @@ export function TripTotal({
   ticketPrice: number | null;
   ticketSite: string | null;
   ticketUrl: string | null;
+  /** The ticket price doesn't (or may not) include the site's fees. */
+  ticketFeesExtra?: boolean;
   /** "Match ticket", "Game ticket" or "Race ticket". */
   ticketNoun?: string;
   travellers: number;
@@ -100,6 +103,7 @@ export function TripTotal({
   else if (!complete) note = "So far. One part couldn't be priced yet, see below.";
   else if (travellers > 1) note = `${money(round(total / travellers))} per person`;
   else note = `${whatLabel}, at the cheapest prices when we checked`;
+  if (ticketFeesExtra && ticketPrice !== null) note += ". Ticket fees at checkout are extra.";
 
   return (
     <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-md md:grid md:grid-cols-[300px_1fr]">
@@ -118,7 +122,7 @@ export function TripTotal({
           value={tickets !== null ? money(tickets) : "—"}
           detail={
             ticketPrice !== null
-              ? `${money(ticketPrice)} each on ${ticketSite}, the cheapest site. Compare all sites below.`
+              ? `${money(ticketPrice)} each on ${ticketSite}, ${ticketFeesExtra ? "plus any fees it adds at checkout" : "the cheapest site with fees included"}.${travellers > 1 ? " Seats together may cost more." : ""} See every site below.`
               : "No listed price yet. See the ticket sites below."
           }
           href={ticketUrl ?? undefined}
@@ -144,7 +148,7 @@ export function TripTotal({
                 : needsOrigin
                   ? "Choose where you fly from above."
                   : flight?.status === "ok"
-                    ? `${money(flight.quote.perPerson)} per person · ${flight.quote.airline}${flight.quote.stopsLabel ? `, ${flight.quote.stopsLabel.toLowerCase()}` : ""} · ${flight.quote.source}`
+                    ? `${money(flight.quote.perPerson)} per person, round trip${flight.quote.route ? ` ${flight.quote.route}` : ""}${flight.quote.departOn && flight.quote.returnOn ? `, ${shortDate(flight.quote.departOn)} to ${shortDate(flight.quote.returnOn)}` : ""} · ${flight.quote.airline}${flight.quote.stopsLabel ? `, ${flight.quote.stopsLabel.toLowerCase()}` : ""} · ${flight.quote.source}`
                     : "No fare saved for your exact dates yet. Live fares for your dates, one tap away:"
             }
             href={flight?.status === "ok" ? flight.quote.url : undefined}
@@ -203,8 +207,8 @@ export function TripTotal({
 
         <p className="px-5 py-3 text-[12px] text-ink-3">
           Cheapest prices listed when we checked.
-          {includeHotel && " Hotel prices are before local taxes."} Prices change fast, so
-          confirm on the booking site.
+          {includeHotel && " Hotel prices are before taxes."} Prices change fast, so confirm on the
+          booking site.
         </p>
       </div>
     </section>

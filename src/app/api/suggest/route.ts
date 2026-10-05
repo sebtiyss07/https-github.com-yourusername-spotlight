@@ -24,7 +24,7 @@ export async function GET(req: Request) {
         subtitle: `${weekday} ${day} ${month}${c.league ? ` · ${c.league.shortName}` : ""}`,
         href: `/events/${c.event.id}`,
         price: c.prices.cheapest
-          ? `${formatPrice(c.prices.cheapest.amount!, c.prices.currency)}${c.prices.cheapest.fees.included === "no" ? " + fees" : ""}`
+          ? `${formatPrice(c.prices.cheapest.amount!, c.prices.currency)}${c.prices.cheapest.fees.included !== "yes" ? " + any fees" : ""}`
           : null,
       };
     }),

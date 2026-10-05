@@ -1,4 +1,4 @@
-import { getEventContexts, getUpcomingEvents, getVenue } from "@/lib/repositories";
+import { allInPrice, getEventContexts, getUpcomingEvents, getVenue } from "@/lib/repositories";
 import { haversineKm, resolveOrigin } from "@/lib/providers/geo";
 import { toFinderRow } from "@/lib/finderRow";
 import type { SportEvent } from "@/lib/domain/types";
@@ -48,7 +48,8 @@ export async function GET(req: Request) {
   const milesById = new Map(near.map((n) => [n.event.id, n.miles]));
   const games = contexts
     .filter((c) => c.prices.cheapest)
-    .sort((a, b) => a.prices.cheapest!.amount! - b.prices.cheapest!.amount!)
+    // Cheapest first, prices with fees still to come after the all-in ones.
+    .sort((a, b) => (allInPrice(a) ?? 1e9 + a.prices.cheapest!.amount!) - (allInPrice(b) ?? 1e9 + b.prices.cheapest!.amount!))
     .slice(0, 40)
     .map((c) => {
       const row = toFinderRow(c);

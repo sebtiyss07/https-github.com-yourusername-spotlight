@@ -70,7 +70,7 @@ export function EventRow({ context }: { context: EventContext }) {
           <p className="text-[11px] font-medium text-ink-3">from</p>
           <p className="tabular text-[17px] font-semibold leading-tight text-positive">
             {formatPrice(prices.cheapest.amount!, prices.currency)}
-            {prices.cheapest.fees.included === "no" && <span className="text-[12px] text-hot"> + fees</span>}
+            {prices.cheapest.fees.included !== "yes" && <span className="text-[12px] text-hot"> + any fees</span>}
           </p>
           <p className="hidden text-[11px] text-ink-3 sm:block">
             {pricedSites > 1 ? `cheapest of ${pricedSites} sites` : prices.cheapest.label}

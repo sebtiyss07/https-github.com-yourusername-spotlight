@@ -60,7 +60,7 @@ export function PriceHistory({ points, currency }: { points: Point[]; currency: 
         <div>
           <h3 className="text-[17px] font-bold">Cheapest price, day by day</h3>
           <p className="text-[13px] text-ink-3">
-            The lowest price on any site, at each daily check since {shortDate(first.date)}.
+            The lowest price with fees included, from each daily check since {shortDate(first.date)}.
           </p>
         </div>
         <p className="text-[14px] text-ink-2">

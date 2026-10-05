@@ -99,8 +99,8 @@ export default async function HomePage() {
             <span className="inline-block text-sun">For less.</span>
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-white/80 sm:text-[18px]">
-            Compare every ticket site for the NFL, NBA, MLS, Premier League, Champions League
-            and Formula&nbsp;1, then add the cheapest hotel and flight for the same dates. Your
+            Compare the big ticket sites for the NFL, NBA, MLS, Premier League, Champions League
+            and Formula&nbsp;1, then add a hotel near the stadium and a flight for the same dates. Your
             whole trip, priced in one place.
           </p>
           <div className="mx-auto mt-8 max-w-xl text-left">
@@ -135,11 +135,11 @@ export default async function HomePage() {
           <Step n={1} title="Find your game">
             Search a team, or pick a league below.
           </Step>
-          <Step n={2} title="Compare every ticket site">
-            Every site&apos;s price side by side, cheapest first.
+          <Step n={2} title="Compare the ticket sites">
+            Each site&apos;s price side by side, cheapest first.
           </Step>
           <Step n={3} title="Add the trip">
-            The cheapest hotel and flight for the same dates, all added up.
+            The cheapest hotel we found nearby and a flight for the same dates, all added up.
           </Step>
         </ol>
       </section>

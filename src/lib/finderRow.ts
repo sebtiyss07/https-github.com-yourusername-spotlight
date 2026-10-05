@@ -35,7 +35,7 @@ export function toFinderRow(context: EventContext): FinderRow {
     price: prices.cheapest?.amount ?? null,
     site: prices.cheapest?.label ?? null,
     // Only when no site with fees included had a price.
-    feesExtra: prices.cheapest?.fees.included === "no",
+    feesExtra: !!prices.cheapest && prices.cheapest.fees.included !== "yes",
     sites: prices.offers.filter((o) => o.amount !== null).length,
     home: crest(homeTeam),
     away: crest(awayTeam),

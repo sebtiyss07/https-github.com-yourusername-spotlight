@@ -1,14 +1,15 @@
-import { getEvent, getEventContexts } from "@/lib/repositories";
+import { getEvent, getEventContext } from "@/lib/repositories";
 import type { SportEvent } from "@/lib/domain/types";
 
 /**
- * Today's cheapest saved price for a list of games (for "My games"). Games
- * that have been played or no longer exist are left out.
+ * Each game's cheapest price right now, read the same way as its game page
+ * (live where the page is live), so "cheaper than when you saved it" compares
+ * like with like. Games that have been played or no longer exist are left out.
  */
 export async function GET(req: Request) {
   const ids = (new URL(req.url).searchParams.get("ids") ?? "").split(",").filter(Boolean).slice(0, 100);
   const events = (await Promise.all(ids.map((id) => getEvent(id)))).filter((e): e is SportEvent => e !== null);
-  const games = await getEventContexts(events);
+  const games = await Promise.all(events.map((e) => getEventContext(e, { live: true })));
   return Response.json({
     games: games.map((c) => ({
       id: c.event.id,

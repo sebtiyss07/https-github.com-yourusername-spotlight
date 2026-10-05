@@ -81,6 +81,7 @@ export function parseJsArray(src, start) {
   return value();
 }
 
-// Sites whose listed price leaves out fees added at checkout (included: "no"
-// in src/lib/data/fees.ts). Keep the two in step.
-export const FEES_AT_CHECKOUT = new Set(["ticket4football", "footballticketpad", "livefootballtickets", "footballticketnet"]);
+// Sites whose listed price leaves out, or may leave out, fees added at
+// checkout (included: "no" or "unknown" in src/lib/data/fees.ts). Keep the two
+// in step.
+export const FEES_AT_CHECKOUT = new Set(["ticket4football", "footballticketpad", "livefootballtickets", "footballticketnet", "ticketmaster", "f1store"]);

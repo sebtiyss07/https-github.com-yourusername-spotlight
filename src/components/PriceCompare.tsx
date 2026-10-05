@@ -27,12 +27,12 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
   const cheapest = prices.cheapest;
   // The honest saving: against the next-cheapest site, not the dearest one,
   // and only between prices that both include fees.
-  const allIn = pricedOffers.filter((o) => o.fees.included !== "no");
-  const runnerUp = cheapest?.fees.included !== "no" ? allIn[1] : undefined;
+  const allIn = pricedOffers.filter((o) => o.fees.included === "yes");
+  const runnerUp = cheapest?.fees.included === "yes" ? allIn[1] : undefined;
   // Sites that add fees at checkout come after the all-in prices, under a note.
-  const firstExtra = allIn.length ? prices.offers.findIndex((o) => o.amount !== null && o.fees.included === "no") : -1;
+  const firstExtra = allIn.length ? prices.offers.findIndex((o) => o.amount !== null && o.fees.included !== "yes") : -1;
   // A lower price before fees might still end up cheaper, so don't claim more than we know.
-  const lowerBeforeFees = !!cheapest && pricedOffers.some((o) => o.fees.included === "no" && o.amount! < cheapest.amount!);
+  const lowerBeforeFees = !!cheapest && pricedOffers.some((o) => o.fees.included !== "yes" && o.amount! < cheapest.amount!);
   const saving =
     cheapest && runnerUp ? Math.round((runnerUp.amount! - cheapest.amount!) * 100) / 100 : 0;
 
@@ -73,9 +73,9 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
             <Fragment key={offer.site}>
               {i === firstExtra && (
                 <li className="border-b border-line bg-surface-2 px-4 py-2.5 text-[13px] text-ink-2 sm:px-5">
-                  <span className="font-semibold text-ink">These sites add fees at checkout,</span> so you&apos;ll pay
-                  more than the price shown here. They don&apos;t publish how much, so check the total on their site: it
-                  can still work out cheaper.
+                  <span className="font-semibold text-ink">These sites add, or may add, fees at checkout,</span> so you
+                  may pay more than the price shown here. Most don&apos;t publish how much, so check the total on their
+                  site: it can still work out cheaper.
                 </li>
               )}
               <li className="border-b border-line last:border-b-0">
@@ -107,8 +107,11 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
                     {priced ? (
                       <span className="block text-[13px] text-ink-3">
                         {offer.ticket ?? (offer.fees.included === "yes" ? "Fees included" : "")}
-                        {offer.fees.included === "no" && (
-                          <span className="font-semibold text-hot">Fees added at checkout</span>
+                        {offer.fees.included !== "yes" && (
+                          <span className="font-semibold text-hot">
+                            {offer.ticket ? " · " : ""}
+                            {offer.fees.included === "no" ? "Fees added at checkout" : "Fees may be added at checkout"}
+                          </span>
                         )}
                       </span>
                     ) : (
@@ -154,7 +157,7 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
       <p className="mt-3 text-[14px] text-ink-3">
         Lowest price each site listed for one ticket
         {prices.currency !== "USD" || prices.offers.some((o) => o.original)
-          ? `, shown in ${prices.currency} at the European Central Bank rate`
+          ? `, shown in ${prices.currency} at the European Central Bank rate of ${formatLocalDate(prices.ratesOn)}`
           : ", in US dollars"}
         {prices.checkedOn &&
           (prices.checkedFrom ? (

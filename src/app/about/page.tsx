@@ -12,8 +12,8 @@ export default function AboutPage() {
       <h1 className="text-[32px] font-semibold">About Spotlight</h1>
       <p className="mt-4 text-[17px] text-ink-2">
         Spotlight helps you plan a trip to a game. Pick a match or race and we show the
-        cheapest ticket on every site that sells it, side by side, then add the cheapest
-        hotel near the venue and a flight for the same dates, so you see what the whole
+        cheapest ticket on each ticket site we check, side by side, then add the cheapest
+        hotel we found near the venue and a flight for the same dates, so you see what the whole
         trip costs before you book.
       </p>
 
@@ -27,13 +27,16 @@ export default function AboutPage() {
         <li>
           Ticket prices are read from each ticket site&apos;s own listings for that game. We
           show the cheapest ticket you can buy on its own, and leave out parking passes,
-          tailgate passes and add-ons. Every price is dated with when we checked it.
+          tailgate passes and add-ons. Each game page says when its prices were checked.
         </li>
         <li>
           Where a site doesn&apos;t share its price with us, we say so and link straight to
           that game on its site instead of guessing a number.
         </li>
-        <li>Hotel prices are Booking.com&apos;s prices for the exact nights, before local taxes.</li>
+        <li>
+          Hotel prices are Booking.com&apos;s cheapest hotel near the venue for the nights around the game,
+          before taxes, dated with when we checked. Members-only prices that need a Booking.com sign-in are left out.
+        </li>
         <li>We never estimate or invent a price. Prices change fast, so always check the final price before you pay.</li>
       </ul>
 

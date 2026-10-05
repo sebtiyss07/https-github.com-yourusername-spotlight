@@ -3,6 +3,7 @@
 // a tab on that site; it works one request at a time, saves progress in the
 // tab, and sets window.__job.done when finished. See README.md.
 // Needs the dev server running (for the hotel plan): npm run dev
+import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { OUT, urlsFor, NON, WC, today } from "./common.mjs";
@@ -11,8 +12,9 @@ const HOTEL_DAYS = Number(process.env.HOTEL_DAYS ?? 21);
 // LIMIT=3 writes small jobs for a quick test.
 const cap = (list) => list.slice(0, Number(process.env.LIMIT) || undefined);
 const sleeper = `const sleepW = (ms) => new Promise((res) => { const w = new Worker(URL.createObjectURL(new Blob([\`setTimeout(()=>postMessage(1),\${ms})\`]))); w.onmessage = () => { w.terminate(); res(); }; });`;
-// Progress is kept per day, so tomorrow's run starts fresh.
-const runner = (name, ids, body, pause) => { const key = `${name}-${today()}`; return `
+// Progress is kept per day and per version of the job's code, so tomorrow's
+// run starts fresh, and a fixed reader never resumes results read the old way.
+const runner = (name, ids, body, pause) => { const key = `${name}-${today()}-${createHash("sha1").update(body).digest("hex").slice(0, 8)}`; return `
 ${sleeper}
 const NON = ${NON}; const WC = ${WC};
 const IDS = ${JSON.stringify(ids)};
@@ -79,12 +81,16 @@ writeFileSync(join(OUT, "job-booking.js"), runner("__refreshBooking", cap(stays)
     if (!cards.length) return undefined;
     const found = (doc.querySelector("h1")?.textContent.match(/([\\d,]+) propert/) || [])[1] || null;
     // The stay total from Booking's own screen-reader text ("Price $350" or
-    // "Original price $305. Current price $224."). Since early October the big
-    // number on the card can be the price per night, so it is never used.
+    // "Original price $305. Current price $224."), before taxes. Since early
+    // October the big number on the card can be the price per night, so it is
+    // never used.
     const stayTotal = (c) => {
       const t = [...c.querySelectorAll("span,div")].map((s) => s.textContent.trim())
         .find((t) => /^(Original price [^.]+\\. )?Current price \\D*[\\d,.]+\\.?$|^Price \\D*[\\d,.]+$/.test(t));
-      const m = t && t.match(/(?:Current price|^Price) \\D*([\\d,.]+)/);
+      // A members-only (Genius) price needs a Booking sign-in: use the price
+      // everyone gets, the "Original price".
+      const membersOnly = /members-only|sign in for this/i.test(c.textContent);
+      const m = t && t.match(membersOnly && /Original price/.test(t) ? /Original price \\D*([\\d,.]+)/ : /(?:Current price|^Price) \\D*([\\d,.]+)/);
       return m ? Number(m[1].replace(/,/g, "")) : 0;
     };
     const best = cards.map((c) => ({

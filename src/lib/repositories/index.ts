@@ -266,12 +266,14 @@ export interface PriceComparison {
   checkedOn: string | null;
   /** The earliest of those dates, when sites were checked on different days. */
   checkedFrom: string | null;
+  /** The date of the European Central Bank rates used to convert prices. */
+  ratesOn: string;
 }
 
-/** The cheapest price for a game when it already includes fees, else null. */
+/** The cheapest price for a game when it is known to include fees, else null. */
 export function allInPrice(c: { prices: PriceComparison }): number | null {
   const o = c.prices.cheapest;
-  return o && o.fees.included !== "no" ? o.amount : null;
+  return o && o.fees.included === "yes" ? o.amount : null;
 }
 
 /** A USD amount in the visitor's currency, at the stored ECB rate. */
@@ -327,9 +329,9 @@ function comparePrices(
     note: p.note,
   }));
   // Prices that already include the site's fees first, then the sites that
-  // add fees at checkout: their lower-looking number isn't what you pay, so
-  // it can't be "the cheapest" over an all-in price.
-  const rank = (o: PriceOffer) => (o.amount === null ? 2 : o.fees.included === "no" ? 1 : 0);
+  // add (or may add) fees at checkout: their lower-looking number may not be
+  // what you pay, so it can't be "the cheapest" over an all-in price.
+  const rank = (o: PriceOffer) => (o.amount === null ? 2 : o.fees.included === "yes" ? 0 : 1);
   offers.sort((a, b) => rank(a) - rank(b) || (a.amount ?? Infinity) - (b.amount ?? Infinity));
   // Only sites that showed a price count towards "checked on".
   const dates = rows.filter((r) => r.price !== null).map((r) => r.checked ?? checkedOn(r.site)).sort();
@@ -339,6 +341,7 @@ function comparePrices(
     currency,
     checkedOn: dates.at(-1) ?? null,
     checkedFrom: dates[0] && dates[0] !== dates.at(-1) ? dates[0] : null,
+    ratesOn: RATES.date,
   };
 }
 

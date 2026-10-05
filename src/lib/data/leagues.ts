@@ -293,7 +293,7 @@ export const LEAGUES: League[] = [
     teamCount: 10,
     seasonMonths: [3, 12],
     description:
-      "24 race weekends across 21 countries. Three-day tickets, and the biggest travel spend per event in sport.",
+      "24 race weekends across 21 countries, most sold as three-day tickets.",
     hasDepth: false,
   },
   {

@@ -81,16 +81,19 @@ export function MatchFinder({
       (r) =>
         (!team || r.teamIds.includes(team)) &&
         (!month || r.month === month) &&
-        (!cap || (r.price !== null && r.price <= cap)),
+        // A budget only counts prices that include fees.
+        (!cap || (r.price !== null && !r.feesExtra && r.price <= cap)),
     );
     if (sort === "price") {
-      list.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+      // Prices with fees still to come sort after the all-in ones.
+      const key = (r: FinderRow) => (r.price === null ? Infinity : r.feesExtra ? 1e9 + r.price : r.price);
+      list.sort((a, b) => key(a) - key(b));
     }
     return list;
   }, [rows, team, month, sort, cap]);
 
   const cheapest = filtered.reduce<FinderRow | null>(
-    (best, r) => (r.price !== null && (!best || r.price < best.price!) ? r : best),
+    (best, r) => (r.price !== null && !r.feesExtra && (!best || r.price < best.price!) ? r : best),
     null,
   );
 
@@ -280,7 +283,7 @@ export function FinderRowView({ row, currency }: { row: FinderRow; currency: str
         <div className="shrink-0 text-right">
           <p className="tabular text-[17px] font-semibold leading-tight text-positive">
             {formatPrice(row.price, currency)}
-            {row.feesExtra && <span className="text-[12px] text-hot"> + fees</span>}
+            {row.feesExtra && <span className="text-[12px] text-hot"> + any fees</span>}
           </p>
           <p className="text-[11px] text-ink-3">
             {row.sites > 1 ? `cheapest of ${row.sites} sites` : row.site}

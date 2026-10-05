@@ -220,7 +220,7 @@ export default async function EventPage({
   const pricedSites = prices.offers.filter((o) => o.amount !== null).length;
   // A site that adds fees at checkout shows a lower number than the cheapest all-in price.
   const lowerBeforeFees = prices.offers.some(
-    (o) => o.fees.included === "no" && o.amount !== null && prices.cheapest?.fees.included !== "no" && o.amount < (prices.cheapest?.amount ?? 0),
+    (o) => o.fees.included !== "yes" && o.amount !== null && prices.cheapest?.fees.included === "yes" && o.amount < (prices.cheapest?.amount ?? 0),
   );
 
   return (
@@ -305,9 +305,9 @@ export default async function EventPage({
                   </span>
                   <span className="text-[15px] text-ink-2">on {prices.cheapest.label}</span>
                 </p>
-                {prices.cheapest.fees.included === "no" && (
+                {prices.cheapest.fees.included !== "yes" && (
                   <p className="mt-1 text-[13px] font-semibold text-hot">
-                    Plus fees at checkout: no site with fees included had a price for this match.
+                    Fees may be added at checkout: no site that includes fees had a price for this {isRace ? "race" : isFootball ? "match" : "game"}.
                   </p>
                 )}
                 <a
@@ -322,11 +322,12 @@ export default async function EventPage({
                   href="#tickets"
                   className="mt-2 flex w-full items-center justify-center rounded-xl border border-line px-5 py-3 text-[15px] font-semibold text-ink transition-colors hover:border-accent hover:text-accent"
                 >
-                  Compare all {prices.offers.length} sites ↓
+                  See all {prices.offers.length} sites ↓
                 </a>
                 <TripPeek
                   money={(n) => formatPrice(n, prices.currency)}
                   ticket={prices.cheapest.amount!}
+                  ticketFeesExtra={prices.cheapest.fees.included !== "yes"}
                   travellers={travellers}
                   nights={dates.nights}
                   rooms={rooms}
@@ -374,14 +375,14 @@ export default async function EventPage({
         {/* 1. Every site's price, cheapest first. */}
         <section id="tickets" className="mt-8 min-w-0 scroll-mt-32">
           <h2 className="text-[24px] font-extrabold sm:text-[28px]">
-            Ticket prices on every site
+            Ticket prices, site by site
           </h2>
           <p className="mt-1 max-w-3xl text-ink-2">
             {isRace
-              ? "The lowest price for one ticket on every site that sells this race, cheapest first. Switch between full-weekend passes and race-day tickets."
+              ? "The lowest price for one ticket on each site we check, cheapest first. Switch between full-weekend passes and race-day tickets."
               : isFootball
-                ? "The lowest price for one ticket on every site that sells this match, cheapest first."
-                : "The cheapest single ticket on every site, fees included, cheapest first. Parking, tailgate passes and add-ons are left out. The cheapest ticket may be standing room where the venue sells it."}
+                ? "The lowest price for one ticket on each site we check, cheapest first. Prices that already include fees come first."
+                : "The lowest price for one ticket on each site we check, fees included, cheapest first. Parking, tailgate passes and add-ons are left out. The cheapest ticket may be standing room where the venue sells it."}
           </p>
           <div className="mt-5">
             {priceGroups.some((g) => g.comparison.offers.length > 0) ? (
@@ -565,6 +566,7 @@ export default async function EventPage({
               ticketPrice={prices.cheapest?.amount ?? null}
               ticketSite={prices.cheapest?.label ?? null}
               ticketUrl={prices.cheapest?.url ?? null}
+              ticketFeesExtra={!!prices.cheapest && prices.cheapest.fees.included !== "yes"}
               ticketNoun={isRace ? "Race ticket" : isFootball ? "Match ticket" : "Game ticket"}
               travellers={travellers}
               nights={dates.nights}
@@ -600,7 +602,7 @@ export default async function EventPage({
                 <span className="tabular text-[20px] font-extrabold text-positive">
                   {formatPrice(prices.cheapest.amount!, prices.currency)}
                 </span>
-                {prices.cheapest.fees.included === "no" && <span className="text-[13px] font-semibold text-hot"> + fees</span>}
+                {prices.cheapest.fees.included !== "yes" && <span className="text-[13px] font-semibold text-hot"> + any fees</span>}
                 <span className="truncate text-[13px] text-ink-2"> on {prices.cheapest.label}</span>
               </p>
               <a
@@ -689,6 +691,7 @@ function NeedTile({
 function TripPeek({
   money,
   ticket,
+  ticketFeesExtra,
   travellers,
   nights,
   rooms,
@@ -706,6 +709,7 @@ function TripPeek({
   rooms: number;
   /** undefined: hotel switched off; null: no saved price. */
   hotel: { perNight: number; total: number; forYourDates?: boolean } | null | undefined;
+  ticketFeesExtra: boolean;
   go: TravelMode | "none";
   origin: string | null;
   sameCity: boolean;
@@ -807,7 +811,10 @@ function TripPeek({
         {complete ? (
           <>
             <span className="font-semibold">Whole trip</span>
-            <span className="tabular text-[17px] font-extrabold">{money(total)}</span>
+            <span className="tabular text-[17px] font-extrabold">
+              {money(total)}
+              {ticketFeesExtra && <span className="text-[12px] font-semibold text-hot"> + any fees</span>}
+            </span>
           </>
         ) : (
           <>

@@ -17,6 +17,11 @@ export default function PrivacyPage() {
         choose (for example US dollars or pounds) so prices show in it next time. It
         lasts a year and holds nothing else.
       </p>
+      <p className="mt-2 text-[16px] text-ink-2">
+        Games you save with &ldquo;Save&rdquo; are kept in your own browser (its local storage), with
+        the price when you saved them, so My games can show how the price has moved. They never
+        leave your device; clearing your browser data removes them.
+      </p>
 
       <h2 className="mt-10 text-[20px] font-semibold">What we don&apos;t do</h2>
       <ul className="mt-2 list-disc space-y-2 pl-5 text-[16px] text-ink-2">

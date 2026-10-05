@@ -38,7 +38,7 @@ export default async function TwoGamesPage({ searchParams }: { searchParams: Pro
   const events = (await getUpcomingEvents()).filter((e) => e.sportId !== "motorsport");
   const games = (await getEventContexts(events))
     // Only prices that include fees, so the pair's total is what you'd pay.
-    .filter((c) => c.venue && c.prices.cheapest?.amount != null && c.prices.cheapest.fees.included !== "no")
+    .filter((c) => c.venue && c.prices.cheapest?.amount != null && c.prices.cheapest.fees.included === "yes")
     .map((c) => ({ c, day: localDay(c), price: c.prices.cheapest!.amount! }))
     .sort((a, b) => a.day - b.day);
 
@@ -144,7 +144,7 @@ export default async function TwoGamesPage({ searchParams }: { searchParams: Pro
       )}
       <p className="mt-4 text-[13px] text-ink-3">
         Each price is the cheapest single ticket across the sites we compare, from our latest check. Open a game to see
-        every site, and a hotel and flight for your dates.
+        each site we check, and a hotel and flight for your dates.
       </p>
     </div>
   );

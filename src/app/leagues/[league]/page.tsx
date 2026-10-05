@@ -88,8 +88,8 @@ export default async function LeaguePage({
           </h1>
           <p className="mt-2 max-w-xl text-[16px] text-white/85">
             {isRace
-              ? "The cheapest weekend pass for every race, across every site that sells it. Pick a race to compare prices."
-              : `The cheapest ticket for every ${noun.slice(0, -1).replace(/che$/, "ch")}, across every site that sells it. Filter by team, month or budget, then pick one to compare prices.`}
+              ? "The cheapest weekend pass for every race, across the ticket sites we check. Pick a race to compare prices."
+              : `The cheapest ticket for every ${noun.slice(0, -1).replace(/che$/, "ch")}, across the ticket sites we check. Filter by team, month or budget, then pick one to compare prices.`}
           </p>
         </div>
       </header>

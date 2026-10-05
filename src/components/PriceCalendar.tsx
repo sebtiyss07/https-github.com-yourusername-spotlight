@@ -18,7 +18,7 @@ export function PriceCalendar({ games }: { games: EventContext[] }) {
   for (const c of games) {
     const ymd = localYmd(c);
     // A price with fees still to come isn't comparable with all-in ones.
-    const price = c.prices.cheapest?.fees.included === "no" ? null : (c.prices.cheapest?.amount ?? null);
+    const price = c.prices.cheapest?.fees.included !== "yes" ? null : (c.prices.cheapest?.amount ?? null);
     const prev = byDay.get(ymd);
     if (!prev || (price != null && (prev.price == null || price < prev.price))) byDay.set(ymd, { c, price });
   }
@@ -49,7 +49,7 @@ export function PriceCalendar({ games }: { games: EventContext[] }) {
           <h2 id="price-calendar" className="text-[20px] font-bold">
             Price calendar
           </h2>
-          <p className="text-[14px] text-ink-3">The cheapest ticket on each game day. Tap a day to compare every site.</p>
+          <p className="text-[14px] text-ink-3">The cheapest ticket on each game day. Tap a day to compare the sites.</p>
         </div>
         <p className="flex flex-wrap items-center gap-3 text-[13px] text-ink-2">
           <span className="flex items-center gap-1.5">

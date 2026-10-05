@@ -37,7 +37,7 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
     .flatMap((c) => {
       const ticket = c.prices.cheapest?.amount;
       // A price with fees still to come can't promise a budget.
-      if (ticket == null || !c.venue || c.prices.cheapest?.fees.included === "no") return [];
+      if (ticket == null || !c.venue || c.prices.cheapest?.fees.included !== "yes") return [];
       const hotel = savedHotelFor(c.event.id, c.venue.country);
       if (!hotel) return [];
       const hotelPrice = convertUsd(hotel.total, c.prices.currency);
@@ -125,7 +125,7 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
       )}
       <p className="mt-4 text-[13px] text-ink-3">
         Ticket prices are each site&apos;s cheapest single ticket; hotel prices are Booking.com&apos;s cheapest for the
-        stay, before local taxes, from our latest check. Confirm on the booking sites before you pay.
+        stay, before taxes, from our latest check. Confirm on the booking sites before you pay.
       </p>
     </div>
   );

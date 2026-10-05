@@ -94,6 +94,8 @@ export interface FlightQuote {
   /** The dates this fare is for (YYYY-MM-DD): always the visitor's own. */
   departOn?: string;
   returnOn?: string;
+  /** "NYC → DTW": the airport (or city) codes searched. */
+  route?: string;
 }
 
 export type FlightResult =
@@ -217,6 +219,12 @@ export async function cheapestFlight(trip: {
   /** Where "see this fare" goes for a live airline fare (a search for the same dates). */
   bookUrl: string;
 }): Promise<FlightResult> {
+  const result = await findFlight(trip);
+  // Say which airports the fare is between (a city code like NYC means any of its airports).
+  return result.status === "ok" ? { ...result, quote: { ...result.quote, route: `${trip.from} → ${trip.to}` } } : result;
+}
+
+async function findFlight(trip: Parameters<typeof cheapestFlight>[0]): Promise<FlightResult> {
   const live = await duffelFare(trip);
   if (live) return { status: "ok", quote: live };
 
@@ -235,7 +243,7 @@ export async function cheapestFlight(trip: {
           airline: AIRLINES[f.airline] ?? f.airline,
           stopsLabel: stopsLabel(f.transfers),
           url: `https://www.aviasales.com${f.link}`,
-          source: "Aviasales, found by travellers in the last few days",
+          source: "Aviasales: a fare travellers found in the last few days, which may have gone",
           departOn: trip.departOn,
           returnOn: trip.returnOn,
         },
@@ -299,7 +307,7 @@ const duffelFare = unstable_cache(
         airline: best.o.owner.name,
         stopsLabel: stopsLabel(stops),
         url: trip.bookUrl,
-        source: "Live airline fare",
+        source: "Airline fare, checked in the last few hours",
         departOn: trip.departOn,
         returnOn: trip.returnOn,
       };

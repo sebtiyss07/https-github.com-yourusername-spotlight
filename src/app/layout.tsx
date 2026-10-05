@@ -25,7 +25,7 @@ const body = Inter({
 
 const SITE_URL = "https://www.spotlightkt.com";
 const DESCRIPTION =
-  "The game. The trip. For less. Compare every ticket site for the NFL, NBA, MLS, Premier League, Champions League and Formula 1, then add the cheapest hotel and flight for the same dates.";
+  "The game. The trip. For less. Compare the big ticket sites for the NFL, NBA, MLS, Premier League, Champions League and Formula 1, then add a hotel near the stadium and a flight for the same dates.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
