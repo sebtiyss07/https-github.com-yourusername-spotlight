@@ -78,10 +78,19 @@ writeFileSync(join(OUT, "job-booking.js"), runner("__refreshBooking", cap(stays)
     const cards = [...doc.querySelectorAll('[data-testid="property-card"]')];
     if (!cards.length) return undefined;
     const found = (doc.querySelector("h1")?.textContent.match(/([\\d,]+) propert/) || [])[1] || null;
+    // The stay total from Booking's own screen-reader text ("Price $350" or
+    // "Original price $305. Current price $224."). Since early October the big
+    // number on the card can be the price per night, so it is never used.
+    const stayTotal = (c) => {
+      const t = [...c.querySelectorAll("span,div")].map((s) => s.textContent.trim())
+        .find((t) => /^(Original price [^.]+\\. )?Current price \\D*[\\d,.]+\\.?$|^Price \\D*[\\d,.]+$/.test(t));
+      const m = t && t.match(/(?:Current price|^Price) \\D*([\\d,.]+)/);
+      return m ? Number(m[1].replace(/,/g, "")) : 0;
+    };
     const best = cards.map((c) => ({
       name: c.querySelector('[data-testid="title"]')?.textContent.trim(),
       path: (c.querySelector('a[data-testid="title-link"]')?.getAttribute("href") || "").split("?")[0].replace("https://www.booking.com", ""),
-      total: Number((c.querySelector('[data-testid="price-and-discounted-price"]')?.textContent || "").replace(/[^\\d.]/g, "")),
+      total: stayTotal(c),
       dist: (c.querySelector('[data-testid="distance"]')?.textContent || "").replace(/ from (map )?cent(er|re)/, ""),
       nights: c.querySelector('[data-testid="price-for-x-nights"]')?.textContent.trim(),
       room: ((c.querySelector('[data-testid="recommended-units"] h4') || c.querySelector('[data-testid="recommended-units"]'))?.textContent || "").trim().split("\\n")[0],
