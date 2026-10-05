@@ -61,7 +61,10 @@ await Promise.all(
     .filter(([site]) => !only || only.includes(site))
     .map(async ([site, read]) => {
       // LIMIT=3 for a quick test run.
-      const urls = urlsFor(site).slice(0, Number(process.env.LIMIT) || undefined);
+      // TickPick's game pages (/buy-tickets/<id>/) are read by the browser job
+      // (Node is rate-limited after ~60); F1 pass pages are read here.
+      const all = site === "tickpick" ? urlsFor(site).filter((u) => !/\/buy-tickets\/\d+\/$/.test(u)) : urlsFor(site);
+      const urls = all.slice(0, Number(process.env.LIMIT) || undefined);
       const res = (out[site] = {});
       let errors = 0;
       for (const url of urls) {

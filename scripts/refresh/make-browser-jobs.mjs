@@ -6,7 +6,7 @@
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { OUT, urlsFor, NON, WC, today } from "./common.mjs";
+import { OUT, FILES, readJson, urlsFor, NON, WC, today } from "./common.mjs";
 
 const HOTEL_DAYS = Number(process.env.HOTEL_DAYS ?? 21);
 // LIMIT=3 writes small jobs for a quick test.
@@ -62,11 +62,54 @@ writeFileSync(join(OUT, "job-stubhub.js"), runner("__refreshStubhub", cap(stubId
   const p = (data.grid.items || []).filter((i) => !i.isSponsored && i.ticketClassName && i.rawPrice > 0 && !NON.test((i.section || "") + " " + i.ticketClassName) && !WC.test(i.section || "")).map((i) => i.rawPrice).sort((a, b) => a - b)[0];
   return p === undefined ? null : Math.round(p * 100) / 100;`, 4000)); // StubHub challenged after ~500 at 1.5 s apart
 
+// TickPick: the same "lowPrice" figure the game pages read live (its page's
+// structured data, US dollars), for every game. Node gets rate-limited after
+// ~60 pages, so this runs in a tab on tickpick.com. Results are keyed by
+// TickPick event id; apply.mjs maps them back to /buy-tickets/<id>/ URLs.
+const tickpickIds = urlsFor("tickpick").map((u) => u.match(/\/buy-tickets\/(\d+)\/$/)?.[1]).filter(Boolean);
+writeFileSync(join(OUT, "job-tickpick.js"), runner("__refreshTickpick", cap(tickpickIds), `
+  const r = await fetch("/buy-tickets/" + id + "/", { credentials: "include", signal: AbortSignal.timeout(30000) });
+  if (r.status === 403 || r.status === 429) return "BLOCKED";
+  if (!r.ok) return undefined;
+  const text = await r.text();
+  if (!/"priceCurrency"\\s*:\\s*"USD"/.test(text)) return undefined;
+  const low = Number(text.match(/"lowPrice"\\s*:\\s*"?(\\d+(?:\\.\\d+)?)/)?.[1]);
+  return low > 0 ? Math.ceil(low) : undefined;`, 1500));
+
+// Sites whose game pages carry their cheapest per-seat price as structured
+// data ("lowPrice", US dollars) but refuse plain server requests: read in a
+// tab on that site. Results are keyed by page URL; export the job's results
+// as prices-<site>.json: { <site>: { url: price } } (see README.md).
+for (const [site, decimals] of [["footballticketnet", 2]]) {
+  const urls = urlsFor(site);
+  writeFileSync(join(OUT, `job-${site}.js`), runner(`__refresh-${site}`, cap(urls), `
+  const r = await fetch(new URL(id).pathname, { credentials: "include", signal: AbortSignal.timeout(30000) });
+  if (r.status === 403 || r.status === 429) return "BLOCKED";
+  if (!r.ok) return undefined;
+  const text = await r.text();
+  if (/just a moment|cf-chl/i.test(text.slice(0, 3000))) return "BLOCKED";
+  if (!/"priceCurrency"\\s*:\\s*"USD"/.test(text)) return undefined;
+  const low = Number(text.match(/"lowPrice"\\s*:\\s*"?(\\d+(?:\\.\\d+)?)/)?.[1]);
+  return low > 0 ? ${decimals ? "Math.round(low * 100) / 100" : "Math.ceil(low)"} : undefined;`, 3000));
+  console.log(`job-${site}.js: ${urls.length} pages`);
+}
+
 // Booking.com: the cheapest hotel (hotels only, within 5 km) for each game in
 // the next HOTEL_DAYS days, for 1 and for 2 adults, in the venue's country.
 const plan = (await (await fetch("http://localhost:3000/dev-refresh-plan")).json()).events;
 const soon = Date.now() + HOTEL_DAYS * 864e5;
-const stays = plan.filter((e) => Date.parse(e.checkIn) > Date.now() - 864e5 && Date.parse(e.startsAt) < soon)
+// Plus the stays further out whose saved price is oldest (HOTEL_ROTATE a day),
+// so no hotel price gets older than the 14 days the site will show.
+const HOTEL_ROTATE = Number(process.env.HOTEL_ROTATE ?? 200);
+const savedHotels = readJson(FILES.hotels);
+const hotelReadOn = (id) => {
+  const label = (savedHotels.events[id]?.checkedOn ?? savedHotels.checkedOn).replace(/^(\d+)[–-]\d+/, "$1");
+  return Date.parse(`${label} 12:00 UTC`) || 0;
+};
+const upcoming = plan.filter((e) => Date.parse(e.checkIn) > Date.now() - 864e5);
+const nearSoon = upcoming.filter((e) => Date.parse(e.startsAt) < soon);
+const later = upcoming.filter((e) => Date.parse(e.startsAt) >= soon).sort((a, b) => hotelReadOn(a.id) - hotelReadOn(b.id)).slice(0, HOTEL_ROTATE);
+const stays = [...nearSoon, ...later]
   .map((e) => [e.id, e.venue.name + ", " + e.venue.city, e.venue.lat, e.venue.lon, e.venue.country.toLowerCase(), e.checkIn, e.checkOut]);
 // One entry per game; both group sizes are searched inside: { "1": hotel, "2": hotel }.
 writeFileSync(join(OUT, "job-booking.js"), runner("__refreshBooking", cap(stays), `
@@ -106,4 +149,4 @@ writeFileSync(join(OUT, "job-booking.js"), runner("__refreshBooking", cap(stays)
   }
   return out;`, 3500));
 
-console.log(`jobs written to .refresh/: vivid ${vividIds.length}, stubhub ${stubIds.length}, booking ${stays.length} games x 2 group sizes (${HOTEL_DAYS} days)`);
+console.log(`jobs written to .refresh/: vivid ${vividIds.length}, stubhub ${stubIds.length}, tickpick ${tickpickIds.length}, booking ${stays.length} games x 2 group sizes (next ${HOTEL_DAYS} days + ${HOTEL_ROTATE} oldest later stays)`);

@@ -2,20 +2,23 @@
 //   .refresh/prices-node.json      { site: { url: price | null } }   (node-sites.mjs)
 //   .refresh/browser-vivid.json    { productionId: price | null }    (job-vivid.js export)
 //   .refresh/browser-stubhub.json  { eventId: price | null }         (job-stubhub.js export)
+//   .refresh/browser-tickpick.json { eventId: price | null }         (job-tickpick.js export)
 //   .refresh/browser-booking.json  { eventId: { "1": [...], "2": [...] } } (job-booking.js export)
 // Each updated row gets today's date. A site that wasn't read keeps its last
 // checked price and date. Then: npx tsc, check pages, deploy (README.md).
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { FILES, OUT, readJson, writeJson, today } from "./common.mjs";
+import { FILES, OUT, readJson, writeJson, today, loadResults, f1Rows } from "./common.mjs";
 import { recordHistory } from "./history.mjs";
 
 const day = today();
 const load = (f) => (existsSync(join(OUT, f)) ? readJson(join(OUT, f)) : {});
-const node = load("prices-node.json");
+// Every collector's { site: { url: price } } file (prices-node.json, prices-tickpick.json, ...).
+const node = loadResults();
 const byId = {
   vividseats: [load("browser-vivid.json"), /production\/(\d+)/],
   stubhub: [load("browser-stubhub.json"), /event\/(\d+)/],
+  tickpick: [load("browser-tickpick.json"), /buy-tickets\/(\d+)\//],
 };
 const SEAT_CHECKED = ["gametime", "vividseats", "stubhub", "ticketnetwork", "ticketliquidator", "ticketsmarter"];
 const NOTE_NONE = "No single seat listed when we checked";
@@ -54,6 +57,11 @@ for (const file of [FILES.us, FILES.football]) {
   }
   writeJson(file, data);
 }
+
+// F1 weekend passes and race days: same readers, same rules.
+const f1 = readJson(FILES.f1);
+for (const row of f1Rows(f1)) update(row);
+writeJson(FILES.f1, f1);
 
 // Hotels: the cheapest hotel for each game's default stay, for 1 and 2 people.
 const booking = load("browser-booking.json");

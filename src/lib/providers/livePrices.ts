@@ -122,6 +122,16 @@ interface SnapshotSearch {
 /** One search for 1 adult, and (`pair`) one for 2 adults sharing a room. */
 const HOTELS = hotelSnapshot.events as unknown as Record<string, SnapshotSearch & { checkIn: string; checkOut: string; pair?: SnapshotSearch; checkedOn?: string }>;
 
+/** A saved hotel price older than this many days isn't shown (links are). */
+const MAX_HOTEL_AGE_DAYS = 14;
+
+/** Days since this stay's hotel price was read ("5 October 2026", or the file's "28–29 September 2026"). */
+function hotelAgeDays(snap: { checkedOn?: string }): number {
+  const label = (snap.checkedOn ?? hotelSnapshot.checkedOn).replace(/^(\d+)[–-]\d+/, "$1");
+  const read = Date.parse(`${label} 12:00 UTC`);
+  return Number.isFinite(read) ? (Date.now() - read) / 86_400_000 : Infinity;
+}
+
 function bookingSearchUrl(stay: { name: string; lat: number; lon: number; checkIn: string; checkOut: string; adults: number; wide?: boolean }) {
   const q = new URLSearchParams({
     ss: stay.name,
@@ -157,7 +167,7 @@ export async function cheapestHotelNear(stay: {
   adults: number;
 }): Promise<HotelQuote | null> {
   const snap = HOTELS[stay.eventId];
-  if (!snap) return null;
+  if (!snap || hotelAgeDays(snap) > MAX_HOTEL_AGE_DAYS) return null;
   const forYourDates = snap.checkIn === stay.checkIn && snap.checkOut === stay.checkOut;
   // One traveller: a room for 1. Groups: rooms for 2 (an odd one out gets a
   // room for 2 as well, so their price is that room's).
@@ -342,7 +352,7 @@ const AIRLINES: Record<string, string> = {
 export function savedHotelFor(eventId: string, country: string): { name: string; total: number; nights: number; checkIn: string } | null {
   const snap = HOTELS[eventId];
   const best = snap?.hotels[0];
-  if (!snap || !best) return null;
+  if (!snap || !best || hotelAgeDays(snap) > MAX_HOTEL_AGE_DAYS) return null;
   if (Date.parse(snap.checkIn) < Date.now() - 864e5) return null;
   const [name, , total, , , path] = best;
   if (path.split("/")[2] !== country.toLowerCase()) return null;

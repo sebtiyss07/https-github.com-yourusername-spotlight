@@ -306,11 +306,37 @@ function oneTicketUrl(site: PriceSite, url: string): string {
   }
 }
 
+/**
+ * A saved price older than this many days is not shown as a price: it becomes
+ * a link with its last check date, so nothing out of date reads as current.
+ */
+const MAX_PRICE_AGE_DAYS = 3;
+
+function easternToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
+}
+
+function ageInDays(date: string): number {
+  return Math.round((Date.parse(`${easternToday()}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / 864e5);
+}
+
+/** Rows whose price is too old to show turn into "last checked" links. */
+function withoutStalePrices(rows: SitePrice[], checkedOn: (site: PriceSite) => string): SitePrice[] {
+  return rows.map((r) => {
+    if (r.price === null) return r;
+    const date = r.checked ?? checkedOn(r.site);
+    if (!date || ageInDays(date) <= MAX_PRICE_AGE_DAYS) return r;
+    const day = new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+    return { ...r, price: null, original: undefined, note: `Last checked ${day}: open the site for today's price` };
+  });
+}
+
 function comparePrices(
-  rows: SitePrice[],
+  allRows: SitePrice[],
   checkedOn: (site: PriceSite) => string,
   currency: Currency,
 ): PriceComparison {
+  const rows = withoutStalePrices(allRows, checkedOn);
   const offers: PriceOffer[] = rows.map((p) => ({
     site: p.site,
     label: PRICE_SITE_LABELS[p.site],

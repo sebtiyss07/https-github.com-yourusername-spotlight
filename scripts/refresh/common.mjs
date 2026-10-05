@@ -10,7 +10,11 @@ export const FILES = {
   us: join(ROOT, "src/lib/data/us-ticket-prices.json"),
   football: join(ROOT, "src/lib/data/ticket-prices.json"),
   hotels: join(ROOT, "src/lib/data/hotel-prices.json"),
+  f1: join(ROOT, "src/lib/data/f1-prices.json"),
 };
+
+/** Every price row of the F1 file (weekend passes and race days). */
+export const f1Rows = (data) => Object.values(data.races).flatMap((race) => [...(race.weekend ?? []), ...(race.raceDay ?? [])]);
 
 export const readJson = (f) => JSON.parse(readFileSync(f, "utf8"));
 export const writeJson = (f, d) => writeFileSync(f, JSON.stringify(d));
@@ -18,12 +22,18 @@ export const writeJson = (f, d) => writeFileSync(f, JSON.stringify(d));
 export const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Every ticket-price row in the US and football files: { file, key, row }. */
+/**
+ * Every ticket-price row in the US, football and F1 files: { file, key, row }.
+ * ONLY_FILES=f1 (comma-separated) limits a run to some files.
+ */
 export function allRows() {
+  const only = process.env.ONLY_FILES?.split(",");
   const out = [];
   for (const [file, path] of [["us", FILES.us], ["football", FILES.football]]) {
+    if (only && !only.includes(file)) continue;
     for (const [key, rows] of Object.entries(readJson(path).events)) for (const row of rows) out.push({ file, key, row });
   }
+  if (!only || only.includes("f1")) for (const row of f1Rows(readJson(FILES.f1))) out.push({ file: "f1", key: null, row });
   return out;
 }
 
