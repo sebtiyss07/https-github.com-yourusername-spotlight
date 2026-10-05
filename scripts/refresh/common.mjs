@@ -14,7 +14,8 @@ export const FILES = {
 
 export const readJson = (f) => JSON.parse(readFileSync(f, "utf8"));
 export const writeJson = (f, d) => writeFileSync(f, JSON.stringify(d));
-export const today = () => new Date().toISOString().slice(0, 10);
+/** Today in US Eastern time (YYYY-MM-DD), the date each refreshed price carries. */
+export const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Every ticket-price row in the US and football files: { file, key, row }. */
