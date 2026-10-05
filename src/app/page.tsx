@@ -89,14 +89,17 @@ export default async function HomePage() {
         <div className="relative mx-auto max-w-3xl px-5 pb-16 pt-12 text-center sm:px-6 sm:pb-20 sm:pt-20">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-semibold text-white/90 ring-1 ring-white/20">
             <span className="h-2 w-2 rounded-full bg-sun" aria-hidden />
-            Sports ticket price comparison
+            Tickets · Hotels · Flights
           </p>
           <h1 className="mt-5 text-[36px] font-extrabold leading-[1.05] sm:text-[56px]">
-            Find the cheapest ticket to any game.
+            <span className="inline-block">The game.</span>{" "}
+            <span className="inline-block">The trip.</span>{" "}
+            <span className="inline-block text-sun">For less.</span>
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-white/80 sm:text-[18px]">
-            NFL, NBA, MLS, Premier League, Champions League and Formula&nbsp;1. Every ticket
-            site&apos;s price in one list, with the cheapest at the top.
+            Compare every ticket site for the NFL, NBA, MLS, Premier League, Champions League
+            and Formula&nbsp;1, then add the cheapest hotel and flight for the same dates. Your
+            whole trip, priced in one place.
           </p>
           <div className="mx-auto mt-8 max-w-xl text-left">
             <SiteSearch large />

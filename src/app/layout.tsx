@@ -23,23 +23,23 @@ const body = Inter({
 
 const SITE_URL = "https://www.spotlightkt.com";
 const DESCRIPTION =
-  "Compare ticket prices across every major ticket site for NFL, NBA, MLS, Premier League, Champions League and Formula 1, cheapest first, then add the cheapest hotel and flight for the same dates.";
+  "The game. The trip. For less. Compare every ticket site for the NFL, NBA, MLS, Premier League, Champions League and Formula 1, then add the cheapest hotel and flight for the same dates.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Spotlight: compare sports ticket prices",
+    default: "Spotlight: game tickets, hotels and flights for less",
     template: "%s · Spotlight",
   },
   description: DESCRIPTION,
   openGraph: {
     type: "website",
     siteName: "Spotlight",
-    title: "Spotlight: compare sports ticket prices",
+    title: "Spotlight: game tickets, hotels and flights for less",
     description: DESCRIPTION,
     url: SITE_URL,
   },
-  twitter: { card: "summary", title: "Spotlight: compare sports ticket prices", description: DESCRIPTION },
+  twitter: { card: "summary", title: "Spotlight: game tickets, hotels and flights for less", description: DESCRIPTION },
 };
 
 export const viewport: Viewport = { themeColor: "#0a1736" };
