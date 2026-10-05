@@ -108,7 +108,7 @@ export default async function HomePage() {
       <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-6">
         <h2 className="text-[26px] font-extrabold sm:text-[30px]">Choose a league</h2>
         <p className="mt-1 text-ink-3">Every game this season, with the cheapest ticket on each.</p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {leagues.map((c) => (
             <LeagueCard key={c.id} choice={c} />
           ))}
