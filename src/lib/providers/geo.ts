@@ -159,25 +159,72 @@ export function hasSeveralAirports(airport: Airport): boolean {
  * ask again instead of quoting a flight from the wrong continent.
  */
 export function resolveOrigin(input: string): Airport | null {
-  const q = input.trim().toLowerCase();
+  const q = cityKey(input);
   if (!q) return null;
 
-  const byCode = AIRPORTS_BY_IATA.get(q.toUpperCase());
+  const byCode = AIRPORTS_BY_IATA.get(input.trim().toUpperCase());
   if (byCode) return byCode;
 
   // A city's main airport, not whichever one sorts first — "London" used to
   // resolve to London City, a small airport most flights don't use.
-  const metro = Object.entries(METROS).find(([city]) => city.toLowerCase() === q);
+  const metro = Object.entries(METROS).find(([city]) => cityKey(city) === q);
   if (metro) return AIRPORTS_BY_IATA.get(metro[1].main) ?? null;
 
-  const exactCity = AIRPORTS.find((a) => a.city.toLowerCase() === q);
+  // The hand-picked catalogue first, then every other airport we know.
+  const all = [...AIRPORTS, ...AIRPORTS_BY_IATA.values()];
+  const exactCity = all.find((a) => cityKey(a.city) === q);
   if (exactCity) return exactCity;
 
-  const partial = AIRPORTS.find(
-    (a) =>
-      a.city.toLowerCase().startsWith(q) || a.name.toLowerCase().includes(q),
+  const partial = all.find(
+    (a) => cityKey(a.city).startsWith(q) || cityKey(a.name).includes(q),
   );
   return partial ?? null;
+}
+
+/** Lower case, no accents or dots, "saint" as "st": "St. Louis" = "st louis". */
+export function cityKey(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/\bsaint\b/g, "st")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export interface OriginCity {
+  city: string;
+  country: string;
+  /** The airport's name ("Brussels Airport"), or "All airports" for a metro code. */
+  airport: string;
+  /** The airport a search from this city uses (a metro code like LON when there are several). */
+  code: string;
+  lat: number;
+  lon: number;
+}
+
+/**
+ * Every city someone can travel from, once each, for the city dropdowns.
+ * Each resolves back to the same airport through resolveOrigin.
+ */
+export function originCities(): OriginCity[] {
+  const seen = new Map<string, OriginCity>();
+  for (const a of [...AIRPORTS, ...AIRPORTS_BY_IATA.values()]) {
+    const key = cityKey(a.city);
+    if (seen.has(key)) continue;
+    const main = resolveOrigin(a.city) ?? a;
+    const code = flightSearchCode(main);
+    seen.set(key, {
+      city: a.city.replace(/\s*\(.*\)$/, ""),
+      country: main.country,
+      airport: code === main.iata ? main.name : "All airports",
+      code,
+      lat: main.lat,
+      lon: main.lon,
+    });
+  }
+  return [...seen.values()].sort((x, y) => x.city.localeCompare(y.city));
 }
 
 /** Great-circle distance in kilometres. */

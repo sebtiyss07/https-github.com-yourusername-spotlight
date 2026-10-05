@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FinderRowView, type FinderRow } from "@/components/MatchFinder";
+import { CityInput } from "@/components/CityInput";
 
 const DISTANCES = [25, 50, 100, 200];
 const WHEN = [
@@ -70,12 +71,13 @@ export function NearMe() {
           }}
           className="flex flex-col gap-2 sm:flex-row"
         >
-          <input
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="Your city, e.g. Chicago or London"
-            aria-label="Your city"
-            className="min-w-0 flex-1 rounded-xl border border-line bg-surface-2 px-4 py-3 text-[16px] outline-none focus:border-accent focus:bg-surface"
+          <CityInput
+            onValueChange={setCity}
+            onPick={(c) => setWhere({ city: c })}
+            placeholder="Pick your city, e.g. Chicago or London"
+            ariaLabel="Your city"
+            className="min-w-0 flex-1"
+            inputClassName="w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-[16px] outline-none focus:border-accent focus:bg-surface"
           />
           <button type="submit" className="rounded-xl bg-accent px-5 py-3 font-bold text-white hover:bg-accent-2">
             Find games
