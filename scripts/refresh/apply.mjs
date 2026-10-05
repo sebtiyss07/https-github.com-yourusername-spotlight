@@ -6,7 +6,7 @@
 //   .refresh/browser-booking.json  { eventId: { "1": [...], "2": [...] } } (job-booking.js export)
 // Each updated row gets today's date. A site that wasn't read keeps its last
 // checked price and date. Then: npx tsc, check pages, deploy (README.md).
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { FILES, OUT, readJson, writeJson, today, loadResults, f1Rows } from "./common.mjs";
 import { recordHistory } from "./history.mjs";
@@ -61,7 +61,7 @@ for (const file of [FILES.us, FILES.football]) {
 // F1 weekend passes and race days: same readers, same rules.
 const f1 = readJson(FILES.f1);
 for (const row of f1Rows(f1)) update(row);
-writeJson(FILES.f1, f1);
+writeFileSync(FILES.f1, JSON.stringify(f1, null, 1)); // kept readable, as committed
 
 // Hotels: the cheapest hotel for each game's default stay, for 1 and 2 people.
 const booking = load("browser-booking.json");

@@ -14,6 +14,7 @@ import { flightLinks, hotelLinks, type TravelLink } from "@/lib/providers/travel
 import { coachLinks, driveLink, groundTravelPossible, trainLink } from "@/lib/providers/ground";
 import { TripTotal } from "@/components/TripTotal";
 import { GameActions } from "@/components/GameActions";
+import { BookingSteps } from "@/components/BookingSteps";
 import { CityInput } from "@/components/CityInput";
 import { PriceHistory } from "@/components/PriceHistory";
 import { PhotoCredit } from "@/components/ui";
@@ -586,6 +587,46 @@ export default async function EventPage({
               needsOrigin={!resolvedOrigin}
               noFlightNeeded={sameCity}
               icons={{ ticket: <TicketIcon />, flight: <PlaneIcon />, hotel: <BedIcon /> }}
+            />
+            <BookingSteps
+              eventId={event.id}
+              steps={[
+                {
+                  key: "tickets",
+                  title: travellers === 1 ? "Your ticket" : `Your ${travellers} tickets`,
+                  why: "First: without seats there's no trip.",
+                  href: prices.cheapest?.url ?? "#tickets",
+                  cta: prices.cheapest ? `${prices.cheapest.label}` : "See sites",
+                },
+                ...(wantHotel
+                  ? [
+                      {
+                        key: "hotel",
+                        title: "A hotel with free cancellation",
+                        why:
+                          event.leagueId === "premier-league"
+                            ? "Premier League dates and kick-off times can move for TV: a refundable room costs nothing if they do."
+                            : "If plans change, you can cancel without paying.",
+                        href: hotelQuote?.url ?? hotels[0]?.url ?? null,
+                        cta: hotelQuote?.site ?? hotels[0]?.site ?? "Hotels",
+                      },
+                    ]
+                  : []),
+                ...(go === "flight" && !sameCity
+                  ? [
+                      {
+                        key: "flight",
+                        title: "Your flight",
+                        why: resolvedOrigin ? "Last, once the seats and a room are secured." : "Add where you're flying from above to see fares.",
+                        href: resolvedOrigin ? (flightQuote?.status === "ok" ? flightQuote.quote.url : flights[0]?.url ?? null) : "#trip",
+                        cta: resolvedOrigin ? (flightQuote?.status === "ok" ? "See fare" : flights[0]?.site ?? "Flights") : "Add city",
+                      },
+                    ]
+                  : []),
+                ...(groundLinks[0] && (go === "train" || go === "coach" || go === "drive")
+                  ? [{ key: "travel", title: "Getting there", why: "Last, once the seats and a room are secured.", href: groundLinks[0].url, cta: groundLinks[0].site }]
+                  : []),
+              ]}
             />
           </div>
         </section>

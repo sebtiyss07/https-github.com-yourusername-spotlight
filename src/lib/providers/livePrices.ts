@@ -349,7 +349,7 @@ const AIRLINES: Record<string, string> = {
  * the budget trip finder). Only stays that haven't started yet, and only
  * hotels in the venue's own country.
  */
-export function savedHotelFor(eventId: string, country: string): { name: string; total: number; nights: number; checkIn: string } | null {
+export function savedHotelFor(eventId: string, country: string): { name: string; total: number; nights: number; checkIn: string; checkOut: string } | null {
   const snap = HOTELS[eventId];
   const best = snap?.hotels[0];
   if (!snap || !best || hotelAgeDays(snap) > MAX_HOTEL_AGE_DAYS) return null;
@@ -357,5 +357,5 @@ export function savedHotelFor(eventId: string, country: string): { name: string;
   const [name, , total, , , path] = best;
   if (path.split("/")[2] !== country.toLowerCase()) return null;
   const nights = Math.round((Date.parse(snap.checkOut) - Date.parse(snap.checkIn)) / 86_400_000);
-  return { name, total, nights, checkIn: snap.checkIn };
+  return { name, total, nights, checkIn: snap.checkIn, checkOut: snap.checkOut };
 }
