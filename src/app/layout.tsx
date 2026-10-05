@@ -8,6 +8,7 @@ import { LeagueNav } from "@/components/LeagueNav";
 import { NAV_LEAGUES } from "@/lib/nav";
 import { LogoMark } from "@/components/Logo";
 import { getCurrency } from "@/lib/currency";
+import { Analytics } from "@vercel/analytics/next";
 
 const display = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -128,6 +129,8 @@ export default async function RootLayout({
             </p>
           </div>
         </footer>
+        {/* Anonymous visit counts (no cookies); see the privacy page. */}
+        <Analytics />
       </body>
     </html>
   );

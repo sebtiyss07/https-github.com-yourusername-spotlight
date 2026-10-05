@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Privacy",
-  description: "What Spotlight stores about you: one currency setting, nothing else.",
+  description: "What Spotlight stores about you: one currency setting, plus anonymous visit counts.",
 };
 
 export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-2xl px-5 py-16 sm:px-8">
       <h1 className="text-[32px] font-semibold">Privacy policy</h1>
-      <p className="mt-2 text-[14px] text-ink-3">Last updated 29 September 2026</p>
+      <p className="mt-2 text-[14px] text-ink-3">Last updated 5 October 2026</p>
 
       <h2 className="mt-10 text-[20px] font-semibold">What we store</h2>
       <p className="mt-2 text-[16px] text-ink-2">
@@ -21,9 +21,16 @@ export default function PrivacyPage() {
       <h2 className="mt-10 text-[20px] font-semibold">What we don&apos;t do</h2>
       <ul className="mt-2 list-disc space-y-2 pl-5 text-[16px] text-ink-2">
         <li>No accounts, no sign-up, and no forms that collect your name, email or payment details.</li>
-        <li>No advertising or analytics trackers.</li>
+        <li>No advertising trackers, and no cookies beyond the currency one above.</li>
         <li>We don&apos;t sell or share personal information.</li>
       </ul>
+
+      <h2 className="mt-10 text-[20px] font-semibold">Visit counts</h2>
+      <p className="mt-2 text-[16px] text-ink-2">
+        We count visits with Vercel Web Analytics to see how many people use Spotlight and
+        which pages they open. It uses no cookies and doesn&apos;t identify you: it records the
+        page, your country and your type of device and browser, in totals only.
+      </p>
 
       <h2 className="mt-10 text-[20px] font-semibold">Our hosting</h2>
       <p className="mt-2 text-[16px] text-ink-2">
