@@ -32,7 +32,7 @@ export default async function SearchPage({
     <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8">
       <BackLink href="/">Home</BackLink>
 
-      <h1 className="mt-8 text-[30px] font-medium leading-tight sm:text-[36px]">
+      <h1 className="mt-8 text-[30px] font-semibold leading-tight sm:text-[36px]">
         {q ? `Results for “${q}”` : "Search"}
       </h1>
       <p className="mt-2 text-[15px] text-ink-3">
@@ -52,7 +52,7 @@ export default async function SearchPage({
         ) : (
           <div className="space-y-8">
           {places.length > 0 && (
-          <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface shadow-xs">
             {places.map((hit) => (
               <Link
                 key={`${hit.kind}-${hit.id}`}
@@ -63,7 +63,7 @@ export default async function SearchPage({
                   {KIND_LABEL[hit.kind]}
                 </Badge>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-medium">{hit.title}</p>
+                  <p className="truncate text-[15px] font-semibold">{hit.title}</p>
                   <p className="truncate text-[13px] text-ink-3">{hit.subtitle}</p>
                 </div>
                 <span
@@ -78,7 +78,7 @@ export default async function SearchPage({
           )}
           {games.length > 0 && (
             <section>
-              <h2 className="text-[18px] font-medium">Games, soonest first</h2>
+              <h2 className="text-[18px] font-semibold">Games, soonest first</h2>
               <div className="mt-3 space-y-2.5">
                 {games.map((c) => (
                   <EventRow key={c.event.id} context={c} />

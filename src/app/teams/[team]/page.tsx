@@ -11,6 +11,7 @@ import {
 import { EventRow } from "@/components/EventCard";
 import { EmptyState, TeamMark } from "@/components/ui";
 import { formatPrice } from "@/lib/format";
+import { darkTeamColor } from "@/lib/colors";
 import Link from "next/link";
 
 export async function generateStaticParams() {
@@ -54,36 +55,44 @@ export default async function TeamPage({
 
   return (
     <>
-      <section className="border-b border-line">
+      {/* The team's own colours, so every team page is recognisable at a glance. */}
+      <section
+        className="text-white"
+        style={{ background: `linear-gradient(120deg, ${darkTeamColor(team)} 0%, ${darkTeamColor(team)} 55%, #0b0d1a 100%)` }}
+      >
         <div className="mx-auto max-w-4xl px-5 pb-10 pt-8 sm:px-8">
-          <Link href={`/leagues/${team.leagueId}`} className="text-[14px] text-ink-3 hover:text-ink">
+          <Link href={`/leagues/${team.leagueId}`} className="text-[14px] font-medium text-white/75 hover:text-white">
             ← All {league?.shortName ?? "league"} games
           </Link>
-          <div className="mt-8 flex items-center gap-4">
-            <TeamMark
-              name={team.name}
-              abbreviation={team.abbreviation}
-              logoUrl={team.logoUrl}
-              primary={team.primaryColor}
-              secondary={team.secondaryColor}
-              size={56}
-            />
+          <div className="mt-6 flex items-center gap-4">
+            <span className="rounded-full bg-white p-1.5 shadow-lg">
+              <TeamMark
+                name={team.name}
+                abbreviation={team.abbreviation}
+                logoUrl={team.logoUrl}
+                primary={team.primaryColor}
+                secondary={team.secondaryColor}
+                size={60}
+              />
+            </span>
             <div className="min-w-0">
-              <p className="text-[13px] text-ink-3">{league?.name}</p>
-              <h1 className="text-[30px] font-medium leading-tight tracking-[-0.035em] text-ink sm:text-[40px]">{team.name}</h1>
+              <p className="text-[13px] font-semibold uppercase tracking-wide text-white/70">{league?.name}</p>
+              <h1 className="text-[30px] font-semibold leading-tight sm:text-[40px]">{team.name}</h1>
             </div>
           </div>
-          <p className="mt-6 flex flex-wrap gap-x-5 gap-y-1 text-[14px] text-ink-3">
-            {venue && <span>Home: {venue.name}</span>}
-            <span>
+          <div className="mt-6 flex flex-wrap gap-2 text-[14px]">
+            {venue && (
+              <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">Home: {venue.name}</span>
+            )}
+            <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">
               {events.length} games left · {homeGames} at home
             </span>
             {cheapest && (
-              <span>
-                Tickets from <span className="text-positive">{formatPrice(cheapest.amount, cheapest.currency)}</span>
+              <span className="rounded-full bg-white px-3 py-1.5 font-semibold text-ink">
+                Tickets from {formatPrice(cheapest.amount, cheapest.currency)}
               </span>
             )}
-          </p>
+          </div>
         </div>
       </section>
 

@@ -1,13 +1,14 @@
-/** Spotlight's mark: a ticket in a black tile. Also used as the site icon. */
+/** Spotlight's mark: a ticket inside a blue tile. Also used as the site icon. */
 export function LogoMark({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
-      <rect width="32" height="32" rx="8" fill="#111111" />
+      <rect width="32" height="32" rx="9" fill="#1d4ed8" />
       <path
         d="M8 11.5a1.5 1.5 0 0 1 1.5-1.5h13a1.5 1.5 0 0 1 1.5 1.5v2.2a2.3 2.3 0 0 0 0 4.6v2.2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 8 20.5v-2.2a2.3 2.3 0 0 0 0-4.6z"
         fill="#fff"
       />
-      <path d="M19 10.5v11" stroke="#111111" strokeWidth="1.4" strokeDasharray="1.6 1.6" />
+      <path d="M19 10.5v11" stroke="#1d4ed8" strokeWidth="1.4" strokeDasharray="1.6 1.6" />
+      <circle cx="13.5" cy="16" r="2.1" fill="#ffc93c" />
     </svg>
   );
 }

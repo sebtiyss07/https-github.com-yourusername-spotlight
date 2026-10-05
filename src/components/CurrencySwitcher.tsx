@@ -38,7 +38,7 @@ export function CurrencySwitcher({ current }: { current: string }) {
           aria-label={o.code}
           title={o.code}
           onClick={() => pick(o.code)}
-          className={`h-8 w-8 rounded-full text-[14px] font-medium transition-colors ${
+          className={`h-8 w-8 rounded-full text-[14px] font-semibold transition-colors ${
             value === o.code ? "bg-ink text-white" : "text-ink-2 hover:text-ink"
           }`}
         >

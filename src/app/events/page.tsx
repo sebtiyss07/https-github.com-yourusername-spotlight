@@ -30,7 +30,7 @@ export default async function EventsPage() {
     <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
       <BackLink href="/">Home</BackLink>
 
-      <h1 className="mt-8 text-[30px] font-medium leading-tight sm:text-[38px]">
+      <h1 className="mt-8 text-[30px] font-semibold leading-tight sm:text-[38px]">
         Big events
       </h1>
       <p className="mt-2 text-[16px] text-ink-2">
@@ -39,7 +39,7 @@ export default async function EventsPage() {
 
       {[...groups.entries()].map(([month, monthEvents]) => (
         <section key={month} className="mt-12">
-          <h2 className="text-[20px] font-medium">{month}</h2>
+          <h2 className="text-[20px] font-semibold">{month}</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {monthEvents.map((context) => (
               <GameCard key={context.event.id} context={context} race={context.event.sportId === "motorsport"} />

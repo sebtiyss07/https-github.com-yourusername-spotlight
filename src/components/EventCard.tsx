@@ -8,10 +8,10 @@ function DateTile({ iso, timeZone }: { iso: string; timeZone: string }) {
   const { weekday, day, month } = dateParts(iso, timeZone);
   return (
     <div className="flex w-14 shrink-0 flex-col items-center overflow-hidden rounded-xl border border-line bg-surface text-center">
-      <span className="w-full border-b border-line py-0.5 text-[10px] uppercase tracking-wide text-ink-3">
+      <span className="w-full bg-accent py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
         {month}
       </span>
-      <span className="text-[19px] font-medium leading-tight">{day}</span>
+      <span className="font-display text-[22px] font-semibold leading-tight">{day}</span>
       <span className="pb-1 text-[11px] font-medium text-ink-3">{weekday}</span>
     </div>
   );
@@ -30,7 +30,7 @@ export function EventRow({ context }: { context: EventContext }) {
   return (
     <Link
       href={`/events/${event.id}`}
-      className="group flex items-center gap-4 rounded-xl border border-line bg-surface p-3.5 transition-all hover:border-ink sm:gap-5 sm:p-4"
+      className="group flex items-center gap-4 rounded-2xl border border-line bg-surface p-3.5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-line-bright hover:shadow-md sm:gap-5 sm:p-4"
     >
       <DateTile iso={event.startsAt} timeZone={timeZone} />
 
@@ -56,7 +56,7 @@ export function EventRow({ context }: { context: EventContext }) {
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-[15px] font-medium leading-snug">{title}</p>
+        <p className="line-clamp-2 text-[15px] font-semibold leading-snug">{title}</p>
         <p className="truncate text-[13px] text-ink-3">
           {event.endsAt
             ? formatDateRange(event.startsAt, event.endsAt, timeZone)
@@ -68,7 +68,7 @@ export function EventRow({ context }: { context: EventContext }) {
       {prices.cheapest && (
         <div className="shrink-0 text-right">
           <p className="text-[11px] font-medium text-ink-3">from</p>
-          <p className="tabular text-[16px] font-medium leading-tight text-ink">
+          <p className="tabular text-[17px] font-semibold leading-tight text-positive">
             {formatPrice(prices.cheapest.amount!, prices.currency)}
           </p>
           <p className="hidden text-[11px] text-ink-3 sm:block">
@@ -77,7 +77,9 @@ export function EventRow({ context }: { context: EventContext }) {
         </div>
       )}
 
-      <span aria-hidden className="hidden shrink-0 text-ink-3 transition-colors group-hover:text-ink sm:inline">→</span>
+      <span className="hidden shrink-0 rounded-full bg-surface-2 px-3.5 py-2 text-[13px] font-semibold text-ink transition-colors group-hover:bg-accent group-hover:text-white sm:inline-block">
+        {prices.offers.length > 1 ? "Compare →" : "Plan trip →"}
+      </span>
     </Link>
   );
 }

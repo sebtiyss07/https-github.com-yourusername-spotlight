@@ -100,11 +100,11 @@ export function MatchFinder({
   return (
     <div>
       {/* Filters */}
-      <div className="rounded-xl border border-line bg-surface p-3 sm:p-4">
+      <div className="rounded-2xl border border-line bg-surface p-3 shadow-xs sm:p-4">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_auto_auto]">
           {teams.length > 0 && (
             <label className="col-span-2 block sm:col-span-1">
-              <span className="mb-1 block text-[12px] font-medium text-ink-3">Team</span>
+              <span className="mb-1 block text-[12px] font-semibold text-ink-3">Team</span>
               <select
                 value={team}
                 onChange={(e) => reset(() => setTeam(e.target.value))}
@@ -120,7 +120,7 @@ export function MatchFinder({
             </label>
           )}
           <label className="block min-w-0">
-            <span className="mb-1 block text-[12px] font-medium text-ink-3">Budget</span>
+            <span className="mb-1 block text-[12px] font-semibold text-ink-3">Budget</span>
             <select
               value={cap}
               onChange={(e) => reset(() => setCap(Number(e.target.value)))}
@@ -135,7 +135,7 @@ export function MatchFinder({
             </select>
           </label>
           <div className="min-w-0">
-            <span className="mb-1 block text-[12px] font-medium text-ink-3">Sort</span>
+            <span className="mb-1 block text-[12px] font-semibold text-ink-3">Sort</span>
             <div className="flex rounded-xl bg-surface-2 p-1">
               {(
                 [
@@ -147,7 +147,7 @@ export function MatchFinder({
                   key={key}
                   onClick={() => reset(() => setSort(key))}
                   aria-pressed={sort === key}
-                  className={`flex-1 rounded-lg px-2 py-1.5 text-[13px] font-medium transition-colors sm:px-3.5 sm:text-[14px] ${
+                  className={`flex-1 rounded-lg px-2 py-1.5 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-[14px] ${
                     sort === key ? "bg-ink text-white" : "text-ink-2 hover:text-ink"
                   }`}
                 >
@@ -165,7 +165,7 @@ export function MatchFinder({
                 key={key || "all"}
                 onClick={() => reset(() => setMonth(key))}
                 aria-pressed={month === key}
-                className={`shrink-0 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors ${
+                className={`shrink-0 rounded-full border px-3 py-1 text-[13px] font-semibold transition-colors ${
                   month === key
                     ? "border-accent bg-accent text-white"
                     : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
@@ -180,14 +180,14 @@ export function MatchFinder({
 
       {/* Summary */}
       <p className="mt-4 text-[14px] text-ink-2">
-        <span className="font-medium text-ink">
+        <span className="font-semibold text-ink">
           {filtered.length.toLocaleString("en-US")} {noun}
         </span>
         {cheapest && (
           <>
             {" "}
             · cheapest ticket{" "}
-            <Link href={`/events/${cheapest.id}`} className="font-medium text-positive hover:underline">
+            <Link href={`/events/${cheapest.id}`} className="font-semibold text-positive hover:underline">
               {formatPrice(cheapest.price!, currency)} for {cheapest.title}
             </Link>
           </>
@@ -196,11 +196,11 @@ export function MatchFinder({
 
       {/* Results */}
       {filtered.length === 0 ? (
-        <div className="mt-4 rounded-xl border border-dashed border-line px-5 py-10 text-center text-[14px] text-ink-2">
+        <div className="mt-4 rounded-2xl border border-dashed border-line px-5 py-10 text-center text-[14px] text-ink-2">
           Nothing matches those filters.{" "}
           <button
             onClick={() => reset(() => (setTeam(""), setMonth(""), setCap(0)))}
-            className="font-medium text-accent hover:underline"
+            className="font-semibold text-accent hover:underline"
           >
             Clear filters
           </button>
@@ -218,7 +218,7 @@ export function MatchFinder({
       {filtered.length > shown && (
         <button
           onClick={() => setShown((n) => n + PAGE)}
-          className="mt-4 w-full rounded-full border border-line bg-surface py-2.5 text-[14px] font-medium hover:border-accent hover:text-accent"
+          className="mt-4 w-full rounded-full border border-line bg-surface py-2.5 text-[14px] font-semibold shadow-xs hover:border-accent hover:text-accent"
         >
           Show {Math.min(PAGE, filtered.length - shown)} more
         </button>
@@ -231,13 +231,13 @@ function FinderRowView({ row, currency }: { row: FinderRow; currency: string }) 
   return (
     <Link
       href={`/events/${row.id}`}
-      className="group flex items-center gap-3 rounded-xl border border-line bg-surface p-3 transition-all hover:border-ink sm:gap-4 sm:p-3.5"
+      className="group flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 shadow-xs transition-all hover:-translate-y-0.5 hover:border-line-bright hover:shadow-md sm:gap-4 sm:p-3.5"
     >
       <div className="flex w-12 shrink-0 flex-col items-center overflow-hidden rounded-xl border border-line text-center">
-        <span className="w-full border-b border-line py-0.5 text-[10px] uppercase tracking-wide text-ink-3">
+        <span className="w-full bg-accent py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
           {row.monthShort}
         </span>
-        <span className="text-[17px] font-medium leading-tight">{row.day}</span>
+        <span className="font-display text-[19px] font-semibold leading-tight">{row.day}</span>
         <span className="pb-0.5 text-[10px] font-medium text-ink-3">{row.weekday}</span>
       </div>
 
@@ -268,7 +268,7 @@ function FinderRowView({ row, currency }: { row: FinderRow; currency: string }) 
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-[15px] font-medium leading-snug">{row.title}</p>
+        <p className="line-clamp-2 text-[15px] font-semibold leading-snug group-hover:text-accent">{row.title}</p>
         <p className="truncate text-[13px] text-ink-3">
           {row.time} · {row.place}
         </p>
@@ -276,7 +276,7 @@ function FinderRowView({ row, currency }: { row: FinderRow; currency: string }) 
 
       {row.price !== null ? (
         <div className="shrink-0 text-right">
-          <p className="tabular text-[16px] font-medium leading-tight text-ink">
+          <p className="tabular text-[17px] font-semibold leading-tight text-positive">
             {formatPrice(row.price, currency)}
           </p>
           <p className="text-[11px] text-ink-3">
@@ -287,7 +287,9 @@ function FinderRowView({ row, currency }: { row: FinderRow; currency: string }) 
         <p className="shrink-0 text-right text-[12px] text-ink-3">See sites</p>
       )}
 
-      <span aria-hidden className="hidden shrink-0 text-ink-3 transition-colors group-hover:text-ink sm:inline">→</span>
+      <span aria-hidden className="hidden shrink-0 rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold transition-colors group-hover:bg-accent group-hover:text-white sm:inline-block">
+        Compare →
+      </span>
     </Link>
   );
 }

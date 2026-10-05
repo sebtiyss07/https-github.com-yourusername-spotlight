@@ -269,11 +269,11 @@ export default async function DevCheck() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12 font-mono text-[13px]">
-      <h1 className="mb-6 text-xl font-medium">
+      <h1 className="mb-6 text-xl font-bold">
         {allPass ? "✅ ALL PASS" : "❌ FAILURES"}
       </h1>
 
-      <h2 className="mb-2 mt-8 font-medium">
+      <h2 className="mb-2 mt-8 font-bold">
         Resolver scoring (threshold {MIN_CONFIDENCE})
       </h2>
       {scoreCases.map((c) => (
@@ -284,7 +284,7 @@ export default async function DevCheck() {
         </p>
       ))}
 
-      <h2 className="mb-2 mt-8 font-medium">Synthetic suppression</h2>
+      <h2 className="mb-2 mt-8 font-bold">Synthetic suppression</h2>
       {suppressionCases.map((c) => (
         <p key={c.label} className={c.pass ? "text-positive" : "text-hot"}>
           {c.pass ? "PASS" : "FAIL"} · {c.label} → [{c.ids.join(", ")}]
@@ -293,7 +293,7 @@ export default async function DevCheck() {
         </p>
       ))}
 
-      <h2 className="mb-2 mt-8 font-medium">ISO 8601 duration parsing</h2>
+      <h2 className="mb-2 mt-8 font-bold">ISO 8601 duration parsing</h2>
       {durationCases.map((c) => (
         <p
           key={String(c.input)}
@@ -304,7 +304,7 @@ export default async function DevCheck() {
         </p>
       ))}
 
-      <h2 className="mb-2 mt-8 font-medium">Currency safety</h2>
+      <h2 className="mb-2 mt-8 font-bold">Currency safety</h2>
       {moneyCases.map((c) => (
         <p key={c.label} className={c.pass ? "text-positive" : "text-hot"}>
           {c.pass ? "PASS" : "FAIL"} · {c.label} → total=
@@ -314,7 +314,7 @@ export default async function DevCheck() {
         </p>
       ))}
 
-      <h2 className="mb-2 mt-8 font-medium">Price validation</h2>
+      <h2 className="mb-2 mt-8 font-bold">Price validation</h2>
       {validityCases.map((c) => (
         <p key={c.label} className={c.pass ? "text-positive" : "text-hot"}>
           {c.pass ? "PASS" : "FAIL"} · {c.label} → {String(c.actual)} (wanted{" "}
@@ -322,7 +322,7 @@ export default async function DevCheck() {
         </p>
       ))}
 
-      <h2 className="mb-2 mt-8 font-medium">
+      <h2 className="mb-2 mt-8 font-bold">
         Arrival window ({MIN_BUFFER_HOURS}–{MAX_BUFFER_HOURS}h before kickoff)
       </h2>
       {arrivalCases.map((c) => (

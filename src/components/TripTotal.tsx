@@ -102,11 +102,13 @@ export function TripTotal({
   else note = `${whatLabel}, at the cheapest prices when we checked`;
 
   return (
-    <section className="overflow-hidden rounded-xl border border-line bg-surface md:grid md:grid-cols-[300px_1fr]">
-      <div className="flex flex-col justify-center border-b border-line bg-surface-2 px-6 py-6 md:border-b-0 md:border-r">
-        <p className="text-[13px] text-ink-3">Your total · {people}</p>
-        <p className="tabular mt-1.5 text-[40px] font-medium leading-none tracking-[-0.03em] text-ink">{money(total)}</p>
-        <p className="mt-2 text-[14px] text-ink-3">{note}</p>
+    <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-md md:grid md:grid-cols-[300px_1fr]">
+      <div className="glow flex flex-col justify-center px-6 py-6" style={{ ["--glow" as string]: "#4f46e5" }}>
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-white/70">
+          Your total · {people}
+        </p>
+        <p className="tabular mt-1.5 text-[40px] font-semibold leading-none">{money(total)}</p>
+        <p className="mt-2 text-[14px] text-white/80">{note}</p>
       </div>
 
       <div className="divide-y divide-line">
@@ -171,7 +173,7 @@ export function TripTotal({
             detail={
               hotel && !hotel.forYourDates ? (
                 <>
-                  <span className="block text-[14px] font-medium text-ink">{hotel.name}</span>
+                  <span className="block text-[14px] font-semibold text-ink">{hotel.name}</span>
                   <span className="block">
                     {money(hotel.total)} for {hotel.nights} {hotel.nights === 1 ? "night" : "nights"} ({shortDate(hotel.checkIn)} to {shortDate(hotel.checkOut)}){travellers > 1 ? ", per room for 2 people" : ""}, the stay we checked on {hotel.site}, before taxes.
                   </span>
@@ -179,7 +181,7 @@ export function TripTotal({
                 </>
               ) : hotel ? (
                 <>
-                  <span className="block text-[14px] font-medium text-ink">{hotel.name}</span>
+                  <span className="block text-[14px] font-semibold text-ink">{hotel.name}</span>
                   <span className="block">
                     {[tidyRoom(hotel.room), `${hotel.distance} from ${venueName}`, `${money(hotel.perNight)} a night`]
                       .filter(Boolean)
@@ -235,8 +237,8 @@ function Line({
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="text-[15px] font-medium">{label}</p>
-          <p className="tabular shrink-0 text-[18px] font-medium">{value}</p>
+          <p className="text-[15px] font-semibold">{label}</p>
+          <p className="tabular shrink-0 text-[18px] font-semibold">{value}</p>
         </div>
         <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div className="min-w-0 flex-1 text-[13px] text-ink-3">{detail}</div>
@@ -245,7 +247,7 @@ function Line({
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 rounded-full bg-ink px-3.5 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-accent"
+              className="shrink-0 rounded-full bg-ink px-3.5 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent"
             >
               {action} ↗
             </a>
@@ -260,7 +262,7 @@ function Line({
                 href={l.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full border border-line px-2.5 py-0.5 text-[12px] font-medium text-ink-2 transition-colors hover:border-accent hover:text-accent"
+                className="rounded-full border border-line px-2.5 py-0.5 text-[12px] font-semibold text-ink-2 transition-colors hover:border-accent hover:text-accent"
               >
                 {l.site} ↗
               </a>
