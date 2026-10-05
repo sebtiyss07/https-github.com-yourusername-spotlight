@@ -2,7 +2,7 @@
 //   .refresh/prices-node.json      { site: { url: price | null } }   (node-sites.mjs)
 //   .refresh/browser-vivid.json    { productionId: price | null }    (job-vivid.js export)
 //   .refresh/browser-stubhub.json  { eventId: price | null }         (job-stubhub.js export)
-//   .refresh/browser-booking.json  { "eventId|adults": [...] | null }(job-booking.js export)
+//   .refresh/browser-booking.json  { eventId: { "1": [...], "2": [...] } } (job-booking.js export)
 // Each updated row gets today's date. A site that wasn't read keeps its last
 // checked price and date. Then: npx tsc, check pages, deploy (README.md).
 import { existsSync } from "node:fs";
@@ -59,8 +59,9 @@ const booking = load("browser-booking.json");
 const hotels = readJson(FILES.hotels);
 const longDate = new Date(`${day}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 let hotelCount = 0;
-for (const [key, v] of Object.entries(booking)) {
-  const [eid, adults] = key.split("|");
+// Each game's result is { "1": hotel | null, "2": hotel | null }.
+const searches = Object.entries(booking).flatMap(([eid, v]) => Object.entries(v ?? {}).map(([adults, h]) => [eid, adults, h]));
+for (const [eid, adults, v] of searches) {
   if (!v) continue;
   const [ci, co, found, name, total, dist, room, path, nightsText] = v;
   const nights = Math.round((Date.parse(co) - Date.parse(ci)) / 864e5);

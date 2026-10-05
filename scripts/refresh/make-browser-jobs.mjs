@@ -21,7 +21,7 @@ window.__job = { key: ${JSON.stringify(key)}, done: false, total: IDS.length, re
 (async () => {
   let fails = 0;
   for (const id of IDS) {
-    const k = Array.isArray(id) ? id.join("|") : id;
+    const k = Array.isArray(id) ? String(id[0]) : id;
     if (k in window.__job.results) continue;
     try {
       const v = await (async () => { ${body} })();
@@ -65,24 +65,30 @@ writeFileSync(join(OUT, "job-stubhub.js"), runner("__refreshStubhub", cap(stubId
 const plan = (await (await fetch("http://localhost:3000/dev-refresh-plan")).json()).events;
 const soon = Date.now() + HOTEL_DAYS * 864e5;
 const stays = plan.filter((e) => Date.parse(e.checkIn) > Date.now() - 864e5 && Date.parse(e.startsAt) < soon)
-  .flatMap((e) => [1, 2].map((adults) => [e.id, adults, e.venue.name + ", " + e.venue.city, e.venue.lat, e.venue.lon, e.venue.country.toLowerCase(), e.checkIn, e.checkOut]));
+  .map((e) => [e.id, e.venue.name + ", " + e.venue.city, e.venue.lat, e.venue.lon, e.venue.country.toLowerCase(), e.checkIn, e.checkOut]);
+// One entry per game; both group sizes are searched inside: { "1": hotel, "2": hotel }.
 writeFileSync(join(OUT, "job-booking.js"), runner("__refreshBooking", cap(stays), `
-  const [eid, adults, ss, lat, lon, cc, ci, co] = id;
-  const q = new URLSearchParams({ ss, latitude: lat, longitude: lon, checkin: ci, checkout: co, group_adults: String(adults), no_rooms: "1", group_children: "0", order: "price", nflt: "ht_id=204;distance=5000" });
-  const r = await fetch("/searchresults.html?" + q, { credentials: "include" });
-  if (r.status === 403 || r.status === 429) return "BLOCKED";
-  const doc = new DOMParser().parseFromString(await r.text(), "text/html");
-  const cards = [...doc.querySelectorAll('[data-testid="property-card"]')];
-  if (!cards.length) return undefined;
-  const found = (doc.querySelector("h1")?.textContent.match(/([\\d,]+) propert/) || [])[1] || null;
-  const best = cards.map((c) => ({
-    name: c.querySelector('[data-testid="title"]')?.textContent.trim(),
-    path: (c.querySelector('a[data-testid="title-link"]')?.getAttribute("href") || "").split("?")[0].replace("https://www.booking.com", ""),
-    total: Number((c.querySelector('[data-testid="price-and-discounted-price"]')?.textContent || "").replace(/[^\\d.]/g, "")),
-    dist: (c.querySelector('[data-testid="distance"]')?.textContent || "").replace(/ from (map )?cent(er|re)/, ""),
-    nights: c.querySelector('[data-testid="price-for-x-nights"]')?.textContent.trim(),
-    room: ((c.querySelector('[data-testid="recommended-units"] h4') || c.querySelector('[data-testid="recommended-units"]'))?.textContent || "").trim().split("\\n")[0],
-  })).filter((h) => h.total > 0 && h.path.startsWith("/hotel/" + cc + "/") && !/dorm|capsule|hostel|bed in/i.test(h.name + " " + h.room)).sort((a, b) => a.total - b.total)[0];
-  return best ? [ci, co, found, best.name, best.total, best.dist, best.room, best.path, best.nights] : null;`, 3500));
+  const [eid, ss, lat, lon, cc, ci, co] = id;
+  const out = {};
+  for (const adults of [1, 2]) {
+    const q = new URLSearchParams({ ss, latitude: lat, longitude: lon, checkin: ci, checkout: co, group_adults: String(adults), no_rooms: "1", group_children: "0", order: "price", nflt: "ht_id=204;distance=5000" });
+    const r = await fetch("/searchresults.html?" + q, { credentials: "include" });
+    if (r.status === 403 || r.status === 429) return "BLOCKED";
+    const doc = new DOMParser().parseFromString(await r.text(), "text/html");
+    const cards = [...doc.querySelectorAll('[data-testid="property-card"]')];
+    if (!cards.length) return undefined;
+    const found = (doc.querySelector("h1")?.textContent.match(/([\\d,]+) propert/) || [])[1] || null;
+    const best = cards.map((c) => ({
+      name: c.querySelector('[data-testid="title"]')?.textContent.trim(),
+      path: (c.querySelector('a[data-testid="title-link"]')?.getAttribute("href") || "").split("?")[0].replace("https://www.booking.com", ""),
+      total: Number((c.querySelector('[data-testid="price-and-discounted-price"]')?.textContent || "").replace(/[^\\d.]/g, "")),
+      dist: (c.querySelector('[data-testid="distance"]')?.textContent || "").replace(/ from (map )?cent(er|re)/, ""),
+      nights: c.querySelector('[data-testid="price-for-x-nights"]')?.textContent.trim(),
+      room: ((c.querySelector('[data-testid="recommended-units"] h4') || c.querySelector('[data-testid="recommended-units"]'))?.textContent || "").trim().split("\\n")[0],
+    })).filter((h) => h.total > 0 && h.path.startsWith("/hotel/" + cc + "/") && !/dorm|capsule|hostel|bed in/i.test(h.name + " " + h.room)).sort((a, b) => a.total - b.total)[0];
+    out[adults] = best ? [ci, co, found, best.name, best.total, best.dist, best.room, best.path, best.nights] : null;
+    if (adults === 1) await sleepW(3000);
+  }
+  return out;`, 3500));
 
-console.log(`jobs written to .refresh/: vivid ${vividIds.length}, stubhub ${stubIds.length}, booking ${stays.length} searches (${HOTEL_DAYS} days)`);
+console.log(`jobs written to .refresh/: vivid ${vividIds.length}, stubhub ${stubIds.length}, booking ${stays.length} games x 2 group sizes (${HOTEL_DAYS} days)`);
