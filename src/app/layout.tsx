@@ -4,6 +4,7 @@ import Link from "next/link";
 import "./globals.css";
 import { HeaderSearch } from "@/components/HeaderSearch";
 import { CurrencySwitcher } from "@/components/CurrencySwitcher";
+import { SavedLink } from "@/components/SavedLink";
 import { LeagueNav } from "@/components/LeagueNav";
 import { NAV_LEAGUES } from "@/lib/nav";
 import { LogoMark } from "@/components/Logo";
@@ -74,7 +75,8 @@ export default async function RootLayout({
               </span>
             </Link>
             <HeaderSearch />
-            <div className="ml-auto sm:ml-0">
+            <div className="ml-auto flex items-center gap-1 sm:ml-0">
+              <SavedLink />
               <CurrencySwitcher current={currency} />
             </div>
           </div>

@@ -8,6 +8,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { FILES, OUT, readJson, writeJson, today } from "./common.mjs";
+import { recordHistory } from "./history.mjs";
 
 const day = today();
 const load = (f) => (existsSync(join(OUT, f)) ? readJson(join(OUT, f)) : {});
@@ -75,3 +76,6 @@ for (const [eid, adults, v] of searches) {
 }
 writeJson(FILES.hotels, hotels);
 console.log("ticket rows updated:", JSON.stringify(count), "| hotel searches applied:", hotelCount);
+
+// Today's cheapest price per game, for the price history chart.
+console.log("price history points recorded:", recordHistory(day));

@@ -107,6 +107,12 @@ export default async function HomePage() {
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[14px]">
             <span className="text-white/60">Popular:</span>
+            <Link
+              href="/near-me"
+              className="rounded-full bg-sun px-3.5 py-1.5 font-semibold text-ink transition-colors hover:bg-white"
+            >
+              📍 Games near me
+            </Link>
             {POPULAR.map(([q, href]) => (
               <Link
                 key={q}

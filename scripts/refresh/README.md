@@ -39,11 +39,12 @@ Rules that never change:
    If a site starts answering 403 or a challenge page mid-run, the job stops;
    export what it has.
 5. `node scripts/refresh/apply.mjs`: writes the results into the price and
-   hotel files, each row dated today.
+   hotel files, each row dated today, and adds today's cheapest price per game
+   to `src/lib/data/price-history.json` (the chart on each game page).
 6. Check: `npx tsc --noEmit -p .`, then open a few game pages; prices should
    look normal (no sudden $0 or 10x jumps).
-7. Commit the three data files (`src/lib/data/us-ticket-prices.json`,
-   `ticket-prices.json`, `hotel-prices.json`) and deploy:
+7. Commit the four data files (`src/lib/data/us-ticket-prices.json`,
+   `ticket-prices.json`, `hotel-prices.json`, `price-history.json`) and deploy:
    `npx --yes vercel deploy --prod --yes` (retry on "Not authorized").
 
 `LIMIT=3` on steps 2 and 3 makes a small test run.

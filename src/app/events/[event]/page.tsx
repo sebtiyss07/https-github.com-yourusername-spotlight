@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { convertUsd, getEvent, getEventContext, getTicketSellers } from "@/lib/repositories";
+import { convertUsd, getEvent, getEventContext, getPriceHistory, getTicketSellers } from "@/lib/repositories";
 import { PriceCompare, type PriceGroup } from "@/components/PriceCompare";
 import { roomsFor, tripDates } from "@/lib/trip";
 import {
@@ -13,6 +13,8 @@ import {
 import { flightLinks, hotelLinks, type TravelLink } from "@/lib/providers/travelLinks";
 import { coachLinks, driveLink, groundTravelPossible, trainLink } from "@/lib/providers/ground";
 import { TripTotal } from "@/components/TripTotal";
+import { GameActions } from "@/components/GameActions";
+import { PriceHistory } from "@/components/PriceHistory";
 import { PhotoCredit } from "@/components/ui";
 import { cheapestFlight, cheapestHotelNear } from "@/lib/providers/livePrices";
 import {
@@ -128,6 +130,7 @@ export default async function EventPage({
     return `?${new URLSearchParams(Object.entries(next).filter(([, v]) => v))}`;
   };
   const sellers = await getTicketSellers(event);
+  const history = await getPriceHistory(event.id, context.prices.currency);
   const prices = context.prices;
   const priceGroups: PriceGroup[] = isRace
     ? [
@@ -270,6 +273,16 @@ export default async function EventPage({
                 </span>
               </li>
             </ul>
+            <GameActions
+              game={{
+                id: event.id,
+                title: context.title,
+                startsAt: event.startsAt,
+                place: `${venue.name}, ${venue.city}`,
+                price: prices.cheapest?.amount ?? null,
+                currency: prices.currency,
+              }}
+            />
           </div>
 
           {/* The answer first: the cheapest ticket, one tap from buying. */}
@@ -361,7 +374,10 @@ export default async function EventPage({
           </p>
           <div className="mt-5">
             {priceGroups.some((g) => g.comparison.offers.length > 0) ? (
-              <PriceCompare groups={priceGroups} />
+              <>
+                <PriceCompare groups={priceGroups} />
+                {!isRace && <PriceHistory points={history} currency={prices.currency} />}
+              </>
             ) : (
               <p className="rounded-2xl border border-dashed border-line-bright bg-surface px-5 py-6 text-ink-2">
                 No ticket site we compare lists this {isRace ? "race" : isFootball ? "match" : "game"} yet. We check
