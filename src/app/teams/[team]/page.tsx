@@ -9,6 +9,7 @@ import {
   getVenue,
 } from "@/lib/repositories";
 import { EventRow } from "@/components/EventCard";
+import { PriceCalendar } from "@/components/PriceCalendar";
 import { EmptyState, TeamMark } from "@/components/ui";
 import { formatPrice } from "@/lib/format";
 import { darkTeamColor } from "@/lib/colors";
@@ -97,6 +98,8 @@ export default async function TeamPage({
       </section>
 
       <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8">
+        <PriceCalendar games={events} />
+        <h2 className="mt-10 text-[20px] font-bold first:mt-0">All games</h2>
         <p className="text-[16px] text-ink-2">
           Pick a game to compare ticket sites and see the whole trip.
         </p>

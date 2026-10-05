@@ -163,6 +163,33 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* 4b. Ways in for people without a game in mind */}
+      <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
+        <h2 className="text-[26px] font-extrabold sm:text-[30px]">Trip ideas</h2>
+        <p className="mt-1 text-ink-3">No game in mind yet? Start here.</p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          {[
+            ["/trips", "💸", "What can I do for $300?", "Games where the ticket and the hotel fit your budget."],
+            ["/two-games", "🎟️", "Two games, one trip", "Two games close together on back-to-back days."],
+            ["/near-me", "📍", "Games near me", "Everything within driving distance, cheapest first."],
+          ].map(([href, icon, title, text]) => (
+            <Link
+              key={href}
+              href={href}
+              className="group flex items-start gap-4 rounded-2xl border border-line bg-surface p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md"
+            >
+              <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-surface-2 text-[22px]">
+                {icon}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[17px] font-bold leading-snug group-hover:text-accent">{title}</span>
+                <span className="mt-0.5 block text-[14px] text-ink-3">{text}</span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       {/* 5. Cheapest game this month in each league */}
       {deals.length > 0 && (
         <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
