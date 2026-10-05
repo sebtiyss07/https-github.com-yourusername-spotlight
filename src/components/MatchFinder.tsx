@@ -227,7 +227,7 @@ export function MatchFinder({
   );
 }
 
-function FinderRowView({ row, currency }: { row: FinderRow; currency: string }) {
+export function FinderRowView({ row, currency }: { row: FinderRow; currency: string }) {
   return (
     <Link
       href={`/events/${row.id}`}

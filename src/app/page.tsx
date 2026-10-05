@@ -10,6 +10,8 @@ import { PhotoCredit } from "@/components/ui";
 import { SiteSearch } from "@/components/SiteSearch";
 import { GameCard, LEAGUE_COLORS } from "@/components/GameCard";
 import { formatPrice } from "@/lib/format";
+import { toFinderRow } from "@/lib/finderRow";
+import { UpcomingGames, type UpcomingTab } from "@/components/UpcomingGames";
 
 /**
  * Home: one clear path, top to bottom.
@@ -52,6 +54,17 @@ export default async function HomePage() {
     .filter((c): c is EventContext => Boolean(c));
 
   const count = (n: number, noun: string) => `${n.toLocaleString("en-US")} ${noun}`;
+  // The next six games in each league, for the tabs under the search.
+  const next = (list: EventContext[]) => list.slice(0, 6).map(toFinderRow);
+  const upcomingTabs: UpcomingTab[] = [
+    { id: "nfl", label: "NFL", noun: "games", rows: next(nfl) },
+    { id: "nba", label: "NBA", noun: "games", rows: next(nba) },
+    { id: "mls", label: "MLS", noun: "games", rows: next(mls) },
+    { id: "premier-league", label: "Premier League", noun: "matches", rows: next(pl) },
+    { id: "champions-league", label: "Champions League", noun: "matches", rows: next(ucl) },
+    { id: "formula-1", label: "Formula 1", noun: "races", rows: next(races) },
+  ];
+
   const leagues: LeagueChoice[] = [
     { id: "nfl", title: "NFL", sport: "american-football", detail: count(nfl.length, "games"), price: from(nfl) },
     { id: "nba", title: "NBA", sport: "basketball", detail: count(nba.length, "games"), price: from(nba) },
@@ -64,7 +77,7 @@ export default async function HomePage() {
   return (
     <>
       {/* 1. Search */}
-      <section className="relative overflow-hidden bg-night text-white">
+      <section className="relative bg-night text-white">
         {photo?.large && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -104,7 +117,16 @@ export default async function HomePage() {
       </section>
 
 
-      {/* 2. Leagues */}
+      {/* 2. The next games, one tab per league */}
+      <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-6">
+        <h2 className="text-[26px] font-extrabold sm:text-[30px]">Coming up</h2>
+        <p className="mt-1 text-ink-3">The next games in each league, with the cheapest ticket on each.</p>
+        <div className="mt-5">
+          <UpcomingGames tabs={upcomingTabs} currency={currency} />
+        </div>
+      </section>
+
+      {/* 3. Leagues */}
       <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-6">
         <h2 className="text-[26px] font-extrabold sm:text-[30px]">Choose a league</h2>
         <p className="mt-1 text-ink-3">Every game this season, with the cheapest ticket on each.</p>
