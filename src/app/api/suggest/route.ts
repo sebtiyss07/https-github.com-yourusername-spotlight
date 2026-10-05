@@ -23,7 +23,9 @@ export async function GET(req: Request) {
         title: c.title,
         subtitle: `${weekday} ${day} ${month}${c.league ? ` · ${c.league.shortName}` : ""}`,
         href: `/events/${c.event.id}`,
-        price: c.prices.cheapest ? formatPrice(c.prices.cheapest.amount!, c.prices.currency) : null,
+        price: c.prices.cheapest
+          ? `${formatPrice(c.prices.cheapest.amount!, c.prices.currency)}${c.prices.cheapest.fees.included === "no" ? " + fees" : ""}`
+          : null,
       };
     }),
   ];

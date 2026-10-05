@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
+  allInPrice,
   getEventContexts,
   getEventsByLeague,
   getLeaguePhoto,
@@ -35,7 +36,7 @@ export default async function HomePage() {
   const currency = nfl[0]?.prices.currency ?? pl[0]?.prices.currency ?? "USD";
   const lowest = (list: EventContext[]) =>
     list.reduce<number | null>((min, c) => {
-      const p = c.prices.cheapest?.amount;
+      const p = allInPrice(c);
       return p != null && (min === null || p < min) ? p : min;
     }, null);
   const from = (list: EventContext[]) => {
@@ -48,8 +49,8 @@ export default async function HomePage() {
   const soon = Date.now() + 30 * 24 * 60 * 60 * 1000;
   const cheapestSoon = (list: EventContext[]) =>
     list
-      .filter((c) => c.prices.cheapest && new Date(c.event.startsAt).getTime() < soon)
-      .sort((a, b) => a.prices.cheapest!.amount! - b.prices.cheapest!.amount!)[0];
+      .filter((c) => allInPrice(c) !== null && new Date(c.event.startsAt).getTime() < soon)
+      .sort((a, b) => allInPrice(a)! - allInPrice(b)!)[0];
   const deals = [nfl, nba, mls, pl, ucl]
     .map(cheapestSoon)
     .filter((c): c is EventContext => Boolean(c));

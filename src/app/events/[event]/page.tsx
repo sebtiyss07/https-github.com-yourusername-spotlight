@@ -14,6 +14,7 @@ import { flightLinks, hotelLinks, type TravelLink } from "@/lib/providers/travel
 import { coachLinks, driveLink, groundTravelPossible, trainLink } from "@/lib/providers/ground";
 import { TripTotal } from "@/components/TripTotal";
 import { GameActions } from "@/components/GameActions";
+import { CityInput } from "@/components/CityInput";
 import { PriceHistory } from "@/components/PriceHistory";
 import { PhotoCredit } from "@/components/ui";
 import { cheapestFlight, cheapestHotelNear } from "@/lib/providers/livePrices";
@@ -217,6 +218,10 @@ export default async function EventPage({
 
   const ticketNoun = isRace ? "weekend pass" : "ticket";
   const pricedSites = prices.offers.filter((o) => o.amount !== null).length;
+  // A site that adds fees at checkout shows a lower number than the cheapest all-in price.
+  const lowerBeforeFees = prices.offers.some(
+    (o) => o.fees.included === "no" && o.amount !== null && prices.cheapest?.fees.included !== "no" && o.amount < (prices.cheapest?.amount ?? 0),
+  );
 
   return (
     <>
@@ -291,6 +296,7 @@ export default async function EventPage({
               <>
                 <p className="text-[14px] font-semibold text-ink-3">
                   Cheapest {ticketNoun}
+                  {lowerBeforeFees ? " with fees included" : ""}
                   {pricedSites > 1 ? ` · ${pricedSites} sites compared` : ""}
                 </p>
                 <p className="mt-1 flex items-baseline gap-2">
@@ -299,6 +305,11 @@ export default async function EventPage({
                   </span>
                   <span className="text-[15px] text-ink-2">on {prices.cheapest.label}</span>
                 </p>
+                {prices.cheapest.fees.included === "no" && (
+                  <p className="mt-1 text-[13px] font-semibold text-hot">
+                    Plus fees at checkout: no site with fees included had a price for this match.
+                  </p>
+                )}
                 <a
                   href={prices.cheapest.url}
                   target="_blank"
@@ -448,12 +459,12 @@ export default async function EventPage({
               {!wantHotel && <input type="hidden" name="hotel" value="0" />}
               {wantTravel && (
                 <Field label="Travelling from" className="sm:flex-[2]">
-                  <input
+                  <CityInput
                     name="origin"
                     defaultValue={origin}
-                    placeholder="Your city, e.g. Chicago"
-                    autoComplete="address-level2"
-                    className="w-full bg-transparent text-[16px] font-medium text-ink placeholder:font-normal placeholder:text-ink-3 outline-none"
+                    placeholder="Pick your city"
+                    submitOnPick
+                    inputClassName="w-full bg-transparent text-[16px] font-medium text-ink placeholder:font-normal placeholder:text-ink-3 outline-none"
                   />
                 </Field>
               )}
@@ -589,6 +600,7 @@ export default async function EventPage({
                 <span className="tabular text-[20px] font-extrabold text-positive">
                   {formatPrice(prices.cheapest.amount!, prices.currency)}
                 </span>
+                {prices.cheapest.fees.included === "no" && <span className="text-[13px] font-semibold text-hot"> + fees</span>}
                 <span className="truncate text-[13px] text-ink-2"> on {prices.cheapest.label}</span>
               </p>
               <a
@@ -751,12 +763,13 @@ function TripPeek({
               .map(([k, v]) => (
                 <input key={k} type="hidden" name={k} value={v} />
               ))}
-            <input
+            <CityInput
               name="origin"
-              placeholder="Flying from? Your city"
-              aria-label="Flying from"
-              autoComplete="address-level2"
-              className="min-w-0 flex-1 rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[14px] outline-none placeholder:text-ink-3 focus:border-accent focus:bg-surface"
+              placeholder="Flying from? Pick your city"
+              ariaLabel="Flying from"
+              submitOnPick
+              className="min-w-0 flex-1"
+              inputClassName="w-full rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[14px] outline-none placeholder:text-ink-3 focus:border-accent focus:bg-surface"
             />
             <button type="submit" className="shrink-0 rounded-lg bg-ink px-3 py-1.5 text-[14px] font-bold text-white hover:bg-accent">
               Add

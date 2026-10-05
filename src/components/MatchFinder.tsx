@@ -30,6 +30,8 @@ export interface FinderRow {
   /** Cheapest price any site listed, or null. */
   price: number | null;
   site: string | null;
+  /** The price leaves out fees added at checkout (no all-in price was listed). */
+  feesExtra?: boolean;
   sites: number;
   home?: Crest;
   away?: Crest;
@@ -278,6 +280,7 @@ export function FinderRowView({ row, currency }: { row: FinderRow; currency: str
         <div className="shrink-0 text-right">
           <p className="tabular text-[17px] font-semibold leading-tight text-positive">
             {formatPrice(row.price, currency)}
+            {row.feesExtra && <span className="text-[12px] text-hot"> + fees</span>}
           </p>
           <p className="text-[11px] text-ink-3">
             {row.sites > 1 ? `cheapest of ${row.sites} sites` : row.site}

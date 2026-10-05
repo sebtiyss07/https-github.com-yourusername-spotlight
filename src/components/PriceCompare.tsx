@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { PriceComparison } from "@/lib/repositories";
 import { formatLocalDate, formatPrice } from "@/lib/format";
 
@@ -25,8 +25,14 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
   const pricedOffers = prices.offers.filter((o) => o.amount !== null);
   const pricedCount = pricedOffers.length;
   const cheapest = prices.cheapest;
-  // The honest saving: against the next-cheapest site, not the dearest one.
-  const runnerUp = pricedOffers[1];
+  // The honest saving: against the next-cheapest site, not the dearest one,
+  // and only between prices that both include fees.
+  const allIn = pricedOffers.filter((o) => o.fees.included !== "no");
+  const runnerUp = cheapest?.fees.included !== "no" ? allIn[1] : undefined;
+  // Sites that add fees at checkout come after the all-in prices, under a note.
+  const firstExtra = allIn.length ? prices.offers.findIndex((o) => o.amount !== null && o.fees.included === "no") : -1;
+  // A lower price before fees might still end up cheaper, so don't claim more than we know.
+  const lowerBeforeFees = !!cheapest && pricedOffers.some((o) => o.fees.included === "no" && o.amount! < cheapest.amount!);
   const saving =
     cheapest && runnerUp ? Math.round((runnerUp.amount! - cheapest.amount!) * 100) / 100 : 0;
 
@@ -64,72 +70,81 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
           const isCheapest = offer === cheapest;
           const priced = offer.amount !== null;
           return (
-            <li key={offer.site} className="border-b border-line last:border-b-0">
-              <a
-                href={offer.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`group flex items-center gap-3 px-3 py-4 transition-colors hover:bg-surface-2 sm:gap-4 sm:px-5 ${
-                  isCheapest ? "bg-positive/[0.06] shadow-[inset_4px_0_0_var(--color-positive)]" : ""
-                }`}
-              >
-                <span
-                  aria-hidden
-                  className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-[14px] font-bold ${
-                    isCheapest ? "bg-positive text-white" : priced ? "bg-surface-2 text-ink-2" : "bg-surface-2 text-ink-3"
+            <Fragment key={offer.site}>
+              {i === firstExtra && (
+                <li className="border-b border-line bg-surface-2 px-4 py-2.5 text-[13px] text-ink-2 sm:px-5">
+                  <span className="font-semibold text-ink">These sites add fees at checkout,</span> so you&apos;ll pay
+                  more than the price shown here. They don&apos;t publish how much, so check the total on their site: it
+                  can still work out cheaper.
+                </li>
+              )}
+              <li className="border-b border-line last:border-b-0">
+                <a
+                  href={offer.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`group flex items-center gap-3 px-3 py-4 transition-colors hover:bg-surface-2 sm:gap-4 sm:px-5 ${
+                    isCheapest ? "bg-positive/[0.06] shadow-[inset_4px_0_0_var(--color-positive)]" : ""
                   }`}
                 >
-                  {priced ? i + 1 : "–"}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <span className="text-[16px] font-bold text-ink group-hover:text-accent">{offer.label}</span>
-                    {isCheapest && pricedCount > 1 && (
-                      <span className="rounded-full bg-positive px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
-                        Cheapest
+                  <span
+                    aria-hidden
+                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-[14px] font-bold ${
+                      isCheapest ? "bg-positive text-white" : priced ? "bg-surface-2 text-ink-2" : "bg-surface-2 text-ink-3"
+                    }`}
+                  >
+                    {priced ? i + 1 : "–"}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className="text-[16px] font-bold text-ink group-hover:text-accent">{offer.label}</span>
+                      {isCheapest && pricedCount > 1 && (
+                        <span className="rounded-full bg-positive px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
+                          {lowerBeforeFees ? "Cheapest with fees" : "Cheapest"}
+                        </span>
+                      )}
+                    </span>
+                    {priced ? (
+                      <span className="block text-[13px] text-ink-3">
+                        {offer.ticket ?? (offer.fees.included === "yes" ? "Fees included" : "")}
+                        {offer.fees.included === "no" && (
+                          <span className="font-semibold text-hot">Fees added at checkout</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="block text-[13px] text-ink-3">
+                        {offer.note ?? "No tickets listed when we checked"}
                       </span>
                     )}
                   </span>
-                  {priced ? (
-                    <span className="block text-[13px] text-ink-3">
-                      {offer.ticket ?? (offer.fees.included === "yes" ? "Fees included" : "")}
-                      {offer.fees.included === "no" && (
-                        <span className="font-semibold text-hot">Fees added at checkout</span>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="block text-[13px] text-ink-3">
-                      {offer.note ?? "No tickets listed when we checked"}
+                  {priced && (
+                    <span className="shrink-0 text-right">
+                      <span className={`tabular block text-[20px] font-extrabold leading-tight ${isCheapest ? "text-positive" : "text-ink"}`}>
+                        {formatPrice(offer.amount!, prices.currency)}
+                      </span>
+                      <span className="block text-[12px] text-ink-3">
+                        {offer.original
+                          ? `${formatPrice(offer.original.amount, offer.original.currency)} on site`
+                          : "per ticket"}
+                      </span>
                     </span>
                   )}
-                </span>
-                {priced && (
-                  <span className="shrink-0 text-right">
-                    <span className={`tabular block text-[20px] font-extrabold leading-tight ${isCheapest ? "text-positive" : "text-ink"}`}>
-                      {formatPrice(offer.amount!, prices.currency)}
-                    </span>
-                    <span className="block text-[12px] text-ink-3">
-                      {offer.original
-                        ? `${formatPrice(offer.original.amount, offer.original.currency)} on site`
-                        : "per ticket"}
-                    </span>
+                  <span
+                    className={`shrink-0 rounded-xl px-3 py-2 text-[14px] font-bold transition-colors sm:px-4 ${
+                      priced
+                        ? isCheapest
+                          ? "bg-accent text-white group-hover:bg-accent-2"
+                          : "bg-ink text-white group-hover:bg-accent"
+                        : "border border-line text-ink-2 group-hover:border-accent group-hover:text-accent"
+                    }`}
+                  >
+                    {priced ? "Buy" : "Visit"}
+                    <span aria-hidden> ↗</span>
+                    <span className="sr-only"> on {offer.label} (opens in a new tab)</span>
                   </span>
-                )}
-                <span
-                  className={`shrink-0 rounded-xl px-3 py-2 text-[14px] font-bold transition-colors sm:px-4 ${
-                    priced
-                      ? isCheapest
-                        ? "bg-accent text-white group-hover:bg-accent-2"
-                        : "bg-ink text-white group-hover:bg-accent"
-                      : "border border-line text-ink-2 group-hover:border-accent group-hover:text-accent"
-                  }`}
-                >
-                  {priced ? "Buy" : "Visit"}
-                  <span aria-hidden> ↗</span>
-                  <span className="sr-only"> on {offer.label} (opens in a new tab)</span>
-                </span>
-              </a>
-            </li>
+                </a>
+              </li>
+            </Fragment>
           );
         })}
       </ol>

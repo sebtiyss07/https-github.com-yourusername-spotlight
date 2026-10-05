@@ -80,3 +80,7 @@ export function parseJsArray(src, start) {
   };
   return value();
 }
+
+// Sites whose listed price leaves out fees added at checkout (included: "no"
+// in src/lib/data/fees.ts). Keep the two in step.
+export const FEES_AT_CHECKOUT = new Set(["ticket4football", "footballticketpad", "livefootballtickets", "footballticketnet"]);

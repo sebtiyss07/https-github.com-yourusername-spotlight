@@ -17,7 +17,8 @@ export function PriceCalendar({ games }: { games: EventContext[] }) {
   const byDay = new Map<string, { c: EventContext; price: number | null }>();
   for (const c of games) {
     const ymd = localYmd(c);
-    const price = c.prices.cheapest?.amount ?? null;
+    // A price with fees still to come isn't comparable with all-in ones.
+    const price = c.prices.cheapest?.fees.included === "no" ? null : (c.prices.cheapest?.amount ?? null);
     const prev = byDay.get(ymd);
     if (!prev || (price != null && (prev.price == null || price < prev.price))) byDay.set(ymd, { c, price });
   }

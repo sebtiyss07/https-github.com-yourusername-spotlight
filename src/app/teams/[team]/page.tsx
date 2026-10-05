@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
+  allInPrice,
   getEventContexts,
   getEventsByTeam,
   getLeague,
@@ -50,7 +51,7 @@ export default async function TeamPage({
   ]);
   const homeGames = events.filter((c) => c.event.homeTeamId === team.id).length;
   const cheapest = events.reduce<{ amount: number; currency: string } | null>((best, c) => {
-    const p = c.prices.cheapest?.amount;
+    const p = allInPrice(c);
     return p != null && (!best || p < best.amount) ? { amount: p, currency: c.prices.currency } : best;
   }, null);
 

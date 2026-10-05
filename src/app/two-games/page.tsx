@@ -37,7 +37,8 @@ export default async function TwoGamesPage({ searchParams }: { searchParams: Pro
   const currency = await getCurrency();
   const events = (await getUpcomingEvents()).filter((e) => e.sportId !== "motorsport");
   const games = (await getEventContexts(events))
-    .filter((c) => c.venue && c.prices.cheapest?.amount != null)
+    // Only prices that include fees, so the pair's total is what you'd pay.
+    .filter((c) => c.venue && c.prices.cheapest?.amount != null && c.prices.cheapest.fees.included !== "no")
     .map((c) => ({ c, day: localDay(c), price: c.prices.cheapest!.amount! }))
     .sort((a, b) => a.day - b.day);
 

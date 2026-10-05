@@ -268,6 +268,12 @@ export interface PriceComparison {
   checkedFrom: string | null;
 }
 
+/** The cheapest price for a game when it already includes fees, else null. */
+export function allInPrice(c: { prices: PriceComparison }): number | null {
+  const o = c.prices.cheapest;
+  return o && o.fees.included !== "no" ? o.amount : null;
+}
+
 /** A USD amount in the visitor's currency, at the stored ECB rate. */
 export function convertUsd(amount: number, currency: Currency): number {
   return Math.round(amount * RATES[currency] * 100) / 100;
@@ -320,7 +326,11 @@ function comparePrices(
     fees: SITE_FEES[p.site],
     note: p.note,
   }));
-  offers.sort((a, b) => (a.amount ?? Infinity) - (b.amount ?? Infinity));
+  // Prices that already include the site's fees first, then the sites that
+  // add fees at checkout: their lower-looking number isn't what you pay, so
+  // it can't be "the cheapest" over an all-in price.
+  const rank = (o: PriceOffer) => (o.amount === null ? 2 : o.fees.included === "no" ? 1 : 0);
+  offers.sort((a, b) => rank(a) - rank(b) || (a.amount ?? Infinity) - (b.amount ?? Infinity));
   // Only sites that showed a price count towards "checked on".
   const dates = rows.filter((r) => r.price !== null).map((r) => r.checked ?? checkedOn(r.site)).sort();
   return {

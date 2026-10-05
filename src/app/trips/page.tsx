@@ -36,7 +36,8 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
   const trips = contexts
     .flatMap((c) => {
       const ticket = c.prices.cheapest?.amount;
-      if (ticket == null || !c.venue) return [];
+      // A price with fees still to come can't promise a budget.
+      if (ticket == null || !c.venue || c.prices.cheapest?.fees.included === "no") return [];
       const hotel = savedHotelFor(c.event.id, c.venue.country);
       if (!hotel) return [];
       const hotelPrice = convertUsd(hotel.total, c.prices.currency);

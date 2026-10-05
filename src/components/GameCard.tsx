@@ -104,6 +104,7 @@ export function GameCard({ context, race }: { context: EventContext; race?: bool
               <span className="tabular text-[20px] font-semibold text-positive">
                 {formatPrice(prices.cheapest.amount!, prices.currency)}
               </span>
+              {prices.cheapest.fees.included === "no" && <span className="text-[12px] font-semibold text-hot"> + fees</span>}
               {sites > 1 && (
                 <span className="text-[12px] text-ink-3"> · cheapest of {sites} sites</span>
               )}
