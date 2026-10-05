@@ -13,7 +13,6 @@ export const ACTIVE_SPORTS: readonly SportId[] = ["soccer", "motorsport", "ameri
 const ACTIVE_LEAGUES = new Set([
   "premier-league",
   "champions-league",
-  "europa-league",
   "formula-1",
   "nfl",
   "nba",

@@ -5,6 +5,5 @@ export const NAV_LEAGUES = [
   { href: "/leagues/mls", label: "MLS" },
   { href: "/leagues/premier-league", label: "Premier League" },
   { href: "/leagues/champions-league", label: "Champions League" },
-  { href: "/leagues/europa-league", label: "Europa League" },
   { href: "/leagues/formula-1", label: "Formula 1" },
 ] as const;

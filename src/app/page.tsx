@@ -19,10 +19,9 @@ import { formatPrice } from "@/lib/format";
  * 4. Plain answers to the questions people ask first.
  */
 export default async function HomePage() {
-  const [pl, ucl, uel, races, nfl, nba, mls, photo] = await Promise.all([
+  const [pl, ucl, races, nfl, nba, mls, photo] = await Promise.all([
     getEventsByLeague("premier-league").then(getEventContexts),
     getEventsByLeague("champions-league").then(getEventContexts),
-    getEventsByLeague("europa-league").then(getEventContexts),
     getEventsByLeague("formula-1").then(getEventContexts),
     getEventsByLeague("nfl").then(getEventContexts),
     getEventsByLeague("nba").then(getEventContexts),
@@ -48,7 +47,7 @@ export default async function HomePage() {
     list
       .filter((c) => c.prices.cheapest && new Date(c.event.startsAt).getTime() < soon)
       .sort((a, b) => a.prices.cheapest!.amount! - b.prices.cheapest!.amount!)[0];
-  const deals = [nfl, nba, mls, pl, ucl, uel]
+  const deals = [nfl, nba, mls, pl, ucl]
     .map(cheapestSoon)
     .filter((c): c is EventContext => Boolean(c));
 
@@ -59,7 +58,6 @@ export default async function HomePage() {
     { id: "mls", title: "MLS", sport: "soccer", detail: count(mls.length, "games"), price: from(mls) },
     { id: "premier-league", title: "Premier League", sport: "soccer", detail: count(pl.length, "matches"), price: from(pl) },
     { id: "champions-league", title: "Champions League", sport: "soccer", detail: count(ucl.length, "matches"), price: from(ucl) },
-    { id: "europa-league", title: "Europa League", sport: "soccer", detail: count(uel.length, "matches"), price: from(uel) },
     { id: "formula-1", title: "Formula 1", sport: "racing", detail: count(races.length, "race weekends"), price: from(races) },
   ];
 

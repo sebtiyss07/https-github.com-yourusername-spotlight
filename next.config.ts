@@ -10,6 +10,8 @@ const config: NextConfig = {
         destination: "https://www.spotlightkt.com/:path*",
         permanent: true,
       },
+      // The Europa League isn't covered any more.
+      { source: "/leagues/europa-league", destination: "/", permanent: false },
       // "Big events" only ever listed Formula 1 weekends, which the F1 page shows.
       { source: "/events", destination: "/leagues/formula-1", permanent: false },
     ];

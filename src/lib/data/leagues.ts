@@ -600,7 +600,6 @@ export function leaguesForSport(sportId: string): League[] {
 const FEATURED: { id: string; label: string }[] = [
   { id: "premier-league", label: "Premier League" },
   { id: "champions-league", label: "Champions League" },
-  { id: "europa-league", label: "Europa League" },
   { id: "formula-1", label: "Formula 1" },
   { id: "nfl", label: "NFL" },
   { id: "nba", label: "NBA" },

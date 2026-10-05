@@ -4,7 +4,7 @@ import { TEAMS_BY_ID } from "@/lib/data/teams";
 import europeAirports from "./europe-airports.json";
 
 /**
- * Champions League and Europa League fixtures, from UEFA's own public match
+ * Champions League fixtures, from UEFA's own public match
  * data (the feed uefa.com's fixture pages use; no login needed). Kick-off
  * times are UTC. Stadiums, cities and coordinates come from the same feed.
  *
@@ -19,7 +19,6 @@ const SEASON_YEAR = 2027; // UEFA names seasons by the year they end: 2026–27.
 
 export const UEFA_COMPETITIONS = [
   { competitionId: 1, leagueId: "champions-league", prefix: "ucl" },
-  { competitionId: 14, leagueId: "europa-league", prefix: "uel" },
 ] as const;
 
 /** UEFA's names for Premier League clubs → our team ids. */

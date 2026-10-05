@@ -11,7 +11,6 @@ export const LEAGUE_COLORS: Record<string, string> = {
   mls: "#1c7c54",
   "premier-league": "#3d195b",
   "champions-league": "#0e1e5b",
-  "europa-league": "#d9530f",
   "formula-1": "#e10600",
 };
 

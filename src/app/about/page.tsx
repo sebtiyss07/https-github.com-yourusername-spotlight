@@ -19,8 +19,7 @@ export default function AboutPage() {
 
       <h2 className="mt-10 text-[20px] font-semibold">What we cover</h2>
       <p className="mt-2 text-[16px] text-ink-2">
-        The NFL, NBA, MLS, the Premier League, the Champions League, the Europa League and
-        Formula 1.
+        The NFL, NBA, MLS, the Premier League, the Champions League and Formula 1.
       </p>
 
       <h2 className="mt-10 text-[20px] font-semibold">Where the prices come from</h2>
