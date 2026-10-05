@@ -16,9 +16,10 @@ import { UpcomingGames, type UpcomingTab } from "@/components/UpcomingGames";
 /**
  * Home: one clear path, top to bottom.
  * 1. Search a team, or tap a popular one.
- * 2. Pick a league (with its lowest real price).
- * 3. How it works, the cheapest game this month per league, the next F1 races.
- * 4. Plain answers to the questions people ask first.
+ * 2. How it works, in three short steps.
+ * 3. Pick a league (with its lowest real price).
+ * 4. The next games in each league, then the cheapest game this month per league.
+ * 5. Plain answers to the questions people ask first.
  */
 export default async function HomePage() {
   const [pl, ucl, races, nfl, nba, mls, photo] = await Promise.all([
@@ -120,13 +121,20 @@ export default async function HomePage() {
       </section>
 
 
-      {/* 2. The next games, one tab per league */}
-      <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-6">
-        <h2 className="text-[26px] font-extrabold sm:text-[30px]">Coming up</h2>
-        <p className="mt-1 text-ink-3">The next games in each league, with the cheapest ticket on each.</p>
-        <div className="mt-5">
-          <UpcomingGames tabs={upcomingTabs} currency={currency} />
-        </div>
+      {/* 2. How it works, at a glance */}
+      <section className="border-b border-line bg-surface">
+        <h2 className="sr-only">How it works</h2>
+        <ol className="mx-auto grid max-w-6xl gap-5 px-5 py-6 sm:grid-cols-3 sm:px-6">
+          <Step n={1} title="Find your game">
+            Search a team, or pick a league below.
+          </Step>
+          <Step n={2} title="Compare every ticket site">
+            Every site&apos;s price side by side, cheapest first.
+          </Step>
+          <Step n={3} title="Add the trip">
+            The cheapest hotel and flight for the same dates, all added up.
+          </Step>
+        </ol>
       </section>
 
       {/* 3. Leagues */}
@@ -140,23 +148,16 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 3. How it works */}
+      {/* 4. The next games, one tab per league */}
       <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
-        <h2 className="text-[26px] font-extrabold sm:text-[30px]">How it works</h2>
-        <ol className="mt-6 grid gap-4 sm:grid-cols-3">
-          <Step n={1} title="Find your game">
-            Search a team or pick a league, then filter by month or budget.
-          </Step>
-          <Step n={2} title="See every price">
-            Every ticket site that sells it, side by side, cheapest at the top.
-          </Step>
-          <Step n={3} title="Buy where it's cheapest">
-            Tap through and buy on that site. Add a hotel and flight if you&apos;re travelling.
-          </Step>
-        </ol>
+        <h2 className="text-[26px] font-extrabold sm:text-[30px]">Coming up</h2>
+        <p className="mt-1 text-ink-3">The next games in each league, with the cheapest ticket on each.</p>
+        <div className="mt-5">
+          <UpcomingGames tabs={upcomingTabs} currency={currency} />
+        </div>
       </section>
 
-      {/* 4. Cheapest game this month in each league */}
+      {/* 5. Cheapest game this month in each league */}
       {deals.length > 0 && (
         <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
           <h2 className="text-[26px] font-extrabold sm:text-[30px]">Cheapest game this month</h2>
@@ -164,26 +165,6 @@ export default async function HomePage() {
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {deals.map((c) => (
               <GameCard key={c.event.id} context={c} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 5. Next F1 races */}
-      {races.length > 0 && (
-        <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 className="text-[26px] font-extrabold sm:text-[30px]">Next Formula 1 weekends</h2>
-              <p className="mt-1 text-ink-3">The cheapest full-weekend pass for each race.</p>
-            </div>
-            <Link href="/leagues/formula-1" className="font-semibold text-accent hover:underline">
-              All races →
-            </Link>
-          </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {races.slice(0, 3).map((c) => (
-              <GameCard key={c.event.id} context={c} race />
             ))}
           </div>
         </section>
@@ -322,13 +303,13 @@ function SportIcon({ sport }: { sport: Sport }) {
 
 function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
-    <li className="flex gap-4 rounded-2xl border border-line bg-surface p-5 sm:block">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent font-display text-[18px] font-extrabold text-white">
+    <li className="flex items-start gap-3">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent font-display text-[16px] font-extrabold text-white">
         {n}
       </span>
       <span className="block">
-        <span className="block font-display text-[18px] font-bold sm:mt-3">{title}</span>
-        <span className="mt-1 block text-ink-3">{children}</span>
+        <span className="block font-display text-[16px] font-bold">{title}</span>
+        <span className="block text-[14px] text-ink-3">{children}</span>
       </span>
     </li>
   );
