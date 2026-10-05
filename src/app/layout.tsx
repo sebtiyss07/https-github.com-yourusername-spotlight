@@ -10,6 +10,9 @@ import { NAV_LEAGUES } from "@/lib/nav";
 import { LogoMark } from "@/components/Logo";
 import { getCurrency } from "@/lib/currency";
 import { Analytics } from "@vercel/analytics/next";
+import { ClerkProvider } from "@clerk/nextjs";
+import { AccountButton } from "@/components/AccountButton";
+import { authEnabled } from "@/lib/auth";
 
 const display = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -52,7 +55,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const currency = await getCurrency();
-  return (
+  const page = (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
       <head>
         {/* Impact.com site ownership check for the affiliate programs. */}
@@ -78,6 +81,7 @@ export default async function RootLayout({
             <div className="ml-auto flex items-center gap-1 sm:ml-0">
               <SavedLink />
               <CurrencySwitcher current={currency} />
+              {authEnabled && <AccountButton />}
             </div>
           </div>
           <LeagueNav />
@@ -136,4 +140,6 @@ export default async function RootLayout({
       </body>
     </html>
   );
+  // Accounts are on only once Clerk's keys are set (src/lib/auth.ts).
+  return authEnabled ? <ClerkProvider>{page}</ClerkProvider> : page;
 }

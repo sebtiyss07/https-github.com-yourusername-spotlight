@@ -13,6 +13,9 @@ export async function GET(req: Request) {
   return Response.json({
     games: games.map((c) => ({
       id: c.event.id,
+      title: c.title,
+      startsAt: c.event.startsAt,
+      place: c.venue ? `${c.venue.name}, ${c.venue.city}` : "",
       price: c.prices.cheapest?.amount ?? null,
       site: c.prices.cheapest?.label ?? null,
       currency: c.prices.currency,

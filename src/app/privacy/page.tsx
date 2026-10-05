@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { authEnabled } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -20,13 +21,44 @@ export default function PrivacyPage() {
       <p className="mt-2 text-[16px] text-ink-2">
         Games you save with &ldquo;Save&rdquo; are kept in your own browser (its local storage), with
         the price when you saved them, so My games can show how the price has moved. They never
-        leave your device; clearing your browser data removes them.
+        leave your device unless you sign in; clearing your browser data removes them.
       </p>
+
+      {authEnabled && (
+        <>
+          <h2 className="mt-10 text-[20px] font-semibold">If you create an account</h2>
+          <ul className="mt-2 list-disc space-y-2 pl-5 text-[16px] text-ink-2">
+            <li>
+              Signing in is handled by Clerk, which stores your email address (and your name and picture
+              if you sign in with Google) and sets the cookies needed to keep you signed in.
+            </li>
+            <li>
+              Your account keeps the games you save (with the price when you saved them) and whether you
+              want price-drop emails, so they show on every device.
+            </li>
+            <li>
+              Price-drop emails are off until you turn them on in My games. They&apos;re sent through
+              Resend, only when a saved game gets cheaper, and every one has an unsubscribe link.
+            </li>
+            <li>
+              To delete your account and everything in it, use &ldquo;Manage account&rdquo; in the menu
+              under your picture.
+            </li>
+          </ul>
+        </>
+      )}
 
       <h2 className="mt-10 text-[20px] font-semibold">What we don&apos;t do</h2>
       <ul className="mt-2 list-disc space-y-2 pl-5 text-[16px] text-ink-2">
-        <li>No accounts, no sign-up, and no forms that collect your name, email or payment details.</li>
-        <li>No advertising trackers, and no cookies beyond the currency one above.</li>
+        {authEnabled ? (
+          <li>No payment details, ever: you buy on the ticket, hotel and travel sites themselves.</li>
+        ) : (
+          <li>No accounts, no sign-up, and no forms that collect your name, email or payment details.</li>
+        )}
+        <li>
+          No advertising trackers, and no cookies beyond the currency one above
+          {authEnabled ? " and the sign-in ones if you create an account" : ""}.
+        </li>
         <li>We don&apos;t sell or share personal information.</li>
       </ul>
 

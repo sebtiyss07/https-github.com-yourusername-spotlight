@@ -581,6 +581,16 @@ export async function getTicketSellers(event: SportEvent): Promise<TicketSeller[
 }
 
 /** A photo to headline a league's pages. */
+/**
+ * A game's cheapest price that includes fees, read live like its game page,
+ * in the given currency (for price-drop emails, which run without a visitor).
+ */
+export async function liveAllInOffer(event: SportEvent, currency: Currency): Promise<{ amount: number; label: string } | null> {
+  const { prices } = await eventPrices(event, currency, true);
+  const o = prices.cheapest;
+  return o && o.fees.included === "yes" && o.amount !== null ? { amount: o.amount, label: o.label } : null;
+}
+
 export async function getLeaguePhoto(leagueId: string): Promise<VenuePhoto | null> {
   return leagueId === "premier-league" ? venuePhotoFor("tottenham") : null;
 }
