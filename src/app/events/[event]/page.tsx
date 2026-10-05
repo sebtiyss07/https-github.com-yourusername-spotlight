@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { convertUsd, getEvent, getEventContext, getPriceHistory, getTicketSellers } from "@/lib/repositories";
+import { convertUsd, getEvent, getEventContext, getTicketSellers } from "@/lib/repositories";
 import { PriceCompare, type PriceGroup } from "@/components/PriceCompare";
 import { roomsFor, tripDates } from "@/lib/trip";
 import {
@@ -16,7 +16,6 @@ import { TripTotal } from "@/components/TripTotal";
 import { GameActions } from "@/components/GameActions";
 import { BookingSteps } from "@/components/BookingSteps";
 import { CityInput } from "@/components/CityInput";
-import { PriceHistory } from "@/components/PriceHistory";
 import { PhotoCredit } from "@/components/ui";
 import { cheapestFlight, cheapestHotelNear } from "@/lib/providers/livePrices";
 import {
@@ -132,7 +131,6 @@ export default async function EventPage({
     return `?${new URLSearchParams(Object.entries(next).filter(([, v]) => v))}`;
   };
   const sellers = await getTicketSellers(event);
-  const history = await getPriceHistory(event.id, context.prices.currency);
   const prices = context.prices;
   const priceGroups: PriceGroup[] = isRace
     ? [
@@ -389,7 +387,6 @@ export default async function EventPage({
             {priceGroups.some((g) => g.comparison.offers.length > 0) ? (
               <>
                 <PriceCompare groups={priceGroups} />
-                {!isRace && <PriceHistory points={history} currency={prices.currency} />}
               </>
             ) : (
               <p className="rounded-2xl border border-dashed border-line-bright bg-surface px-5 py-6 text-ink-2">

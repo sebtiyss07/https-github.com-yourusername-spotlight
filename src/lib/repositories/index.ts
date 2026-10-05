@@ -28,7 +28,6 @@ import { getCurrency, type Currency } from "@/lib/currency";
 import { SITE_FEES, type SiteFees } from "@/lib/data/fees";
 import { withLiveOfficialPrices } from "@/lib/providers/officialTickets";
 import { withLiveResalePrices } from "@/lib/providers/resaleTickets";
-import priceHistory from "@/lib/data/price-history.json";
 
 export type { SiteFees };
 
@@ -584,13 +583,4 @@ export async function getTicketSellers(event: SportEvent): Promise<TicketSeller[
 /** A photo to headline a league's pages. */
 export async function getLeaguePhoto(leagueId: string): Promise<VenuePhoto | null> {
   return leagueId === "premier-league" ? venuePhotoFor("tottenham") : null;
-}
-
-/**
- * The cheapest price Spotlight showed for a game on each daily check, in the
- * visitor's currency (scripts/refresh/history.mjs records it).
- */
-export async function getPriceHistory(eventId: string, currency: Currency): Promise<{ date: string; price: number }[]> {
-  const points = (priceHistory.events as unknown as Record<string, [string, number][]>)[eventId] ?? [];
-  return points.map(([date, usd]) => ({ date, price: convertUsd(usd, currency) }));
 }
