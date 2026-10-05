@@ -24,7 +24,7 @@ export function Badge({
   };
   return (
     <span
-      className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${tones[tone]} ${className}`}
+      className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-[12px] font-medium ${tones[tone]} ${className}`}
     >
       {children}
     </span>
@@ -45,7 +45,7 @@ export function BackLink({ href, children }: { href: string; children: ReactNode
 /** "Step 2 of 3" — keeps people oriented on the league → game → trip path. */
 export function StepLabel({ step }: { step: 1 | 2 | 3 }) {
   return (
-    <p className="flex items-center gap-2 text-[13px] font-semibold text-accent">
+    <p className="flex items-center gap-2 text-[13px] font-medium text-accent">
       <span className="flex gap-1">
         {[1, 2, 3].map((n) => (
           <span
@@ -72,9 +72,9 @@ export function SectionHeading({
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
         {eyebrow && (
-          <p className="mb-1 text-[13px] font-semibold text-ink-3">{eyebrow}</p>
+          <p className="mb-1 text-[13px] font-medium text-ink-3">{eyebrow}</p>
         )}
-        <h2 className="text-[22px] font-semibold sm:text-[24px]">{title}</h2>
+        <h2 className="text-[22px] font-medium sm:text-[24px]">{title}</h2>
       </div>
       {action}
     </div>
@@ -89,8 +89,8 @@ export function EmptyState({
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-line-bright bg-surface px-6 py-12 text-center">
-      <p className="text-[16px] font-semibold text-ink">{title}</p>
+    <div className="rounded-xl border border-dashed border-line-bright bg-surface px-6 py-12 text-center">
+      <p className="text-[16px] font-medium text-ink">{title}</p>
       <p className="mx-auto mt-1.5 max-w-md text-[14px] text-ink-3">{description}</p>
     </div>
   );

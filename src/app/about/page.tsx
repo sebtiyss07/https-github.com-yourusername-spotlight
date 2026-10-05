@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <article className="mx-auto max-w-2xl px-5 py-16 sm:px-8">
-      <h1 className="text-[32px] font-semibold">About Spotlight</h1>
+      <h1 className="text-[32px] font-medium">About Spotlight</h1>
       <p className="mt-4 text-[17px] text-ink-2">
         Spotlight helps you plan a trip to a game. Pick a match or race and we show the
         cheapest ticket on every site that sells it, side by side, then add the cheapest
@@ -17,12 +17,12 @@ export default function AboutPage() {
         trip costs before you book.
       </p>
 
-      <h2 className="mt-10 text-[20px] font-semibold">What we cover</h2>
+      <h2 className="mt-10 text-[20px] font-medium">What we cover</h2>
       <p className="mt-2 text-[16px] text-ink-2">
         The NFL, NBA, MLS, the Premier League, the Champions League and Formula 1.
       </p>
 
-      <h2 className="mt-10 text-[20px] font-semibold">Where the prices come from</h2>
+      <h2 className="mt-10 text-[20px] font-medium">Where the prices come from</h2>
       <ul className="mt-2 list-disc space-y-2 pl-5 text-[16px] text-ink-2">
         <li>
           Ticket prices are read from each ticket site&apos;s own listings for that game. We
@@ -37,7 +37,7 @@ export default function AboutPage() {
         <li>We never estimate or invent a price. Prices change fast, so always check the final price before you pay.</li>
       </ul>
 
-      <h2 className="mt-10 text-[20px] font-semibold">How Spotlight makes money</h2>
+      <h2 className="mt-10 text-[20px] font-medium">How Spotlight makes money</h2>
       <p className="mt-2 text-[16px] text-ink-2">
         Some links to ticket, hotel and travel sites may be affiliate links: if you buy
         through them, the site may pay us a commission. It never changes the price you

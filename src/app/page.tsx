@@ -3,12 +3,10 @@ import type { ReactNode } from "react";
 import {
   getEventContexts,
   getEventsByLeague,
-  getLeaguePhoto,
   type EventContext,
 } from "@/lib/repositories";
-import { PhotoCredit } from "@/components/ui";
 import { SiteSearch } from "@/components/SiteSearch";
-import { GameCard, LEAGUE_COLORS } from "@/components/GameCard";
+import { GameCard } from "@/components/GameCard";
 import { formatPrice } from "@/lib/format";
 
 /**
@@ -19,14 +17,13 @@ import { formatPrice } from "@/lib/format";
  * 4. Plain answers to the questions people ask first.
  */
 export default async function HomePage() {
-  const [pl, ucl, races, nfl, nba, mls, photo] = await Promise.all([
+  const [pl, ucl, races, nfl, nba, mls] = await Promise.all([
     getEventsByLeague("premier-league").then(getEventContexts),
     getEventsByLeague("champions-league").then(getEventContexts),
     getEventsByLeague("formula-1").then(getEventContexts),
     getEventsByLeague("nfl").then(getEventContexts),
     getEventsByLeague("nba").then(getEventContexts),
     getEventsByLeague("mls").then(getEventContexts),
-    getLeaguePhoto("premier-league"),
   ]);
 
   const currency = nfl[0]?.prices.currency ?? pl[0]?.prices.currency ?? "USD";
@@ -64,38 +61,23 @@ export default async function HomePage() {
   return (
     <>
       {/* 1. Search */}
-      <section className="relative overflow-hidden bg-night text-white">
-        {photo?.large && (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photo.large} alt="" className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-b from-night/90 via-night/80 to-night" />
-            <PhotoCredit photo={photo} className="absolute bottom-3 right-3 z-10" />
-          </>
-        )}
-        <div className="relative mx-auto max-w-3xl px-5 pb-16 pt-12 text-center sm:px-6 sm:pb-20 sm:pt-20">
-          <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-semibold text-white/90 ring-1 ring-white/20">
-            <span className="h-2 w-2 rounded-full bg-sun" aria-hidden />
-            Sports ticket price comparison
-          </p>
-          <h1 className="mt-5 text-[36px] font-extrabold leading-[1.05] sm:text-[56px]">
-            Find the cheapest ticket to any game.
+      <section className="border-b border-line">
+        <div className="mx-auto max-w-3xl px-5 pb-16 pt-16 text-center sm:px-6 sm:pb-24 sm:pt-24">
+          <p className="text-[13px] text-ink-3">Sports ticket price comparison</p>
+          <h1 className="mt-4 text-[38px] font-medium leading-[1.05] tracking-[-0.04em] text-ink sm:text-[60px]">
+            The cheapest ticket to any game.
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-white/80 sm:text-[18px]">
-            NFL, NBA, MLS, Premier League, Champions League and Formula 1. Every ticket
-            site&apos;s price in one list, with the cheapest at the top.
+          <p className="mx-auto mt-5 max-w-lg text-[16px] leading-relaxed text-ink-3 sm:text-[17px]">
+            NFL, NBA, MLS, Premier League, Champions League and Formula&nbsp;1. Every
+            ticket site&apos;s price in one list, cheapest first.
           </p>
-          <div className="mx-auto mt-8 max-w-xl text-left">
+          <div className="mx-auto mt-9 max-w-xl text-left">
             <SiteSearch large />
           </div>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[14px]">
-            <span className="text-white/60">Popular:</span>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[14px]">
+            <span className="text-ink-3">Popular</span>
             {POPULAR.map(([q, href]) => (
-              <Link
-                key={q}
-                href={href}
-                className="rounded-full bg-white/10 px-3.5 py-1.5 font-semibold text-white ring-1 ring-white/20 transition-colors hover:bg-white hover:text-ink"
-              >
+              <Link key={q} href={href} className="text-ink-2 underline-offset-4 transition-colors hover:text-ink hover:underline">
                 {q}
               </Link>
             ))}
@@ -103,12 +85,11 @@ export default async function HomePage() {
         </div>
       </section>
 
-
       {/* 2. Leagues */}
       <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-6">
-        <h2 className="text-[26px] font-extrabold sm:text-[30px]">Choose a league</h2>
+        <h2 className="text-[22px] font-medium sm:text-[26px]">Choose a league</h2>
         <p className="mt-1 text-ink-3">Every game this season, with the cheapest ticket on each.</p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {leagues.map((c) => (
             <LeagueCard key={c.id} choice={c} />
           ))}
@@ -117,7 +98,7 @@ export default async function HomePage() {
 
       {/* 3. How it works */}
       <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
-        <h2 className="text-[26px] font-extrabold sm:text-[30px]">How it works</h2>
+        <h2 className="text-[22px] font-medium sm:text-[26px]">How it works</h2>
         <ol className="mt-6 grid gap-4 sm:grid-cols-3">
           <Step n={1} title="Find your game">
             Search a team or pick a league, then filter by month or budget.
@@ -134,7 +115,7 @@ export default async function HomePage() {
       {/* 4. Cheapest game this month in each league */}
       {deals.length > 0 && (
         <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
-          <h2 className="text-[26px] font-extrabold sm:text-[30px]">Cheapest game this month</h2>
+          <h2 className="text-[22px] font-medium sm:text-[26px]">Cheapest game this month</h2>
           <p className="mt-1 text-ink-3">One per league, in the next 30 days.</p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {deals.map((c) => (
@@ -149,10 +130,10 @@ export default async function HomePage() {
         <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-6">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-[26px] font-extrabold sm:text-[30px]">Next Formula 1 weekends</h2>
+              <h2 className="text-[22px] font-medium sm:text-[26px]">Next Formula 1 weekends</h2>
               <p className="mt-1 text-ink-3">The cheapest full-weekend pass for each race.</p>
             </div>
-            <Link href="/leagues/formula-1" className="font-semibold text-accent hover:underline">
+            <Link href="/leagues/formula-1" className="font-medium text-accent hover:underline">
               All races →
             </Link>
           </div>
@@ -166,11 +147,11 @@ export default async function HomePage() {
 
       {/* 6. Questions */}
       <section className="mx-auto max-w-3xl px-5 pt-16 sm:px-6">
-        <h2 className="text-[26px] font-extrabold sm:text-[30px]">Questions</h2>
-        <div className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
+        <h2 className="text-[22px] font-medium sm:text-[26px]">Questions</h2>
+        <div className="mt-5 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
           {FAQ.map(([q, a]) => (
             <details key={q} className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[16px] font-semibold">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[16px] font-medium">
                 {q}
                 <span aria-hidden className="text-[20px] text-ink-3 transition-transform group-open:rotate-45">
                   +
@@ -226,21 +207,17 @@ function LeagueCard({ choice: c }: { choice: LeagueChoice }) {
   return (
     <Link
       href={`/leagues/${c.id}`}
-      className="group flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-xs transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md"
+      className="group flex items-center gap-4 rounded-xl border border-line bg-surface p-4 transition-colors hover:border-ink"
     >
-      <span
-        aria-hidden
-        className="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-white"
-        style={{ backgroundColor: LEAGUE_COLORS[c.id] }}
-      >
+      <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2">
         <SportIcon sport={c.sport} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-[18px] font-bold leading-tight">{c.title}</span>
-        <span className="block text-[14px] text-ink-3">{c.detail}</span>
-        {c.price && (
-          <span className="mt-0.5 block text-[14px] font-semibold text-positive">From {c.price}</span>
-        )}
+        <span className="block text-[16px] font-medium leading-tight">{c.title}</span>
+        <span className="mt-0.5 block text-[13px] text-ink-3">
+          {c.detail}
+          {c.price && <> · from <span className="text-positive">{c.price}</span></>}
+        </span>
       </span>
       <Arrow />
     </Link>
@@ -251,7 +228,7 @@ function Arrow() {
   return (
     <span
       aria-hidden
-      className="grid h-8 w-8 shrink-0 place-items-center lg:hidden rounded-full bg-surface-2 text-ink-2 transition-colors group-hover:bg-accent group-hover:text-white"
+      className="shrink-0 text-ink-3 transition-colors group-hover:text-ink lg:hidden"
     >
       →
     </span>
@@ -260,7 +237,7 @@ function Arrow() {
 
 /** Simple line icons, one per sport (no league logos). */
 function SportIcon({ sport }: { sport: Sport }) {
-  const common = { width: 26, height: 26, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const common = { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   switch (sport) {
     case "american-football":
       return (
@@ -297,13 +274,11 @@ function SportIcon({ sport }: { sport: Sport }) {
 
 function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
-    <li className="flex gap-4 rounded-2xl border border-line bg-surface p-5 sm:block">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent font-display text-[18px] font-extrabold text-white">
-        {n}
-      </span>
+    <li className="flex gap-4 border-t border-line pt-5 sm:block">
+      <span className="shrink-0 text-[13px] tabular text-ink-3">0{n}</span>
       <span className="block">
-        <span className="block font-display text-[18px] font-bold sm:mt-3">{title}</span>
-        <span className="mt-1 block text-ink-3">{children}</span>
+        <span className="block text-[16px] font-medium sm:mt-3">{title}</span>
+        <span className="mt-1 block text-[14px] text-ink-3">{children}</span>
       </span>
     </li>
   );

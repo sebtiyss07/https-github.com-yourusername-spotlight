@@ -13,7 +13,6 @@ import {
 import { flightLinks, hotelLinks, type TravelLink } from "@/lib/providers/travelLinks";
 import { coachLinks, driveLink, groundTravelPossible, trainLink } from "@/lib/providers/ground";
 import { TripTotal } from "@/components/TripTotal";
-import { PhotoCredit } from "@/components/ui";
 import { cheapestFlight, cheapestHotelNear } from "@/lib/providers/livePrices";
 import {
   formatDateRange,
@@ -209,8 +208,6 @@ export default async function EventPage({
           ? coachLinks(resolvedOrigin.city, venue.city)
           : [driveLink(resolvedOrigin.city, venue.lat, venue.lon)];
 
-  const accent = context.sport?.accent ?? "#4f46e5";
-  const photo = context.photo;
 
   const ticketNoun = isRace ? "weekend pass" : "ticket";
   const pricedSites = prices.offers.filter((o) => o.amount !== null).length;
@@ -218,43 +215,22 @@ export default async function EventPage({
   return (
     <>
       {/* The event, and the answer: its cheapest ticket */}
-      <section className="glow relative overflow-hidden" style={{ ["--glow" as string]: accent }}>
-        {photo && !isRace && (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photo.large}
-              alt={`${venue.name}, ${venue.city}`}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-night/95 via-night/85 to-night/50" />
-          </>
-        )}
-        {photo && isRace && (
-          // The circuit's shape as a white outline behind the title.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={photo.large}
-            alt={`${venue.name} track map`}
-            className="pointer-events-none absolute -right-10 top-1/2 hidden h-[125%] -translate-y-1/2 opacity-25 [filter:brightness(0)_invert(1)] md:block"
-          />
-        )}
-        {photo && <PhotoCredit photo={photo} className="absolute bottom-3 right-3 z-10" />}
-        <div className="relative mx-auto grid max-w-6xl gap-8 px-5 pb-14 pt-6 sm:px-6 md:grid-cols-[1fr_360px] md:items-center md:pt-8">
+      <section className="border-b border-line">
+        <div className="mx-auto grid max-w-6xl gap-8 px-5 pb-12 pt-6 sm:px-6 md:grid-cols-[1fr_360px] md:items-center md:pb-14 md:pt-8">
           <div className="min-w-0">
             <Link
               href={`/leagues/${event.leagueId}`}
-              className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-white/75 transition-colors hover:text-white"
+              className="inline-flex items-center gap-1.5 text-[14px] text-ink-3 transition-colors hover:text-ink"
             >
               ← All {context.league?.shortName ?? ""} {isRace ? "races" : isFootball ? "matches" : "games"}
             </Link>
-            <p className="mt-6 text-[13px] font-semibold uppercase tracking-wide text-white/65">
+            <p className="mt-8 text-[13px] text-ink-3">
               {context.league?.name}
             </p>
-            <h1 className="mt-2 text-[30px] font-extrabold leading-[1.08] text-white sm:text-[44px]">
+            <h1 className="mt-2 text-[30px] font-medium leading-[1.08] tracking-[-0.035em] text-ink sm:text-[44px]">
               {context.title}
             </h1>
-            <ul className="mt-5 space-y-1.5 text-[16px] text-white/90">
+            <ul className="mt-5 space-y-1.5 text-[15px] text-ink-2">
               <li className="flex items-start gap-2.5">
                 <CalendarIcon />
                 <span>
@@ -273,15 +249,15 @@ export default async function EventPage({
           </div>
 
           {/* The answer first: the cheapest ticket, one tap from buying. */}
-          <div className="rounded-2xl bg-surface p-5 text-ink shadow-lg">
+          <div className="rounded-xl border border-line bg-surface p-5 text-ink">
             {prices.cheapest ? (
               <>
-                <p className="text-[14px] font-semibold text-ink-3">
+                <p className="text-[14px] font-medium text-ink-3">
                   Cheapest {ticketNoun}
                   {pricedSites > 1 ? ` · ${pricedSites} sites compared` : ""}
                 </p>
                 <p className="mt-1 flex items-baseline gap-2">
-                  <span className="tabular font-display text-[40px] font-extrabold leading-none text-positive">
+                  <span className="tabular text-[40px] font-medium leading-none tracking-[-0.03em] text-ink">
                     {formatPrice(prices.cheapest.amount!, prices.currency)}
                   </span>
                   <span className="text-[15px] text-ink-2">on {prices.cheapest.label}</span>
@@ -290,13 +266,13 @@ export default async function EventPage({
                   href={prices.cheapest.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white transition-colors hover:bg-accent-2"
+                  className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-5 py-3 text-[15px] font-medium text-white transition-colors hover:bg-accent-2"
                 >
                   Buy on {prices.cheapest.label} ↗
                 </a>
                 <a
                   href="#tickets"
-                  className="mt-2 flex w-full items-center justify-center rounded-xl border border-line px-5 py-3 text-[15px] font-semibold text-ink transition-colors hover:border-accent hover:text-accent"
+                  className="mt-2 flex w-full items-center justify-center rounded-lg border border-line px-5 py-3 text-[15px] text-ink transition-colors hover:border-ink"
                 >
                   Compare all {prices.offers.length} sites ↓
                 </a>
@@ -316,27 +292,27 @@ export default async function EventPage({
               </>
             ) : prices.offers.length > 0 ? (
               <>
-                <p className="text-[16px] font-bold">No price listed yet</p>
+                <p className="text-[16px] font-medium">No price listed yet</p>
                 <p className="mt-1 text-[14px] text-ink-3">
                   None of the sites we read had a price when we checked. See each site below.
                 </p>
                 <a
                   href="#tickets"
-                  className="mt-4 flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white hover:bg-accent-2"
+                  className="mt-4 flex w-full items-center justify-center rounded-lg bg-accent px-5 py-3 text-[15px] font-medium text-white hover:bg-accent-2"
                 >
                   See ticket sites ↓
                 </a>
               </>
             ) : (
               <>
-                <p className="text-[16px] font-bold">Not on the ticket sites yet</p>
+                <p className="text-[16px] font-medium">Not on the ticket sites yet</p>
                 <p className="mt-1 text-[14px] text-ink-3">
                   None of the ticket sites we compare lists this {isRace ? "race" : isFootball ? "match" : "game"} yet.
                   Resale tickets usually appear closer to the date, so check back soon.
                 </p>
                 <Link
                   href={`/leagues/${event.leagueId}`}
-                  className="mt-4 flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white hover:bg-accent-2"
+                  className="mt-4 flex w-full items-center justify-center rounded-lg bg-accent px-5 py-3 text-[15px] font-medium text-white hover:bg-accent-2"
                 >
                   See other {context.league?.shortName ?? ""} {isRace ? "races" : isFootball ? "matches" : "games"}
                 </Link>
@@ -349,7 +325,7 @@ export default async function EventPage({
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         {/* 1. Every site's price, cheapest first. */}
         <section id="tickets" className="mt-8 min-w-0 scroll-mt-32">
-          <h2 className="text-[24px] font-extrabold sm:text-[28px]">
+          <h2 className="text-[22px] font-medium sm:text-[26px]">
             Ticket prices on every site
           </h2>
           <p className="mt-1 max-w-3xl text-ink-2">
@@ -363,7 +339,7 @@ export default async function EventPage({
             {priceGroups.some((g) => g.comparison.offers.length > 0) ? (
               <PriceCompare groups={priceGroups} />
             ) : (
-              <p className="rounded-2xl border border-dashed border-line-bright bg-surface px-5 py-6 text-ink-2">
+              <p className="rounded-xl border border-dashed border-line-bright bg-surface px-5 py-6 text-ink-2">
                 No ticket site we compare lists this {isRace ? "race" : isFootball ? "match" : "game"} yet. We check
                 again as sites add it.
               </p>
@@ -371,8 +347,8 @@ export default async function EventPage({
           </div>
 
           {sellers.length > 0 && (
-            <details className="group mt-4 rounded-2xl border border-line bg-surface">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[15px] font-semibold">
+            <details className="group mt-4 rounded-xl border border-line bg-surface">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[15px] font-medium">
                 Official club ticket offices
                 <span className="text-[13px] font-normal text-ink-3 group-open:hidden">
                   Face value, usually members first ▾
@@ -388,12 +364,12 @@ export default async function EventPage({
                     className="group/row flex items-center gap-4 rounded-xl px-3 py-2.5 transition-colors hover:bg-surface-2"
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-semibold group-hover/row:text-accent">
+                      <span className="block text-[15px] font-medium group-hover/row:text-accent">
                         {seller.label}
                       </span>
                       <span className="block text-[13px] text-ink-3">{seller.note}</span>
                     </span>
-                    <span className="shrink-0 text-[14px] font-semibold text-accent">Visit ↗</span>
+                    <span className="shrink-0 text-[14px] font-medium text-accent">Visit ↗</span>
                   </a>
                 ))}
               </div>
@@ -404,13 +380,13 @@ export default async function EventPage({
         {/* 2. The whole trip. Plain links and a GET form, so it works without
             JavaScript and every trip is a link you can send. */}
         <section id="trip" className="mt-14 scroll-mt-32">
-          <h2 className="text-[24px] font-extrabold sm:text-[28px]">Plan the whole trip</h2>
+          <h2 className="text-[22px] font-medium sm:text-[26px]">Plan the whole trip</h2>
           <p className="mt-1 text-ink-2">
             Travelling to the {isRace ? "race" : isFootball ? "match" : "game"}? Add a hotel and a
             flight for the same dates and we&apos;ll add it all up. Live nearby? Switch them off.
           </p>
 
-          <div className="mt-5 rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+          <div className="mt-5 rounded-xl border border-line bg-surface p-4 sm:p-5">
             <div className="grid gap-2 sm:grid-cols-3">
               <NeedTile icon={<TicketIcon />} label={isRace ? "Race tickets" : isFootball ? "Match tickets" : "Game tickets"} on />
               <NeedTile
@@ -471,7 +447,7 @@ export default async function EventPage({
               )}
               <button
                 type="submit"
-                className="rounded-xl bg-accent px-6 py-3.5 text-[16px] font-bold text-white transition-colors hover:bg-accent-2"
+                className="rounded-xl bg-accent px-6 py-3.5 text-[16px] font-medium text-white transition-colors hover:bg-accent-2"
               >
                 Update total
               </button>
@@ -485,7 +461,7 @@ export default async function EventPage({
                     key={city}
                     href={`${tripHref({ origin: city })}#trip`}
                     scroll={false}
-                    className={`rounded-full border px-3 py-1 font-semibold transition-colors ${
+                    className={`rounded-full border px-3 py-1 font-medium transition-colors ${
                       resolvedOrigin?.city === city
                         ? "border-accent bg-accent text-white"
                         : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
@@ -505,7 +481,7 @@ export default async function EventPage({
                     key={mode}
                     href={`${tripHref({ go: mode })}#trip`}
                     scroll={false}
-                    className={`rounded-full border px-3.5 py-1 font-semibold transition-colors ${
+                    className={`rounded-full border px-3.5 py-1 font-medium transition-colors ${
                       go === mode
                         ? "border-ink bg-ink text-white"
                         : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
@@ -525,7 +501,7 @@ export default async function EventPage({
             )}
 
             {wantTravel && originUnresolved && (
-              <p className="mt-3 text-[15px] font-semibold text-hot">
+              <p className="mt-3 text-[15px] font-medium text-hot">
                 We couldn&apos;t find &ldquo;{origin}&rdquo;. Try a big city nearby, like New York,
                 London or Paris.
               </p>
@@ -594,20 +570,20 @@ function NeedTile({
     <>
       <span
         className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
-          on ? "bg-accent text-white" : "bg-surface-2 text-ink-3"
+          on ? "bg-ink text-white" : "bg-surface-2 text-ink-3"
         }`}
       >
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={`block text-[15px] font-semibold ${on ? "text-ink" : "text-ink-3"}`}>{label}</span>
+        <span className={`block text-[15px] font-medium ${on ? "text-ink" : "text-ink-3"}`}>{label}</span>
         <span className="block text-[13px] text-ink-3">
           {!href ? "Always included" : on ? "Included · tap to remove" : "Not needed · tap to add"}
         </span>
       </span>
       <span
         aria-hidden
-        className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[13px] font-bold ${
+        className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[13px] font-medium ${
           on ? "bg-accent text-white" : "border-2 border-line"
         }`}
       >
@@ -615,8 +591,8 @@ function NeedTile({
       </span>
     </>
   );
-  const cls = `flex items-center gap-3 rounded-xl border-2 px-3 py-3 transition-colors ${
-    on ? "border-accent bg-accent/5" : "border-dashed border-line bg-surface hover:border-accent"
+  const cls = `flex items-center gap-3 rounded-xl border px-3 py-3 transition-colors ${
+    on ? "border-ink bg-surface" : "border-dashed border-line-bright bg-surface hover:border-ink"
   }`;
   return href ? (
     <Link href={href} scroll={false} className={cls} aria-pressed={on}>
@@ -675,7 +651,7 @@ function TripPeek({
   const row = "flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2";
   return (
     <div className="mt-4 border-t border-line pt-3">
-      <p className="px-2 text-[13px] font-semibold text-ink-3">
+      <p className="px-2 text-[13px] font-medium text-ink-3">
         Your trip · {nights} {nights === 1 ? "night" : "nights"}, {travellers} {travellers === 1 ? "person" : "people"}
       </p>
 
@@ -684,15 +660,15 @@ function TripPeek({
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2">
             <BedIcon />
           </span>
-          <span className="min-w-0 flex-1 text-[14px] font-semibold">Hotel near the venue</span>
+          <span className="min-w-0 flex-1 text-[14px] font-medium">Hotel near the venue</span>
           <span className="shrink-0 text-right text-[14px]">
             {hotelPriced ? (
               <>
-                <span className="tabular font-bold">{money(hotelPriced.perNight)}</span>
+                <span className="tabular font-medium">{money(hotelPriced.perNight)}</span>
                 <span className="text-ink-3">/night</span>
               </>
             ) : (
-              <span className="font-semibold text-accent">See prices</span>
+              <span className="font-medium text-accent">See prices</span>
             )}
           </span>
         </a>
@@ -716,7 +692,7 @@ function TripPeek({
               autoComplete="address-level2"
               className="min-w-0 flex-1 rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[14px] outline-none placeholder:text-ink-3 focus:border-accent focus:bg-surface"
             />
-            <button type="submit" className="shrink-0 rounded-lg bg-ink px-3 py-1.5 text-[14px] font-bold text-white hover:bg-accent">
+            <button type="submit" className="shrink-0 rounded-lg bg-ink px-3 py-1.5 text-[14px] font-medium text-white hover:bg-accent">
               Add
             </button>
           </form>
@@ -725,21 +701,21 @@ function TripPeek({
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2">
               <PlaneIcon />
             </span>
-            <span className="min-w-0 flex-1 text-[14px] font-semibold">
+            <span className="min-w-0 flex-1 text-[14px] font-medium">
               {go === "flight" ? (sameCity ? "No flight needed" : `Flight from ${origin}`) : MODE_LABEL[go].replace(/^\S+\s/, "") + (origin ? ` from ${origin}` : "")}
             </span>
             <span className="shrink-0 text-right text-[14px]">
               {go !== "flight" ? (
-                <span className="font-semibold text-accent">{go === "drive" ? "Directions" : "See fares"}</span>
+                <span className="font-medium text-accent">{go === "drive" ? "Directions" : "See fares"}</span>
               ) : sameCity ? (
-                <span className="font-semibold text-ink-3">{money(0)}</span>
+                <span className="font-medium text-ink-3">{money(0)}</span>
               ) : flightPriced ? (
                 <>
-                  <span className="tabular font-bold">{money(flightPriced.perPerson)}</span>
+                  <span className="tabular font-medium">{money(flightPriced.perPerson)}</span>
                   <span className="text-ink-3"> return</span>
                 </>
               ) : (
-                <span className="font-semibold text-accent">See fares</span>
+                <span className="font-medium text-accent">See fares</span>
               )}
             </span>
           </a>
@@ -751,13 +727,13 @@ function TripPeek({
       >
         {complete ? (
           <>
-            <span className="font-semibold">Whole trip</span>
-            <span className="tabular text-[17px] font-extrabold">{money(total)}</span>
+            <span className="font-medium">Whole trip</span>
+            <span className="tabular text-[17px] font-semibold">{money(total)}</span>
           </>
         ) : (
           <>
-            <span className="font-semibold">Plan the whole trip</span>
-            <span className="font-semibold text-accent">↓</span>
+            <span className="font-medium">Plan the whole trip</span>
+            <span className="font-medium text-accent">↓</span>
           </>
         )}
       </a>
@@ -768,7 +744,7 @@ function TripPeek({
 function Field({ label, className = "", children }: { label: string; className?: string; children: ReactNode }) {
   return (
     <label className={`block rounded-xl bg-surface px-4 py-2 ${className}`}>
-      <span className="block text-[12px] font-semibold text-ink-3">{label}</span>
+      <span className="block text-[12px] font-medium text-ink-3">{label}</span>
       {children}
     </label>
   );
@@ -807,7 +783,7 @@ function PlaneIcon() {
 
 function CalendarIcon() {
   return (
-    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden className="mt-0.5 shrink-0 text-white/60">
+    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden className="mt-0.5 shrink-0 text-ink-3">
       <rect x="3.5" y="5" width="17" height="15" rx="2" {...ICON_STROKE} />
       <path d="M3.5 10h17M8 3v4M16 3v4" {...ICON_STROKE} />
     </svg>
@@ -816,7 +792,7 @@ function CalendarIcon() {
 
 function PinIcon() {
   return (
-    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden className="mt-0.5 shrink-0 text-white/60">
+    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden className="mt-0.5 shrink-0 text-ink-3">
       <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" {...ICON_STROKE} />
       <circle cx="12" cy="10" r="2.3" {...ICON_STROKE} />
     </svg>

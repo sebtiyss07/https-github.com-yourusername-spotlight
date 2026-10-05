@@ -370,7 +370,8 @@ async function eventPrices(
     rows = official.map((r) => resale.find((x) => x.site === r.site && !before.includes(x)) ?? r);
     for (const r of rows) if (!before.includes(r) && r.price !== null) liveSites.add(r.site);
   }
-  const today = new Date().toISOString().slice(0, 10);
+  // Today in US Eastern time, so an evening check isn't dated tomorrow.
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
   const result = {
     prices: comparePrices(rows, (site) => (liveSites.has(site) ? today : checked[site]), currency),
     raceDayPrices: null,

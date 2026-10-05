@@ -323,7 +323,7 @@ export default async function DevAudit() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12 font-mono text-[13px]">
-      <h1 className="mb-2 text-xl font-bold">
+      <h1 className="mb-2 text-xl font-medium">
         {failures.length === 0
           ? "✅ NO DISCREPANCIES"
           : `❌ ${failures.length} DISCREPANCIES`}

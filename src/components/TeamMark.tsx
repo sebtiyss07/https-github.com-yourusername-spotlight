@@ -137,7 +137,7 @@ export function TeamMark({
         }}
       >
         <span
-          className="font-semibold leading-none"
+          className="font-medium leading-none"
           style={{
             fontSize: size * (showRim ? 0.3 : 0.32),
             letterSpacing: "0.03em",

@@ -12,7 +12,7 @@ export function LeagueNav() {
   const path = usePathname();
   return (
     <nav aria-label="Leagues" className="border-t border-line">
-      <ul className="no-scrollbar mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 py-1.5 sm:px-6">
+      <ul className="no-scrollbar mx-auto flex max-w-6xl gap-5 overflow-x-auto px-4 sm:px-6">
         {NAV_LEAGUES.map((l) => {
           const active = path === l.href || path.startsWith(`${l.href}/`);
           return (
@@ -20,8 +20,8 @@ export function LeagueNav() {
               <Link
                 href={l.href}
                 aria-current={active ? "page" : undefined}
-                className={`block rounded-full px-3.5 py-1.5 text-[14px] font-semibold transition-colors ${
-                  active ? "bg-accent text-white" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
+                className={`block py-2.5 text-[14px] transition-colors ${
+                  active ? "text-ink shadow-[inset_0_-1.5px_0_var(--color-ink)]" : "text-ink-3 hover:text-ink"
                 }`}
               >
                 {l.label}

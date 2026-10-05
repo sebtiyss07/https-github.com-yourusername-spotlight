@@ -51,7 +51,7 @@ export default async function SportPage({
 
       <div className="mt-8 flex items-center gap-4">
         <span
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl"
+          className="grid h-14 w-14 shrink-0 place-items-center rounded-xl"
           style={{
             color: sport.accent,
             background: `color-mix(in oklab, ${sport.accent} 13%, white)`,
@@ -60,7 +60,7 @@ export default async function SportPage({
           <SportIcon sport={sport.id} size={28} />
         </span>
         <div>
-          <h1 className="text-[30px] font-semibold leading-tight sm:text-[38px]">
+          <h1 className="text-[30px] font-medium leading-tight sm:text-[38px]">
             {sport.name}
           </h1>
           <p className="text-[15px] text-ink-3">{sport.tagline}</p>
@@ -68,7 +68,7 @@ export default async function SportPage({
       </div>
 
       <section className="mt-12">
-        <h2 className="text-[22px] font-semibold">Choose a league</h2>
+        <h2 className="text-[22px] font-medium">Choose a league</h2>
         {leagues.length === 0 ? (
           <div className="mt-5">
             <EmptyState
@@ -82,10 +82,10 @@ export default async function SportPage({
               <Link
                 key={league.id}
                 href={`/leagues/${league.id}`}
-                className="group flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
+                className="group flex items-center gap-3 rounded-xl border border-line bg-surface p-4 transition-all"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-semibold">{league.name}</p>
+                  <p className="truncate text-[15px] font-medium">{league.name}</p>
                   <p className="text-[13px] text-ink-3">{league.region}</p>
                 </div>
                 <span
@@ -102,7 +102,7 @@ export default async function SportPage({
 
       {marquee.length > 0 && (
         <section className="mt-14">
-          <h2 className="text-[22px] font-semibold">Big events</h2>
+          <h2 className="text-[22px] font-medium">Big events</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {marquee.map((context) => (
               <GameCard key={context.event.id} context={context} race={context.event.sportId === "motorsport"} />
