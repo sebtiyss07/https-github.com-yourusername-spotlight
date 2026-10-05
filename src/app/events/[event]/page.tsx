@@ -240,7 +240,7 @@ export default async function EventPage({
           />
         )}
         {photo && <PhotoCredit photo={photo} className="absolute bottom-3 right-3 z-10" />}
-        <div className="relative mx-auto grid max-w-6xl gap-8 px-5 pb-14 pt-6 sm:px-6 md:grid-cols-[1fr_360px] md:items-center md:pt-8">
+        <div className="relative mx-auto grid max-w-6xl gap-8 px-5 pb-14 pt-6 sm:px-6 md:grid-cols-[1fr_360px] md:items-start md:pt-8">
           <div className="min-w-0">
             <Link
               href={`/leagues/${event.leagueId}`}
@@ -561,6 +561,32 @@ export default async function EventPage({
           </div>
         </section>
       </div>
+
+      {/* Phones: the cheapest ticket stays one tap away while scrolling. */}
+      {prices.cheapest && (
+        <>
+          <div aria-hidden className="h-20 md:hidden" />
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur-xl md:hidden">
+            <div className="mx-auto flex max-w-6xl items-center gap-3">
+              <p className="min-w-0 flex-1 leading-tight">
+                <span className="block text-[12px] text-ink-3">Cheapest {ticketNoun}</span>
+                <span className="tabular text-[20px] font-extrabold text-positive">
+                  {formatPrice(prices.cheapest.amount!, prices.currency)}
+                </span>
+                <span className="truncate text-[13px] text-ink-2"> on {prices.cheapest.label}</span>
+              </p>
+              <a
+                href={prices.cheapest.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 rounded-xl bg-accent px-5 py-3 text-[15px] font-bold text-white transition-colors hover:bg-accent-2"
+              >
+                Buy ↗
+              </a>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

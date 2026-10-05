@@ -82,7 +82,7 @@ export default async function HomePage() {
             Find the cheapest ticket to any game.
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-white/80 sm:text-[18px]">
-            NFL, NBA, MLS, Premier League, Champions League and Formula 1. Every ticket
+            NFL, NBA, MLS, Premier League, Champions League and Formula&nbsp;1. Every ticket
             site&apos;s price in one list, with the cheapest at the top.
           </p>
           <div className="mx-auto mt-8 max-w-xl text-left">
