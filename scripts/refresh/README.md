@@ -31,9 +31,13 @@ Rules that never change:
    Each sets `window.__job` (`done`, `total`, `results`, `log`) and saves its
    progress in the tab, so it can resume if re-run the same day. Check
    `Object.keys(window.__job.results).length` now and then. When `done`,
-   export `JSON.stringify(window.__job.results)` to
-   `.refresh/browser-vivid.json`, `browser-stubhub.json` and
-   `browser-booking.json`.
+   export `JSON.stringify(window.__job.results) + "x".repeat(60000)` (the
+   padding makes the browser tool save the result to a file) and turn that
+   file into `.refresh/browser-vivid.json`, `browser-stubhub.json` or
+   `browser-booking.json` with
+   `python3 scripts/refresh/extract-browser-result.py <saved file> .refresh/browser-<site>.json`.
+   If a site starts answering 403 or a challenge page mid-run, the job stops;
+   export what it has.
 5. `node scripts/refresh/apply.mjs`: writes the results into the price and
    hotel files, each row dated today.
 6. Check: `npx tsc --noEmit -p .`, then open a few game pages; prices should
