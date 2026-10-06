@@ -294,14 +294,13 @@ export async function nearbyFlight(trip: { from: string; to: string; departOn: s
   const back = cheapestOn(backs, trip.returnOn);
   if (out && back) {
     const airlines = [...new Set([name(out.airline), name(back.airline)])];
-    const ddmm = (d: string) => d.slice(8, 10) + d.slice(5, 7);
     return {
       perPerson: out.price + back.price,
       departOn: trip.departOn,
       returnOn: trip.returnOn,
       airline: airlines.join(" + "),
       stopsLabel: stopsLabel(Math.max(out.transfers, back.transfers)),
-      url: `https://www.aviasales.com/search/${trip.from}${ddmm(trip.departOn)}${trip.to}${ddmm(trip.returnOn)}1`,
+      url: expediaFlightsUrl({ from: trip.from, to: trip.to, departOn: trip.departOn, returnOn: trip.returnOn, adults: 1 }),
       kind: "pair",
     };
   }
@@ -332,7 +331,7 @@ export async function nearbyFlight(trip: { from: string; to: string; departOn: s
     returnOn: f.return_at!.slice(0, 10),
     airline: name(f.airline),
     stopsLabel: stopsLabel(f.transfers),
-    url: `https://www.aviasales.com${f.link}`,
+    url: expediaFlightsUrl({ from: trip.from, to: trip.to, departOn: f.departure_at.slice(0, 10), returnOn: f.return_at!.slice(0, 10), adults: 1 }),
     kind: "near",
   };
 }
@@ -389,8 +388,8 @@ async function findFlight(trip: Parameters<typeof cheapestFlight>[0]): Promise<F
       perPerson: f.price,
       airline: AIRLINES[f.airline] ?? f.airline,
       stopsLabel: stopsLabel(f.transfers),
-      url: `https://www.aviasales.com${f.link}`,
-      source: "Aviasales: a fare travellers found in the last few days, which may have gone",
+      url: expediaFlightsUrl({ from: trip.from, to: trip.to, departOn: trip.departOn, returnOn: trip.returnOn, adults: trip.adults }),
+      source: "A fare travellers found in the last few days, which may have gone",
       departOn: trip.departOn,
       returnOn: trip.returnOn,
     });

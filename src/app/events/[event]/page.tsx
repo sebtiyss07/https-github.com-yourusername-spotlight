@@ -513,7 +513,7 @@ export default async function EventPage({
                 departOn: nearby.departOn,
                 returnOn: nearby.returnOn,
                 adults: travellers,
-              }).filter((l) => ["Expedia", "KAYAK", "Aviasales"].includes(l.site)),
+              }).filter((l) => ["Expedia", "KAYAK"].includes(l.site)),
             },
             estimate: flightEstimate,
           }}

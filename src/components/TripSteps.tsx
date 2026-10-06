@@ -98,7 +98,7 @@ export function TripSteps({
       stopsLabel: string;
       url: string;
       kind: "pair" | "near";
-      /** Expedia, KAYAK and Aviasales searches for that fare's dates. */
+      /** Expedia and KAYAK searches for that fare's dates. */
       links: TravelLinkLite[];
     } | null;
     /** The nearby fare as counted in the total (round trip, everyone). */
@@ -275,7 +275,7 @@ export function TripSteps({
                   </a>
                 ))}
               </div>
-              <p className="mt-2 text-[12px] text-ink-3">Price found on Aviasales; Expedia and KAYAK may differ a little.</p>
+              <p className="mt-2 text-[12px] text-ink-3">Estimate from recent fares. Expedia and KAYAK show today's price.</p>
             </div>
           ) : (
             <ExactDates
