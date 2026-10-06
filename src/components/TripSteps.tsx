@@ -90,7 +90,7 @@ export function TripSteps({
     toggleHref: string;
     needsOrigin: boolean;
     /** No exact-date fare: the nearest real one, with its own dates (per person). */
-    nearby?: { perPerson: number; departOn: string; returnOn: string; airline: string; stopsLabel: string; url: string } | null;
+    nearby?: { perPerson: number; departOn: string; returnOn: string; airline: string; stopsLabel: string; url: string; kind: "near" | "month" | "one-way" } | null;
   };
   total: { amount: number; parts: string[]; missing: string[]; feesExtra: boolean };
 }) {
@@ -100,11 +100,11 @@ export function TripSteps({
 
   return (
     <section id="trip" className="mt-8 scroll-mt-32">
-      <h2 className="text-[26px] font-extrabold sm:text-[30px]">Book your trip in 3 steps</h2>
+      <h2 className="text-[24px] font-bold tracking-tight sm:text-[28px]">Book your trip in 3 steps</h2>
       <p className="mt-1 text-ink-2">Pick each part, see one total, then book each part on the site that sells it.</p>
 
       {/* Settings: one row */}
-      <form method="get" action="#trip" className="mt-5 grid gap-2 rounded-2xl border border-line bg-surface p-3 shadow-xs sm:grid-cols-[2fr_1fr_1fr_auto]">
+      <form method="get" action="#trip" className="mt-5 grid gap-2 rounded-xl border border-line bg-surface p-3 sm:grid-cols-[2fr_1fr_1fr_auto]">
         {Object.entries(hidden)
           .filter(([, v]) => v)
           .map(([k, v]) => (
@@ -220,15 +220,22 @@ export function TripSteps({
             <div>
               <div className="flex flex-col gap-3 rounded-xl border border-line p-3 sm:flex-row sm:items-center">
                 <div className="flex-1">
-                  <p className="text-[12px] font-bold uppercase tracking-wide text-ink-3">Nearest fare we found</p>
+                  <p className="text-[12px] font-bold uppercase tracking-wide text-ink-3">
+                    {travel.nearby.kind === "near" ? "Nearest fare we found" : "Flights on this route from"}
+                  </p>
                   <p className="mt-0.5 text-[15px]">
-                    <span className="tabular text-[22px] font-extrabold">{money(travel.nearby.perPerson)}</span>{" "}
-                    <span className="text-ink-3">per person, round trip</span>
+                    <span className="tabular text-[22px] font-bold">{money(travel.nearby.perPerson)}</span>{" "}
+                    <span className="text-ink-3">per person, {travel.nearby.kind === "one-way" ? "one way" : "round trip"}</span>
                   </p>
                   <p className="text-[13px] text-ink-2">
-                    {shortDay(travel.nearby.departOn)} → {shortDay(travel.nearby.returnOn)} · {travel.nearby.airline}, {travel.nearby.stopsLabel.toLowerCase()}
+                    {shortDay(travel.nearby.departOn)}
+                    {travel.nearby.returnOn ? ` → ${shortDay(travel.nearby.returnOn)}` : ""} · {travel.nearby.airline}, {travel.nearby.stopsLabel.toLowerCase()}
                   </p>
-                  <p className="mt-1 text-[12px] text-ink-3">These dates are close to yours, not the same, so it isn&apos;t added to your total.</p>
+                  <p className="mt-1 text-[12px] text-ink-3">
+                    {travel.nearby.kind === "near"
+                      ? "These dates are close to yours, not the same, so it isn't added to your total."
+                      : "The lowest fare travellers found on this route this month. Your dates may cost more, so it isn't added to your total."}
+                  </p>
                 </div>
                 <a href={travel.nearby.url} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-xl bg-ink px-4 py-2.5 text-center text-[14px] font-bold text-white hover:bg-accent">
                   See this fare ↗
@@ -270,7 +277,7 @@ export function TripSteps({
       </ol>
 
       {/* The answer */}
-      <div className="glow mt-4 flex flex-col gap-1 rounded-2xl px-6 py-5 text-white sm:flex-row sm:items-center sm:justify-between" style={{ ["--glow" as string]: "#4f46e5" }}>
+      <div className="mt-4 flex flex-col gap-1 rounded-xl bg-night px-6 py-5 text-white sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[13px] font-semibold uppercase tracking-wide text-white/70">Your trip · {people}</p>
           <p className="text-[15px] text-white/85">
@@ -278,7 +285,7 @@ export function TripSteps({
             {total.missing.length > 0 && <> · still to add: {total.missing.join(", ")}</>}
           </p>
         </div>
-        <p className="tabular text-[40px] font-extrabold leading-none">
+        <p className="tabular text-[36px] font-bold leading-none tracking-tight">
           {money(total.amount)}
           {total.feesExtra && <span className="text-[14px] font-semibold text-sun"> + any fees</span>}
         </p>
@@ -295,11 +302,11 @@ const shortDay = (d: string) =>
 
 function Step({ n, title, price, children }: { n: number; title: string; price: string | null; money: (n: number) => string; children: ReactNode }) {
   return (
-    <li className="rounded-2xl border border-line bg-surface p-4 shadow-xs sm:p-5">
+    <li className="rounded-xl border border-line bg-surface p-4 sm:p-5">
       <div className="mb-3 flex items-center gap-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent text-[16px] font-extrabold text-white">{n}</span>
-        <h3 className="min-w-0 flex-1 text-[18px] font-bold">{title}</h3>
-        {price && <span className="tabular shrink-0 text-[18px] font-extrabold">{price}</span>}
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/10 text-[14px] font-bold text-accent">{n}</span>
+        <h3 className="min-w-0 flex-1 text-[17px] font-semibold tracking-tight">{title}</h3>
+        {price && <span className="tabular shrink-0 text-[17px] font-bold">{price}</span>}
       </div>
       {children}
     </li>
@@ -331,16 +338,16 @@ function ChoiceCards({ choices, money, selectable = true }: { choices: Choice[];
         >
           <span className="flex flex-wrap gap-1">
             {c.tags.map((t) => (
-              <span key={t} className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-ink-2">
+              <span key={t} className="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-semibold text-ink-2">
                 {TAG_LABEL[t] ?? t}
               </span>
             ))}
-            {c.freeCancellation && <span className="rounded-full bg-positive/10 px-2 py-0.5 text-[11px] font-bold text-positive">Free cancellation</span>}
+            {c.freeCancellation && <span className="rounded-md bg-positive/10 px-1.5 py-0.5 text-[11px] font-semibold text-positive">Free cancellation</span>}
           </span>
-          <span className="mt-2 line-clamp-2 text-[15px] font-bold leading-snug">{c.title}</span>
+          <span className="mt-2 line-clamp-2 text-[15px] font-semibold leading-snug">{c.title}</span>
           <span className="mt-0.5 text-[12px] text-ink-3">{c.facts.join(" · ")}</span>
           <span className="mt-2 flex items-baseline gap-1">
-            <span className="tabular text-[20px] font-extrabold">{money(c.price)}</span>
+            <span className="tabular text-[20px] font-bold tracking-tight">{money(c.price)}</span>
             <span className="text-[12px] text-ink-3">{c.priceNote}</span>
           </span>
           <span className="mt-auto flex gap-2 pt-3">

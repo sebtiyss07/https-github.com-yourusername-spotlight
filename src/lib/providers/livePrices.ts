@@ -254,10 +254,13 @@ export async function cheapestHotelNear(stay: {
 export interface NearbyFare {
   perPerson: number;
   departOn: string;
+  /** Empty for a one-way fare. */
   returnOn: string;
   airline: string;
   stopsLabel: string;
   url: string;
+  /** "near": dates close to the visitor's; "month": the route's lowest this month; "one-way": lowest one-way this month. */
+  kind: "near" | "month" | "one-way";
 }
 
 /**
@@ -296,15 +299,23 @@ export async function nearbyFlight(trip: { from: string; to: string; departOn: s
         day(x.return_at) > day(trip.gameDay),
     )
     .sort((a, b) => a.price - b.price)[0];
-  if (!f) return null;
-  return {
-    perPerson: f.price,
-    departOn: f.departure_at.slice(0, 10),
-    returnOn: f.return_at.slice(0, 10),
-    airline: AIRLINES[f.airline] ?? f.airline,
-    stopsLabel: stopsLabel(f.transfers),
-    url: `https://www.aviasales.com${f.link}`,
-  };
+  const toFare = (x: Fare, kind: NearbyFare["kind"]): NearbyFare => ({
+    perPerson: x.price,
+    departOn: x.departure_at.slice(0, 10),
+    returnOn: kind === "one-way" ? "" : x.return_at.slice(0, 10),
+    airline: AIRLINES[x.airline] ?? x.airline,
+    stopsLabel: stopsLabel(x.transfers),
+    url: `https://www.aviasales.com${x.link}`,
+    kind,
+  });
+  if (f) return toFare(f, "near");
+  // Otherwise the route's lowest round trip this month, then its lowest
+  // one-way fare: real fares, shown as "from", with their own dates.
+  const month = (r?.data ?? []).sort((a, b) => a.price - b.price)[0];
+  if (month) return toFare(month, "month");
+  const oneWay = new URLSearchParams({ origin: trip.from, destination: trip.to, departure_at: trip.departOn.slice(0, 7), currency: "usd", sorting: "price", one_way: "true", limit: "30", token });
+  const o = (await getJson<{ data?: Fare[] }>(`https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${oneWay}`))?.data?.sort((a, b) => a.price - b.price)[0];
+  return o ? toFare(o, "one-way") : null;
 }
 
 /**
