@@ -111,8 +111,15 @@ export default async function EventPage({
     ...(driveOk ? (["drive"] as const) : []),
   ];
   const requested = query.go as TravelMode | "none" | undefined;
+  const destination = AIRPORTS_BY_IATA.get(venue.nearestAirport);
+  // Coming from the same city as the venue: no travel and no hotel by
+  // default (both can still be switched on).
+  const sameCity =
+    resolvedOrigin && destination
+      ? flightSearchCode(resolvedOrigin) === flightSearchCode(destination)
+      : false;
   const go: TravelMode | "none" =
-    requested === "none" || query.flight === "0"
+    requested === "none" || query.flight === "0" || (sameCity && !requested)
       ? "none"
       : requested && available.includes(requested)
         ? requested
@@ -121,7 +128,7 @@ export default async function EventPage({
           : "flight";
   const wantTravel = go !== "none";
   const wantFlight = go === "flight";
-  const wantHotel = query.hotel !== "0";
+  const wantHotel = query.hotel === "1" ? true : query.hotel === "0" ? false : !sameCity;
   /** A link to this page with some trip settings changed, keeping the rest. */
   const tripHref = (change: Partial<Record<keyof SearchParams, string>>) => {
     const next: Record<string, string> = {
@@ -129,7 +136,7 @@ export default async function EventPage({
       travellers: String(travellers),
       nights: String(nights),
       go: query.go || query.flight === "0" ? go : "",
-      hotel: wantHotel ? "" : "0",
+      hotel: query.hotel ?? "",
       stay: query.stay ?? "",
       fly: query.fly ?? "",
       ...change,
@@ -148,11 +155,6 @@ export default async function EventPage({
     : [{ key: "match", label: "Match ticket", comparison: prices }];
 
   const originUnresolved = origin.length > 0 && resolvedOrigin === null;
-  const destination = AIRPORTS_BY_IATA.get(venue.nearestAirport);
-  const sameCity =
-    resolvedOrigin && destination
-      ? flightSearchCode(resolvedOrigin) === flightSearchCode(destination)
-      : false;
 
   const flights =
     resolvedOrigin && destination && !sameCity
@@ -322,7 +324,7 @@ export default async function EventPage({
                   origin={resolvedOrigin?.city ?? null}
                   sameCity={sameCity}
                   flight={flightQuote?.status === "ok" ? { perPerson: convertUsd(flightQuote.quote.perPerson, prices.currency) } : null}
-                  keep={{ travellers: String(travellers), nights: String(nights), go: query.go || query.flight === "0" ? go : "", hotel: wantHotel ? "" : "0" }}
+                  keep={{ travellers: String(travellers), nights: String(nights), go: query.go || query.flight === "0" ? go : "", hotel: query.hotel ?? "" }}
                 />
               </>
             ) : prices.offers.length > 0 ? (
@@ -380,13 +382,13 @@ export default async function EventPage({
                 icon={<BedIcon />}
                 label="Hotel"
                 on={wantHotel}
-                href={tripHref({ hotel: wantHotel ? "0" : "" })}
+                href={tripHref({ hotel: wantHotel ? "0" : "1" })}
               />
             </div>
 
             <form method="get" action="#trip" className="mt-3 flex flex-col gap-2 rounded-xl bg-surface-2 p-2 sm:flex-row">
               {(query.go || query.flight === "0") && <input type="hidden" name="go" value={go} />}
-              {!wantHotel && <input type="hidden" name="hotel" value="0" />}
+              {query.hotel && <input type="hidden" name="hotel" value={query.hotel} />}
               {wantTravel && (
                 <Field label="Travelling from" className="sm:flex-[2]">
                   <CityInput
@@ -807,7 +809,9 @@ function TripPeek({
   return (
     <div>
       <p className="text-[14px] font-semibold text-ink-3">
-        Your whole trip · {nights} {nights === 1 ? "night" : "nights"}, {travellers} {travellers === 1 ? "person" : "people"}
+        Your whole trip ·{" "}
+        {hotel !== undefined || go !== "none" ? `${nights} ${nights === 1 ? "night" : "nights"}, ` : ""}
+        {travellers} {travellers === 1 ? "person" : "people"}
       </p>
       <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
         <span className="tabular font-display text-[40px] font-extrabold leading-none text-positive">{money(sum)}</span>
