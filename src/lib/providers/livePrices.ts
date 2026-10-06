@@ -250,6 +250,14 @@ export async function cheapestHotelNear(stay: {
   };
 }
 
+/** Cities whose second airport is close enough to count (the feed treats each code alone). */
+const NEARBY_AIRPORTS: Record<string, string[]> = {
+  DFW: ["DFW", "DAL"],
+  DAL: ["DFW", "DAL"],
+  IAH: ["IAH", "HOU"],
+  HOU: ["IAH", "HOU"],
+};
+
 /** A real fare that fits the visitor's trip when no round trip is known for the exact dates. */
 export interface NearbyFare {
   /** Round trip per person (for "pair", both one-way fares added). */
@@ -261,10 +269,12 @@ export interface NearbyFare {
   url: string;
   /**
    * "pair": two one-way flights on the visitor's exact dates.
+   * "pair-near": two one-way flights, each at most a day off the visitor's
+   * (out earlier, back later, so the game is always covered).
    * "near": a round trip of exactly the same number of nights, moved by a day
    * or two, still out before the game and back after it.
    */
-  kind: "pair" | "near";
+  kind: "pair" | "pair-near" | "near";
   /** The airports this fare flies between, for the airline's own search. */
   airports: { from: string; to: string };
 }
@@ -286,35 +296,62 @@ export async function nearbyFlight(trip: { from: string; to: string; departOn: s
     ).then((r) => r?.data ?? []);
   const name = (code: string) => AIRLINES[code] ?? code;
 
-  // 1. Out and back on the visitor's own dates, as two one-way fares.
+  const day = (d: string) => Date.parse(`${d.slice(0, 10)}T00:00:00Z`) / 86_400_000;
+  const iso = (n: number) => new Date(n * 86_400_000).toISOString().slice(0, 10);
+  const month = (n: number) => iso(n).slice(0, 7);
+  // Every airport in each city (Dallas: DFW and Love Field), searched by month
+  // so a fare a day either side is in the list too.
+  const froms = NEARBY_AIRPORTS[trip.from] ?? [trip.from];
+  const tos = NEARBY_AIRPORTS[trip.to] ?? [trip.to];
+  const [out0, back0, game] = [day(trip.departOn), day(trip.returnOn), day(trip.gameDay)];
+  const legs = async (from: string[], to: string[], days: number[]) =>
+    (
+      await Promise.all(
+        from.flatMap((o) =>
+          to.flatMap((d) =>
+            [...new Set(days.map(month))].map((m) => search({ origin: o, destination: d, departure_at: m, one_way: "true", limit: "200" })),
+          ),
+        ),
+      )
+    )
+      .flat()
+      .filter((x) => days.includes(day(x.departure_at)));
+
+  // 1. Two one-way flights: out on the visitor's day or the day before (never
+  // the game day: no arrival times here), back on their day or the day after.
   const [outs, backs] = await Promise.all([
-    search({ origin: trip.from, destination: trip.to, departure_at: trip.departOn, one_way: "true", limit: "30" }),
-    search({ origin: trip.to, destination: trip.from, departure_at: trip.returnOn, one_way: "true", limit: "30" }),
+    legs(froms, tos, [out0, out0 - 1].filter((d) => d < game)),
+    legs(tos, froms, [back0, back0 + 1].filter((d) => d > game)),
   ]);
-  const cheapestOn = (list: Fare[], d: string) => list.filter((x) => x.departure_at.slice(0, 10) === d).sort((a, b) => a.price - b.price)[0];
-  const out = cheapestOn(outs, trip.departOn);
-  const back = cheapestOn(backs, trip.returnOn);
-  if (out && back) {
+  const pairs = outs
+    .flatMap((o) => backs.map((b) => ({ o, b, shift: out0 - day(o.departure_at) + (day(b.departure_at) - back0), price: o.price + b.price })))
+    .sort((x, y) => x.shift - y.shift || x.price - y.price);
+  const best = pairs[0];
+  if (best) {
+    const { o: out, b: back } = best;
     const airlines = [...new Set([name(out.airline), name(back.airline)])];
+    const departOn = out.departure_at.slice(0, 10);
+    const returnOn = back.departure_at.slice(0, 10);
     return {
       perPerson: out.price + back.price,
-      departOn: trip.departOn,
-      returnOn: trip.returnOn,
+      departOn,
+      returnOn,
       airline: airlines.join(" + "),
       stopsLabel: stopsLabel(Math.max(out.transfers, back.transfers)),
-      url: expediaFlightsUrl({ from: trip.from, to: trip.to, departOn: trip.departOn, returnOn: trip.returnOn, adults: 1 }),
-      kind: "pair",
+      url: expediaFlightsUrl({ from: trip.from, to: trip.to, departOn, returnOn, adults: 1 }),
+      kind: best.shift === 0 ? "pair" : "pair-near",
       // One airline both ways: its own site can price the round trip.
       airports: { from: out.origin_airport, to: out.destination_airport },
     };
   }
 
   // 2. A round trip of the same length, moved by at most 2 days.
-  const day = (d: string) => Date.parse(`${d.slice(0, 10)}T00:00:00Z`) / 86_400_000;
-  const nights = day(trip.returnOn) - day(trip.departOn);
+  const nights = back0 - out0;
   const months = [...new Set([trip.departOn.slice(0, 7), trip.returnOn.slice(0, 7)])];
   const rounds = (
-    await Promise.all(months.map((m) => search({ origin: trip.from, destination: trip.to, departure_at: m, one_way: "false", limit: "200" })))
+    await Promise.all(
+      froms.flatMap((o) => tos.flatMap((d) => months.map((m) => search({ origin: o, destination: d, departure_at: m, one_way: "false", limit: "200" })))),
+    )
   ).flat();
   const f = rounds
     .filter(
