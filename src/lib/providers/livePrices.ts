@@ -282,6 +282,10 @@ async function findFlight(trip: Parameters<typeof cheapestFlight>[0]): Promise<F
   const live = await duffelFare(trip);
   if (live) return { status: "ok", quote: live };
 
+  // Amadeus (live fares, any route, these exact dates).
+  const amadeus = await amadeusFares(trip);
+  if (amadeus?.length) return { status: "ok", quote: amadeus[0], options: amadeus };
+
   const token = process.env.TRAVELPAYOUTS_TOKEN;
   if (token) {
     type Fare = { price: number; airline: string; transfers: number; link: string; departure_at: string; return_at: string };
@@ -323,6 +327,88 @@ interface DuffelOffer {
 }
 
 /** Live airline fares from Duffel's offer search: the cheapest offer, in US dollars. */
+/**
+ * Live round-trip fares from Amadeus Flight Offers Search for the exact dates
+ * and airports (city codes like NYC cover every airport there). Production
+ * only: Amadeus's test host serves sample data, not real prices. Returns up
+ * to three choices (cheapest, cheapest nonstop, another airline), per person.
+ */
+const amadeusFares = unstable_cache(
+  async (trip: { from: string; to: string; departOn: string; returnOn: string; adults: number; bookUrl: string }): Promise<FlightQuote[] | null> => {
+    const id = process.env.AMADEUS_CLIENT_ID?.trim();
+    const secret = process.env.AMADEUS_CLIENT_SECRET?.trim();
+    if (!id || !secret || process.env.AMADEUS_ENV !== "production") return null;
+    const host = "https://api.amadeus.com";
+    try {
+      const auth = await fetch(`${host}/v1/security/oauth2/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ grant_type: "client_credentials", client_id: id, client_secret: secret }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!auth.ok) return null;
+      const { access_token } = (await auth.json()) as { access_token?: string };
+      if (!access_token) return null;
+      const adults = Math.max(1, Math.min(9, trip.adults));
+      const q = new URLSearchParams({
+        originLocationCode: trip.from,
+        destinationLocationCode: trip.to,
+        departureDate: trip.departOn,
+        returnDate: trip.returnOn,
+        adults: String(adults),
+        currencyCode: "USD",
+        max: "30",
+      });
+      const res = await fetch(`${host}/v2/shopping/flight-offers?${q}`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!res.ok) return null;
+      type Offer = {
+        price?: { grandTotal?: string; currency?: string };
+        validatingAirlineCodes?: string[];
+        itineraries?: { segments?: unknown[] }[];
+      };
+      const body = (await res.json()) as { data?: Offer[]; dictionaries?: { carriers?: Record<string, string> } };
+      const offers = (body.data ?? [])
+        .map((o) => {
+          const total = Number(o.price?.grandTotal);
+          const code = o.validatingAirlineCodes?.[0] ?? "";
+          const legs = (o.itineraries ?? []).map((i) => (i.segments ?? []).length);
+          return {
+            perPerson: Math.round((total / adults) * 100) / 100,
+            code,
+            stops: legs.length ? Math.max(...legs) - 1 : 0,
+            ok: o.price?.currency === "USD" && total > 0 && legs.length === 2,
+          };
+        })
+        .filter((o) => o.ok)
+        .sort((a, b) => a.perPerson - b.perPerson);
+      if (!offers.length) return null;
+      const name = (code: string) => {
+        const raw = AIRLINES[code] ?? body.dictionaries?.carriers?.[code] ?? code;
+        return raw === raw.toUpperCase() ? raw.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : raw;
+      };
+      const picks = [offers[0], offers.find((o) => o.stops === 0), offers.find((o) => o.code !== offers[0].code)];
+      return [...new Set(picks.filter((o): o is (typeof offers)[number] => !!o))].map((o) => ({
+        perPerson: o.perPerson,
+        airline: name(o.code),
+        stopsLabel: stopsLabel(o.stops),
+        url: trip.bookUrl,
+        source: "Live fare (Amadeus), checked within the last hour",
+        departOn: trip.departOn,
+        returnOn: trip.returnOn,
+      }));
+    } catch {
+      return null;
+    }
+  },
+  ["amadeus-fares"],
+  { revalidate: 3600 },
+);
+
 const duffelFare = unstable_cache(
   async (trip: { from: string; to: string; departOn: string; returnOn: string; adults: number; bookUrl: string }): Promise<FlightQuote | null> => {
     const key = process.env.DUFFEL_ACCESS_TOKEN;
