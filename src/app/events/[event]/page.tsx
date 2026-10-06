@@ -232,11 +232,11 @@ export default async function EventPage({
   // One total for the trip: what's priced, and what's still missing.
   const hotelTotal = wantHotel && hotelQuote?.forYourDates ? convertUsd(hotelQuote.total, prices.currency) * rooms : null;
   const flightTotal = go === "flight" && !sameCity && flightQuote?.status === "ok" ? convertUsd(flightQuote.quote.perPerson, prices.currency) * travellers : null;
-  // No fare for the exact dates: the nearest real round trip goes in the total
-  // as an estimate (a one-way fare counts twice), marked "est." everywhere.
+  // No round trip for the exact dates: two one-way fares on those dates, or a
+  // same-length trip a day or two off, goes in the total marked "est.".
   const flightEstimate =
     go === "flight" && !sameCity && flightTotal === null && nearby
-      ? convertUsd(nearby.perPerson, prices.currency) * (nearby.kind === "one-way" ? 2 : 1) * travellers
+      ? convertUsd(nearby.perPerson, prices.currency) * travellers
       : null;
   const ticketTotal = prices.cheapest ? prices.cheapest.amount! * travellers : 0;
   const tripTotal = {
@@ -503,7 +503,18 @@ export default async function EventPage({
             links: go === "flight" ? flights : groundLinks,
             toggleHref: `${tripHref({ go: go === "none" ? (available.includes("flight") ? "flight" : "") : "none" })}#trip`,
             needsOrigin: go !== "none" && !resolvedOrigin,
-            nearby: nearby && { ...nearby, perPerson: convertUsd(nearby.perPerson, prices.currency) },
+            nearby: nearby && {
+              ...nearby,
+              perPerson: convertUsd(nearby.perPerson, prices.currency),
+              // The same flight search on the big sites: that fare's own dates, everyone travelling.
+              links: flightLinks({
+                from: flightSearchCode(resolvedOrigin!),
+                to: flightSearchCode(destination!),
+                departOn: nearby.departOn,
+                returnOn: nearby.returnOn,
+                adults: travellers,
+              }).filter((l) => ["Expedia", "KAYAK", "Aviasales"].includes(l.site)),
+            },
             estimate: flightEstimate,
           }}
           total={tripTotal}

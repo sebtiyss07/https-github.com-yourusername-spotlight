@@ -90,7 +90,17 @@ export function TripSteps({
     toggleHref: string;
     needsOrigin: boolean;
     /** No exact-date fare: the nearest real one, with its own dates (per person). */
-    nearby?: { perPerson: number; departOn: string; returnOn: string; airline: string; stopsLabel: string; url: string; kind: "near" | "month" | "one-way" } | null;
+    nearby?: {
+      perPerson: number;
+      departOn: string;
+      returnOn: string;
+      airline: string;
+      stopsLabel: string;
+      url: string;
+      kind: "pair" | "near";
+      /** Expedia, KAYAK and Aviasales searches for that fare's dates. */
+      links: TravelLinkLite[];
+    } | null;
     /** The nearby fare as counted in the total (round trip, everyone). */
     estimate?: number | null;
   };
@@ -235,29 +245,38 @@ export function TripSteps({
           ) : travel.choices.length ? (
             <Rows rows={travel.choices} money={money} selectable={travel.choices.length > 1} />
           ) : travel.nearby ? (
-            <>
-              <Rows
-                money={money}
-                selectable={false}
-                rows={[
-                  {
-                    tags: [],
-                    title: `${travel.nearby.airline} · ${travel.nearby.stopsLabel.toLowerCase()}`,
-                    facts: [
-                      `${shortDay(travel.nearby.departOn)}${travel.nearby.returnOn ? ` → ${shortDay(travel.nearby.returnOn)}` : ""}`,
-                      travel.nearby.kind === "near" ? "nearest dates to yours" : "lowest on this route this month",
-                    ],
-                    price: travel.nearby.perPerson,
-                    priceNote: `from · ${travel.nearby.kind === "one-way" ? "one way" : "round trip"}`,
-                    selected: false,
-                    chooseHref: travel.nearby.url,
-                    bookUrl: travel.nearby.url,
-                    bookLabel: "See",
-                  },
-                ]}
-              />
-              <ExactDates links={travel.links} note={`In your total as an estimate${travel.nearby.kind === "one-way" ? " (one way × 2)" : ""}. Exact dates:`} />
-            </>
+            <div className="rounded-xl border border-line px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-semibold">
+                    {shortDay(travel.nearby.departOn)} → {shortDay(travel.nearby.returnOn)}
+                  </p>
+                  <p className="text-[13px] text-ink-3">
+                    {travel.nearby.airline} · {travel.nearby.stopsLabel.toLowerCase()} ·{" "}
+                    {travel.nearby.kind === "pair" ? "your dates, two one-way flights" : "same nights, closest dates we found"}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="tabular text-[18px] font-bold leading-tight">≈ {money(travel.nearby.perPerson)}</p>
+                  <p className="text-[12px] text-ink-3">per person, round trip</p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-[13px] text-ink-3">See this flight on</span>
+                {travel.nearby.links.map((l) => (
+                  <a
+                    key={l.url}
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg border border-accent px-3 py-1.5 text-[13px] font-semibold text-accent hover:bg-accent hover:text-white"
+                  >
+                    {l.site} ↗
+                  </a>
+                ))}
+              </div>
+              <p className="mt-2 text-[12px] text-ink-3">Price found on Aviasales; Expedia and KAYAK may differ a little.</p>
+            </div>
           ) : (
             <ExactDates
               links={travel.links}

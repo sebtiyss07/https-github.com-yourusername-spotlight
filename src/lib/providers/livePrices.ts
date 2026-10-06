@@ -250,72 +250,91 @@ export async function cheapestHotelNear(stay: {
   };
 }
 
-/** A real fare found for dates close to the visitor's, labelled with its own dates. */
+/** A real fare that fits the visitor's trip when no round trip is known for the exact dates. */
 export interface NearbyFare {
+  /** Round trip per person (for "pair", both one-way fares added). */
   perPerson: number;
   departOn: string;
-  /** Empty for a one-way fare. */
   returnOn: string;
   airline: string;
   stopsLabel: string;
   url: string;
-  /** "near": dates close to the visitor's; "month": the route's lowest this month; "one-way": lowest one-way this month. */
-  kind: "near" | "month" | "one-way";
+  /**
+   * "pair": two one-way flights on the visitor's exact dates.
+   * "near": a round trip of exactly the same number of nights, moved by a day
+   * or two, still out before the game and back after it.
+   */
+  kind: "pair" | "near";
 }
 
 /**
- * When no fare is known for the exact dates: the cheapest round trip on the
- * same route that travellers found for dates within 3 days of the visitor's
- * (and a stay within a day of the same length), from the Travelpayouts feed.
- * Shown with its own dates and never added to the trip total.
+ * When no round trip is known for the exact dates: first two one-way fares on
+ * exactly those dates, then a round trip for the same number of nights within
+ * 2 days, still out before the game day and back after it (closest dates
+ * first). Both from fares travellers found in the Travelpayouts feed. Never a
+ * different trip length or a date that misses the game.
  */
 export async function nearbyFlight(trip: { from: string; to: string; departOn: string; returnOn: string; gameDay: string }): Promise<NearbyFare | null> {
   const token = process.env.TRAVELPAYOUTS_TOKEN;
   if (!token) return null;
-  type Fare = { price: number; airline: string; transfers: number; link: string; departure_at: string; return_at: string };
-  const params = new URLSearchParams({
-    origin: trip.from,
-    destination: trip.to,
-    departure_at: trip.departOn.slice(0, 7),
-    return_at: trip.returnOn.slice(0, 7),
-    currency: "usd",
-    sorting: "price",
-    one_way: "false",
-    limit: "200",
-    token,
-  });
-  const r = await getJson<{ data?: Fare[] }>(`https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${params}`);
+  type Fare = { price: number; airline: string; transfers: number; link: string; departure_at: string; return_at?: string };
+  const search = (q: Record<string, string>) =>
+    getJson<{ data?: Fare[] }>(
+      `https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${new URLSearchParams({ currency: "usd", sorting: "price", token, ...q })}`,
+    ).then((r) => r?.data ?? []);
+  const name = (code: string) => AIRLINES[code] ?? code;
+
+  // 1. Out and back on the visitor's own dates, as two one-way fares.
+  const [outs, backs] = await Promise.all([
+    search({ origin: trip.from, destination: trip.to, departure_at: trip.departOn, one_way: "true", limit: "30" }),
+    search({ origin: trip.to, destination: trip.from, departure_at: trip.returnOn, one_way: "true", limit: "30" }),
+  ]);
+  const cheapestOn = (list: Fare[], d: string) => list.filter((x) => x.departure_at.slice(0, 10) === d).sort((a, b) => a.price - b.price)[0];
+  const out = cheapestOn(outs, trip.departOn);
+  const back = cheapestOn(backs, trip.returnOn);
+  if (out && back) {
+    const airlines = [...new Set([name(out.airline), name(back.airline)])];
+    const ddmm = (d: string) => d.slice(8, 10) + d.slice(5, 7);
+    return {
+      perPerson: out.price + back.price,
+      departOn: trip.departOn,
+      returnOn: trip.returnOn,
+      airline: airlines.join(" + "),
+      stopsLabel: stopsLabel(Math.max(out.transfers, back.transfers)),
+      url: `https://www.aviasales.com/search/${trip.from}${ddmm(trip.departOn)}${trip.to}${ddmm(trip.returnOn)}1`,
+      kind: "pair",
+    };
+  }
+
+  // 2. A round trip of the same length, moved by at most 2 days.
   const day = (d: string) => Date.parse(`${d.slice(0, 10)}T00:00:00Z`) / 86_400_000;
-  const wantLength = day(trip.returnOn) - day(trip.departOn);
-  const f = (r?.data ?? [])
-    // Close to the visitor's dates, and it must get them there for the game:
-    // out the day before or earlier (no arrival times here, and a same-day
-    // flight can land after kick-off), back after it.
+  const nights = day(trip.returnOn) - day(trip.departOn);
+  const months = [...new Set([trip.departOn.slice(0, 7), trip.returnOn.slice(0, 7)])];
+  const rounds = (
+    await Promise.all(months.map((m) => search({ origin: trip.from, destination: trip.to, departure_at: m, one_way: "false", limit: "200" })))
+  ).flat();
+  const f = rounds
     .filter(
       (x) =>
-        Math.abs(day(x.departure_at) - day(trip.departOn)) <= 3 &&
-        Math.abs(day(x.return_at) - day(x.departure_at) - wantLength) <= 1 &&
+        x.return_at &&
+        day(x.return_at) - day(x.departure_at) === nights &&
+        Math.abs(day(x.departure_at) - day(trip.departOn)) <= 2 &&
+        // Out the day before the game or earlier (no arrival times here, and
+        // a same-day flight can land after kick-off), back after it.
         day(x.departure_at) < day(trip.gameDay) &&
         day(x.return_at) > day(trip.gameDay),
     )
-    .sort((a, b) => a.price - b.price)[0];
-  const toFare = (x: Fare, kind: NearbyFare["kind"]): NearbyFare => ({
-    perPerson: x.price,
-    departOn: x.departure_at.slice(0, 10),
-    returnOn: kind === "one-way" ? "" : x.return_at.slice(0, 10),
-    airline: AIRLINES[x.airline] ?? x.airline,
-    stopsLabel: stopsLabel(x.transfers),
-    url: `https://www.aviasales.com${x.link}`,
-    kind,
-  });
-  if (f) return toFare(f, "near");
-  // Otherwise the route's lowest round trip this month, then its lowest
-  // one-way fare: real fares, shown as "from", with their own dates.
-  const month = (r?.data ?? []).sort((a, b) => a.price - b.price)[0];
-  if (month) return toFare(month, "month");
-  const oneWay = new URLSearchParams({ origin: trip.from, destination: trip.to, departure_at: trip.departOn.slice(0, 7), currency: "usd", sorting: "price", one_way: "true", limit: "30", token });
-  const o = (await getJson<{ data?: Fare[] }>(`https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${oneWay}`))?.data?.sort((a, b) => a.price - b.price)[0];
-  return o ? toFare(o, "one-way") : null;
+    .sort((a, b) => Math.abs(day(a.departure_at) - day(trip.departOn)) - Math.abs(day(b.departure_at) - day(trip.departOn)) || a.price - b.price)[0];
+  if (!f) return null;
+  return {
+    perPerson: f.price,
+    departOn: f.departure_at.slice(0, 10),
+    returnOn: f.return_at!.slice(0, 10),
+    airline: name(f.airline),
+    stopsLabel: stopsLabel(f.transfers),
+    url: `https://www.aviasales.com${f.link}`,
+    kind: "near",
+  };
 }
 
 /**
