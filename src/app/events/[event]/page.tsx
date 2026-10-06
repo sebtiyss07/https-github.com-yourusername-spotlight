@@ -289,43 +289,19 @@ export default async function EventPage({
             />
           </div>
 
-          {/* The answer first: the cheapest ticket, one tap from buying. */}
+          {/* The answer first: the whole trip, priced, with the ticket one tap away. */}
           <div className="rounded-2xl bg-surface p-5 text-ink shadow-lg">
             {prices.cheapest ? (
               <>
-                <p className="text-[14px] font-semibold text-ink-3">
-                  Cheapest {ticketNoun}
-                  {lowerBeforeFees ? " with fees included" : ""}
-                  {pricedSites > 1 ? ` · ${pricedSites} sites compared` : ""}
-                </p>
-                <p className="mt-1 flex items-baseline gap-2">
-                  <span className="tabular font-display text-[40px] font-extrabold leading-none text-positive">
-                    {formatPrice(prices.cheapest.amount!, prices.currency)}
-                  </span>
-                  <span className="text-[15px] text-ink-2">on {prices.cheapest.label}</span>
-                </p>
-                {prices.cheapest.fees.included !== "yes" && (
-                  <p className="mt-1 text-[13px] font-semibold text-hot">
-                    Fees may be added at checkout: no site that includes fees had a price for this {isRace ? "race" : isFootball ? "match" : "game"}.
-                  </p>
-                )}
-                <a
-                  href={prices.cheapest.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white transition-colors hover:bg-accent-2"
-                >
-                  Buy on {prices.cheapest.label} ↗
-                </a>
-                <a
-                  href="#tickets"
-                  className="mt-2 flex w-full items-center justify-center rounded-xl border border-line px-5 py-3 text-[15px] font-semibold text-ink transition-colors hover:border-accent hover:text-accent"
-                >
-                  See all {prices.offers.length} sites ↓
-                </a>
                 <TripPeek
                   money={(n) => formatPrice(n, prices.currency)}
                   ticket={prices.cheapest.amount!}
+                  ticketSite={prices.cheapest.label}
+                  ticketUrl={prices.cheapest.url}
+                  ticketNoun={ticketNoun}
+                  sitesCompared={pricedSites}
+                  allSites={prices.offers.length}
+                  lowerBeforeFees={lowerBeforeFees}
                   ticketFeesExtra={prices.cheapest.fees.included !== "yes"}
                   travellers={travellers}
                   nights={dates.nights}
@@ -729,6 +705,12 @@ function NeedTile({
 function TripPeek({
   money,
   ticket,
+  ticketSite,
+  ticketUrl,
+  ticketNoun,
+  sitesCompared,
+  allSites,
+  lowerBeforeFees,
   ticketFeesExtra,
   travellers,
   nights,
@@ -742,12 +724,18 @@ function TripPeek({
 }: {
   money: (n: number) => string;
   ticket: number;
+  ticketSite: string;
+  ticketUrl: string;
+  ticketNoun: string;
+  sitesCompared: number;
+  allSites: number;
+  lowerBeforeFees: boolean;
+  ticketFeesExtra: boolean;
   travellers: number;
   nights: number;
   rooms: number;
   /** undefined: hotel switched off; null: no saved price. */
   hotel: { perNight: number; total: number; forYourDates?: boolean } | null | undefined;
-  ticketFeesExtra: boolean;
   go: TravelMode | "none";
   origin: string | null;
   sameCity: boolean;
@@ -759,108 +747,130 @@ function TripPeek({
   const hotelPriced = hotel?.forYourDates ? hotel : null;
   const flightNeeded = go === "flight" && !sameCity;
   const flightPriced = flightNeeded && origin ? flight : null;
-  const parts = [
-    ticket * travellers,
-    ...(hotel !== undefined ? [hotelPriced ? hotelPriced.total * rooms : null] : []),
-    ...(flightNeeded ? [flightPriced ? flightPriced.perPerson * travellers : null] : []),
-  ];
-  // Train, coach and driving costs aren't priced, so those trips get no total here.
-  const complete = parts.every((p) => p !== null) && parts.length > 1 && (go === "flight" || go === "none");
-  const total = Math.round(parts.reduce<number>((a, b) => a + (b ?? 0), 0) * 100) / 100;
+  const tickets = ticket * travellers;
+  const hotelTotal = hotelPriced ? hotelPriced.total * rooms : null;
+  const flightTotal = flightPriced ? flightPriced.perPerson * travellers : null;
+  const round = (n: number) => Math.round(n * 100) / 100;
+  // What's priced so far, and what isn't yet.
+  const sum = round(tickets + (hotelTotal ?? 0) + (flightTotal ?? 0));
+  const missing = [
+    hotel !== undefined && hotelTotal === null ? "the hotel" : null,
+    flightNeeded && flightTotal === null ? (origin ? "the flight" : "your flight (add your city)") : null,
+    go === "train" || go === "coach" || go === "drive" ? "getting there" : null,
+  ].filter(Boolean) as string[];
+  const parts = ["ticket" + (travellers > 1 ? "s" : ""), hotelTotal !== null && "hotel", flightTotal !== null && "flight"].filter(Boolean).join(" + ");
 
   const row = "flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2";
+  const icon = "grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2";
   return (
-    <div className="mt-4 border-t border-line pt-3">
-      <p className="px-2 text-[13px] font-semibold text-ink-3">
-        Your trip · {nights} {nights === 1 ? "night" : "nights"}, {travellers} {travellers === 1 ? "person" : "people"}
+    <div>
+      <p className="text-[14px] font-semibold text-ink-3">
+        Your whole trip · {nights} {nights === 1 ? "night" : "nights"}, {travellers} {travellers === 1 ? "person" : "people"}
+      </p>
+      <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
+        <span className="tabular font-display text-[40px] font-extrabold leading-none text-positive">{money(sum)}</span>
+        <span className="text-[15px] font-semibold text-ink-2">{missing.length ? "so far" : "total"}</span>
+        {ticketFeesExtra && <span className="text-[13px] font-semibold text-hot">+ any ticket fees</span>}
+      </p>
+      <p className="mt-1 text-[13px] text-ink-3">
+        {parts}
+        {missing.length > 0 && <> · still to add: {missing.join(", ")}</>}
       </p>
 
-      {hotel !== undefined && (
-        <a href="#trip" className={row}>
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2">
-            <BedIcon />
+      <div className="mt-3 border-t border-line pt-2">
+        <a href={ticketUrl} target="_blank" rel="noopener noreferrer" className={row}>
+          <span className={icon}>
+            <TicketIcon />
           </span>
-          <span className="min-w-0 flex-1 text-[14px] font-semibold">Hotel near the venue</span>
-          <span className="shrink-0 text-right text-[14px]">
-            {hotelPriced ? (
-              <>
-                <span className="tabular font-bold">{money(hotelPriced.perNight)}</span>
-                <span className="text-ink-3">/night</span>
-              </>
-            ) : (
-              <span className="font-semibold text-accent">See prices</span>
-            )}
-          </span>
-        </a>
-      )}
-
-      {go !== "none" &&
-        (go === "flight" && !origin && !sameCity ? (
-          <form method="get" className="flex items-center gap-2 rounded-xl px-2 py-2">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2">
-              <PlaneIcon />
+          <span className="min-w-0 flex-1 text-[14px] font-semibold">
+            {travellers > 1 ? `${travellers} tickets` : ticketNoun.charAt(0).toUpperCase() + ticketNoun.slice(1)} on {ticketSite}
+            <span className="block text-[12px] font-normal text-ink-3">
+              Cheapest{sitesCompared > 1 ? ` of ${sitesCompared} sites` : ""}
+              {lowerBeforeFees ? ", fees included" : ""}
             </span>
-            {Object.entries(keep)
-              .filter(([, v]) => v)
-              .map(([k, v]) => (
-                <input key={k} type="hidden" name={k} value={v} />
-              ))}
-            <CityInput
-              name="origin"
-              placeholder="Flying from? Pick your city"
-              ariaLabel="Flying from"
-              submitOnPick
-              className="min-w-0 flex-1"
-              inputClassName="w-full rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[14px] outline-none placeholder:text-ink-3 focus:border-accent focus:bg-surface"
-            />
-            <button type="submit" className="shrink-0 rounded-lg bg-ink px-3 py-1.5 text-[14px] font-bold text-white hover:bg-accent">
-              Add
-            </button>
-          </form>
-        ) : (
+          </span>
+          <span className="tabular shrink-0 text-[14px] font-bold">{money(tickets)}</span>
+        </a>
+
+        {hotel !== undefined && (
           <a href="#trip" className={row}>
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2">
-              <PlaneIcon />
+            <span className={icon}>
+              <BedIcon />
             </span>
             <span className="min-w-0 flex-1 text-[14px] font-semibold">
-              {go === "flight" ? (sameCity ? "No flight needed" : `Flight from ${origin}`) : MODE_LABEL[go].replace(/^\S+\s/, "") + (origin ? ` from ${origin}` : "")}
-            </span>
-            <span className="shrink-0 text-right text-[14px]">
-              {go !== "flight" ? (
-                <span className="font-semibold text-accent">{go === "drive" ? "Directions" : "See fares"}</span>
-              ) : sameCity ? (
-                <span className="font-semibold text-ink-3">{money(0)}</span>
-              ) : flightPriced ? (
-                <>
-                  <span className="tabular font-bold">{money(flightPriced.perPerson)}</span>
-                  <span className="text-ink-3"> return</span>
-                </>
-              ) : (
-                <span className="font-semibold text-accent">See fares</span>
+              Hotel near the venue
+              {hotelPriced && (
+                <span className="block text-[12px] font-normal text-ink-3">
+                  {nights} {nights === 1 ? "night" : "nights"} · {money(hotelPriced.perNight)}/night{rooms > 1 ? ` · ${rooms} rooms` : ""}
+                </span>
               )}
             </span>
+            <span className="shrink-0 text-right text-[14px]">
+              {hotelTotal !== null ? <span className="tabular font-bold">{money(hotelTotal)}</span> : <span className="font-semibold text-accent">See prices</span>}
+            </span>
           </a>
-        ))}
+        )}
+
+        {go !== "none" &&
+          (go === "flight" && !origin && !sameCity ? (
+            <form method="get" className="flex items-center gap-2 rounded-xl px-2 py-2">
+              <span className={icon}>
+                <PlaneIcon />
+              </span>
+              {Object.entries(keep)
+                .filter(([, v]) => v)
+                .map(([k, v]) => (
+                  <input key={k} type="hidden" name={k} value={v} />
+                ))}
+              <CityInput
+                name="origin"
+                placeholder="Add your flight: pick your city"
+                ariaLabel="Flying from"
+                submitOnPick
+                className="min-w-0 flex-1"
+                inputClassName="w-full rounded-lg border-2 border-accent/40 bg-surface px-3 py-1.5 text-[14px] font-semibold outline-none placeholder:font-semibold placeholder:text-accent focus:border-accent"
+              />
+            </form>
+          ) : (
+            <a href="#trip" className={row}>
+              <span className={icon}>
+                <PlaneIcon />
+              </span>
+              <span className="min-w-0 flex-1 text-[14px] font-semibold">
+                {go === "flight" ? (sameCity ? "No flight needed" : `Flight from ${origin}`) : MODE_LABEL[go].replace(/^\S+\s/, "") + (origin ? ` from ${origin}` : "")}
+                {flightPriced && <span className="block text-[12px] font-normal text-ink-3">Round trip{travellers > 1 ? ` · ${money(flightPriced.perPerson)} each` : ""}</span>}
+              </span>
+              <span className="shrink-0 text-right text-[14px]">
+                {go !== "flight" ? (
+                  <span className="font-semibold text-accent">{go === "drive" ? "Directions" : "See fares"}</span>
+                ) : sameCity ? (
+                  <span className="font-semibold text-ink-3">{money(0)}</span>
+                ) : flightTotal !== null ? (
+                  <span className="tabular font-bold">{money(flightTotal)}</span>
+                ) : (
+                  <span className="font-semibold text-accent">See fares</span>
+                )}
+              </span>
+            </a>
+          ))}
+      </div>
 
       <a
-        href="#trip"
-        className="mt-1 flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-3 py-2.5 text-[14px] transition-colors hover:bg-surface-3"
+        href={ticketUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white transition-colors hover:bg-accent-2"
       >
-        {complete ? (
-          <>
-            <span className="font-semibold">Whole trip</span>
-            <span className="tabular text-[17px] font-extrabold">
-              {money(total)}
-              {ticketFeesExtra && <span className="text-[12px] font-semibold text-hot"> + any fees</span>}
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="font-semibold">Plan the whole trip</span>
-            <span className="font-semibold text-accent">↓</span>
-          </>
-        )}
+        Buy the {ticketNoun.toLowerCase()} on {ticketSite} ↗
       </a>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <a href="#tickets" className="flex items-center justify-center rounded-xl border border-line px-3 py-2.5 text-[14px] font-semibold text-ink transition-colors hover:border-accent hover:text-accent">
+          All {allSites} ticket sites ↓
+        </a>
+        <a href="#trip" className="flex items-center justify-center rounded-xl border border-line px-3 py-2.5 text-[14px] font-semibold text-ink transition-colors hover:border-accent hover:text-accent">
+          Trip details ↓
+        </a>
+      </div>
     </div>
   );
 }

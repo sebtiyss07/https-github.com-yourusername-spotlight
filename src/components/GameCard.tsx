@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { EventContext } from "@/lib/repositories";
 import { TeamMark } from "@/components/TeamMark";
 import { dateParts, formatPrice, formatTime } from "@/lib/format";
+import { tripFrom } from "@/lib/tripFrom";
 import { darkTeamColor } from "@/lib/colors";
 
 /** Each competition's colour: its home-page card, and game cards without a photo. */
@@ -23,6 +24,7 @@ export function GameCard({ context, race }: { context: EventContext; race?: bool
   const zone = venue?.timeZone ?? "UTC";
   const { weekday, day, month } = dateParts(event.startsAt, zone);
   const sites = prices.offers.filter((o) => o.amount !== null).length;
+  const trip = tripFrom(context);
 
   return (
     <Link
@@ -108,6 +110,7 @@ export function GameCard({ context, race }: { context: EventContext; race?: bool
               {sites > 1 && (
                 <span className="text-[12px] text-ink-3"> · cheapest of {sites} sites</span>
               )}
+              {trip !== null && <span className="mt-1 block w-fit rounded-full bg-sun/25 px-2 py-0.5 text-[12px] font-bold text-ink">✈️ Trip from {formatPrice(trip, prices.currency)}</span>}
             </p>
           ) : (
             <p className="text-[13px] text-ink-3">See ticket sites</p>

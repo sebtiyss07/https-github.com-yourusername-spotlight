@@ -13,7 +13,7 @@ export function LeagueNav() {
   return (
     <nav aria-label="Leagues" className="border-t border-line">
       <ul className="no-scrollbar mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 py-1.5 sm:px-6">
-        {[...NAV_LEAGUES, { href: "/near-me", label: "📍 Near me" }].map((l) => {
+        {[{ href: "/trips", label: "✈️ Plan a trip" }, ...NAV_LEAGUES, { href: "/near-me", label: "📍 Near me" }].map((l) => {
           const active = path === l.href || path.startsWith(`${l.href}/`);
           return (
             <li key={l.href} className="shrink-0">

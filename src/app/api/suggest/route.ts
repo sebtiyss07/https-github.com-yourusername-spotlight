@@ -7,8 +7,17 @@ import { dateParts, formatPrice } from "@/lib/format";
  * then the next matching games with their date and cheapest saved price.
  */
 export async function GET(req: Request) {
-  const q = new URL(req.url).searchParams.get("q")?.slice(0, 60) ?? "";
+  const params = new URL(req.url).searchParams;
+  const q = params.get("q")?.slice(0, 60) ?? "";
   const { hits } = await search(q);
+  // ?only=places: teams and leagues only (the trip planner's "who" box).
+  if (params.get("only") === "places") {
+    const items = hits
+      .filter((h) => h.kind === "league" || h.kind === "team")
+      .slice(0, 8)
+      .map((h) => ({ kind: h.kind, id: h.id, title: h.title, subtitle: h.kind === "team" ? h.subtitle : "Every game" }));
+    return Response.json({ items }, { headers: { "Cache-Control": "public, max-age=300" } });
+  }
   const places = hits.filter((h) => h.kind === "league" || h.kind === "team").slice(0, 4);
   const events = (await Promise.all(hits.filter((h) => h.kind === "event").slice(0, 5).map((h) => getEvent(h.id)))).filter(
     (e): e is SportEvent => e !== null,

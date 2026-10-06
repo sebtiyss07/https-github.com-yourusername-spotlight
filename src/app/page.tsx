@@ -8,7 +8,7 @@ import {
   type EventContext,
 } from "@/lib/repositories";
 import { PhotoCredit } from "@/components/ui";
-import { SiteSearch } from "@/components/SiteSearch";
+import { TripPlanner } from "@/components/TripPlanner";
 import { GameCard, LEAGUE_COLORS } from "@/components/GameCard";
 import { formatPrice } from "@/lib/format";
 import { toFinderRow } from "@/lib/finderRow";
@@ -88,10 +88,10 @@ export default async function HomePage() {
             <PhotoCredit photo={photo} className="absolute bottom-3 right-3 z-10" />
           </>
         )}
-        <div className="relative mx-auto max-w-3xl px-5 pb-16 pt-12 text-center sm:px-6 sm:pb-20 sm:pt-20">
+        <div className="relative mx-auto max-w-4xl px-5 pb-16 pt-12 text-center sm:px-6 sm:pb-20 sm:pt-20">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-semibold text-white/90 ring-1 ring-white/20">
             <span className="h-2 w-2 rounded-full bg-sun" aria-hidden />
-            Tickets · Hotels · Flights
+            Ticket + hotel + flight, one total
           </p>
           <h1 className="mt-5 text-[36px] font-extrabold leading-[1.05] sm:text-[56px]">
             <span className="inline-block">The game.</span>{" "}
@@ -99,12 +99,11 @@ export default async function HomePage() {
             <span className="inline-block text-sun">For less.</span>
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-white/80 sm:text-[18px]">
-            Compare the big ticket sites for the NFL, NBA, MLS, Premier League, Champions League
-            and Formula&nbsp;1, then add a hotel near the stadium and a flight for the same dates. Your
-            whole trip, priced in one place.
+            Pick a team and your city. We price the whole trip: the cheapest ticket across the big
+            sites, a hotel near the stadium and your flight, in one total.
           </p>
-          <div className="mx-auto mt-8 max-w-xl text-left">
-            <SiteSearch large />
+          <div className="mx-auto mt-8 max-w-3xl">
+            <TripPlanner currencySymbol={currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$"} />
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[14px]">
             <span className="text-white/60">Popular:</span>
@@ -132,14 +131,14 @@ export default async function HomePage() {
       <section className="border-b border-line bg-surface">
         <h2 className="sr-only">How it works</h2>
         <ol className="mx-auto grid max-w-6xl gap-5 px-5 py-6 sm:grid-cols-3 sm:px-6">
-          <Step n={1} title="Find your game">
-            Search a team, or pick a league below.
+          <Step n={1} title="Pick a team and your city">
+            Any NFL, NBA, MLS, Premier League, Champions League or F1 game.
           </Step>
-          <Step n={2} title="Compare the ticket sites">
-            Each site&apos;s price side by side, cheapest first.
+          <Step n={2} title="See the whole trip, priced">
+            Cheapest ticket + hotel near the stadium + your flight, in one total.
           </Step>
-          <Step n={3} title="Add the trip">
-            The cheapest hotel we found nearby and a flight for the same dates, all added up.
+          <Step n={3} title="Book it in the right order">
+            Seats first, then a refundable hotel, then the flight, each one tap away.
           </Step>
         </ol>
       </section>
@@ -225,12 +224,13 @@ export default async function HomePage() {
   );
 }
 
+// Straight to priced trips.
 const POPULAR: [string, string][] = [
-  ["Lakers", "/teams/nba-lal"],
-  ["Knicks", "/teams/nba-ny"],
-  ["Chiefs", "/teams/nfl-kc"],
-  ["Arsenal", "/teams/arsenal"],
-  ["Inter Miami", "/teams/mls-mia"],
+  ["Lakers", "/trips?team=nba-lal"],
+  ["Knicks", "/trips?team=nba-ny"],
+  ["Chiefs", "/trips?team=nfl-kc"],
+  ["Arsenal", "/trips?team=arsenal"],
+  ["Formula 1", "/trips?league=formula-1"],
 ];
 
 const FAQ: [string, string][] = [

@@ -32,6 +32,8 @@ export interface FinderRow {
   site: string | null;
   /** The price leaves out fees added at checkout (no all-in price was listed). */
   feesExtra?: boolean;
+  /** Ticket + saved hotel for the stay, one person (null when either is unknown). */
+  tripFrom?: number | null;
   sites: number;
   home?: Crest;
   away?: Crest;
@@ -288,6 +290,9 @@ export function FinderRowView({ row, currency }: { row: FinderRow; currency: str
           <p className="text-[11px] text-ink-3">
             {row.sites > 1 ? `cheapest of ${row.sites} sites` : row.site}
           </p>
+          {row.tripFrom != null && (
+            <p className="mt-0.5 text-[11px] font-bold text-ink">✈️ trip from {formatPrice(row.tripFrom, currency)}</p>
+          )}
         </div>
       ) : (
         <p className="shrink-0 text-right text-[12px] text-ink-3">See sites</p>

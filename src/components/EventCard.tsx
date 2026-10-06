@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { EventContext } from "@/lib/repositories";
 import { dateParts, formatDateRange, formatPrice, formatTime } from "@/lib/format";
 import { TeamMark } from "@/components/TeamMark";
+import { tripFrom } from "@/lib/tripFrom";
 
 /** A calendar-page tile: weekday, big day number, month — readable at a glance. */
 function DateTile({ iso, timeZone }: { iso: string; timeZone: string }) {
@@ -24,6 +25,7 @@ function DateTile({ iso, timeZone }: { iso: string; timeZone: string }) {
 export function EventRow({ context }: { context: EventContext }) {
   const { event, venue, homeTeam, awayTeam, title, prices } = context;
   const pricedSites = prices.offers.filter((o) => o.amount !== null).length;
+  const trip = tripFrom(context);
   // Venue-local, so a Thursday-night game reads as Thursday.
   const timeZone = venue?.timeZone ?? "UTC";
 
@@ -75,6 +77,9 @@ export function EventRow({ context }: { context: EventContext }) {
           <p className="hidden text-[11px] text-ink-3 sm:block">
             {pricedSites > 1 ? `cheapest of ${pricedSites} sites` : prices.cheapest.label}
           </p>
+          {trip !== null && (
+            <p className="mt-0.5 text-[11px] font-bold text-ink">✈️ trip from {formatPrice(trip, prices.currency)}</p>
+          )}
         </div>
       )}
 

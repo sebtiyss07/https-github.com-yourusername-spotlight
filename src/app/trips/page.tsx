@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { convertUsd, getEventContexts, getUpcomingEvents } from "@/lib/repositories";
+import { convertUsd, getEventContexts, getTeam, getUpcomingEvents } from "@/lib/repositories";
 import { cheapestFlight, savedHotelFor } from "@/lib/providers/livePrices";
 import { AIRPORTS_BY_IATA, flightSearchCode, resolveOrigin } from "@/lib/providers/geo";
 import { flightLinks } from "@/lib/providers/travelLinks";
@@ -9,11 +9,12 @@ import { getCurrency } from "@/lib/currency";
 import { dateParts, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = {
-  title: "Trips under your budget",
+  title: "Plan your trip",
   description: "Games where the cheapest ticket, a hotel for the stay and the flight from your city fit your budget, cheapest first.",
 };
 
-const BUDGETS = [200, 300, 500, 800, 1200];
+/** 0 = any budget. */
+const BUDGETS = [0, 200, 300, 500, 800, 1200];
 const LEAGUES = [
   { id: "", label: "All" },
   { id: "nfl", label: "NFL" },
@@ -21,6 +22,7 @@ const LEAGUES = [
   { id: "mls", label: "MLS" },
   { id: "premier-league", label: "Premier League" },
   { id: "champions-league", label: "Champions League" },
+  { id: "formula-1", label: "Formula 1" },
 ];
 
 /** How many of the cheapest ticket + hotel trips get a flight looked up. */
@@ -32,14 +34,25 @@ const FLIGHT_CANDIDATES = 40;
  * With a home city, the round-trip flight for the same nights is added too,
  * and only trips whose whole total is known and fits are listed.
  */
-export default async function TripsPage({ searchParams }: { searchParams: Promise<{ budget?: string; league?: string; from?: string }> }) {
+export default async function TripsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ budget?: string; league?: string; from?: string; team?: string }>;
+}) {
   const q = await searchParams;
+  const team = q.team ? await getTeam(q.team.slice(0, 80)) : null;
   const from = q.from?.slice(0, 60).trim() ?? "";
   const origin = from ? resolveOrigin(from) : null;
-  const budget = BUDGETS.includes(Number(q.budget)) ? Number(q.budget) : 300;
+  // A team or a city without a budget: show every trip, cheapest first.
+  const budget = q.budget !== undefined && BUDGETS.includes(Number(q.budget)) ? Number(q.budget) : team || from ? 0 : 300;
+  const cap = budget || Infinity;
   const league = LEAGUES.some((l) => l.id === q.league) ? (q.league as string) : "";
   const currency = await getCurrency();
-  const events = (await getUpcomingEvents()).filter((e) => e.sportId !== "motorsport" && (!league || e.leagueId === league));
+  const events = (await getUpcomingEvents()).filter(
+    (e) =>
+      (!league || e.leagueId === league) &&
+      (!team || e.homeTeamId === team.id || e.awayTeamId === team.id),
+  );
   const contexts = await getEventContexts(events);
 
   const groundTrips = contexts
@@ -51,7 +64,7 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
       if (!hotel) return [];
       const hotelPrice = convertUsd(hotel.total, c.prices.currency);
       const total = Math.round((ticket + hotelPrice) * 100) / 100;
-      return total <= budget ? [{ c, ticket, hotel, hotelPrice, total, flight: null as null | { price: number; label: string } }] : [];
+      return total <= cap ? [{ c, ticket, hotel, hotelPrice, total, flight: null as null | { price: number; label: string } }] : [];
     })
     .sort((a, b) => a.total - b.total);
 
@@ -76,29 +89,45 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
         }),
       ), ...groundTrips.slice(FLIGHT_CANDIDATES)];
   const trips = lookedUp
-    .filter((t) => t.total <= budget)
+    .filter((t) => t.total <= cap)
     .sort((a, b) => (origin ? Number(!a.flight) - Number(!b.flight) : 0) || a.total - b.total);
   const whole = trips.filter((t) => t.flight).length;
   const money = (n: number) => formatPrice(n, currency);
+  const budgetLabel = (b: number) => (b ? `Under ${money(b)}` : "Any budget");
   const chip = (on: boolean) =>
     `shrink-0 rounded-full border px-3.5 py-1.5 text-[14px] font-semibold transition-colors ${
       on ? "border-accent bg-accent text-white" : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
     }`;
-  const href = (b: number, l: string, withFrom = true) =>
-    `/trips?${new URLSearchParams({ budget: String(b), ...(l ? { league: l } : {}), ...(origin && withFrom ? { from } : {}) })}`;
+  const href = (b: number, l: string, withFrom = true, withTeam = true) =>
+    `/trips?${new URLSearchParams({
+      budget: String(b),
+      ...(l ? { league: l } : {}),
+      ...(origin && withFrom ? { from } : {}),
+      ...(team && withTeam ? { team: team.id } : {}),
+    })}`;
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-10 sm:px-6">
-      <h1 className="text-[30px] font-extrabold leading-tight sm:text-[38px]">What can I do for {money(budget)}?</h1>
+      <h1 className="text-[30px] font-extrabold leading-tight sm:text-[38px]">
+        {team ? `Trips to see ${team.name}` : budget ? `What can I do for ${money(budget)}?` : "Plan your trip"}
+      </h1>
       <p className="mt-2 text-ink-3">
-        The cheapest ticket plus a hotel near the stadium, for one person, cheapest first. Add your city and
-        we add the round-trip flight for the same nights wherever a fare has been found.
+        The whole trip for one person, cheapest first: the cheapest ticket, a hotel near the stadium and, with
+        your city, the round-trip flight for the same nights.
       </p>
+      {team && (
+        <p className="mt-3 text-[14px]">
+          <Link href={href(budget, league, true, false)} className="font-semibold text-accent hover:underline">
+            ← Every team
+          </Link>
+        </p>
+      )}
 
       <div className="mt-6 rounded-2xl border border-line bg-surface p-4 shadow-xs">
         <form method="get" action="/trips" className="mb-3 flex items-center gap-2 text-[14px]">
           <input type="hidden" name="budget" value={budget} />
           {league && <input type="hidden" name="league" value={league} />}
+          {team && <input type="hidden" name="team" value={team.id} />}
           <span className="w-14 shrink-0 text-ink-3">From</span>
           <CityInput
             name="from"
@@ -122,7 +151,7 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
           <span className="text-ink-3">Budget</span>
           {BUDGETS.map((b) => (
             <Link key={b} href={href(b, league)} className={chip(b === budget)} aria-current={b === budget ? "true" : undefined}>
-              {money(b)}
+              {budgetLabel(b)}
             </Link>
           ))}
         </div>
@@ -143,7 +172,7 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
               {whole.toLocaleString("en-US")} whole {whole === 1 ? "trip" : "trips"}
             </span>{" "}
             from {origin.city}{" "}
-            under {money(budget)}, flight included{whole > 0 && <>, from {money(trips[0].total)}</>}.
+            {budget ? <>under {money(budget)}, </> : null}flight included{whole > 0 && <>, from {money(trips[0].total)}</>}.
             <span className="block text-[13px] text-ink-3">
               Below them, {(trips.length - whole).toLocaleString("en-US")} more where the ticket and hotel fit but we
               don&apos;t have a flight fare for those dates: tap one to see live fares from {origin.city}.
@@ -151,7 +180,8 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
           </>
         ) : (
           <>
-            <span className="font-semibold text-ink">{trips.length.toLocaleString("en-US")} trips</span> under {money(budget)}
+            <span className="font-semibold text-ink">{trips.length.toLocaleString("en-US")} trips</span>
+            {budget ? <> under {money(budget)}</> : null}
             {trips[0] && <>, from {money(trips[0].total)}</>}.
           </>
         )}

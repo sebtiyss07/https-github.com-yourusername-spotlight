@@ -1,6 +1,7 @@
 import type { EventContext } from "@/lib/repositories";
 import type { FinderRow } from "@/components/MatchFinder";
 import { localDate } from "@/lib/dates";
+import { tripFrom } from "@/lib/tripFrom";
 import { dateParts, formatDateRange, formatTime } from "@/lib/format";
 
 /** One game flattened for a list row (league pages and the home page). */
@@ -36,6 +37,7 @@ export function toFinderRow(context: EventContext): FinderRow {
     site: prices.cheapest?.label ?? null,
     // Only when no site with fees included had a price.
     feesExtra: !!prices.cheapest && prices.cheapest.fees.included !== "yes",
+    tripFrom: tripFrom(context),
     sites: prices.offers.filter((o) => o.amount !== null).length,
     home: crest(homeTeam),
     away: crest(awayTeam),
