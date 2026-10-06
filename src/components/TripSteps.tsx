@@ -91,6 +91,8 @@ export function TripSteps({
     needsOrigin: boolean;
     /** No exact-date fare: the nearest real one, with its own dates (per person). */
     nearby?: { perPerson: number; departOn: string; returnOn: string; airline: string; stopsLabel: string; url: string; kind: "near" | "month" | "one-way" } | null;
+    /** The nearby fare as counted in the total (round trip, everyone). */
+    estimate?: number | null;
   };
   total: { amount: number; parts: string[]; missing: string[]; feesExtra: boolean };
 }) {
@@ -216,7 +218,7 @@ export function TripSteps({
         <Step
           n={3}
           title={go === "none" ? "Getting there" : go === "flight" ? "Your flight" : `Your ${MODE_LABEL[go].toLowerCase()}`}
-          price={go === "none" ? (sameCity ? "You're local" : "Not needed") : flightPicked ? money(flightPicked.price * travellers) : null}
+          price={go === "none" ? (sameCity ? "You're local" : "Not needed") : flightPicked ? money(flightPicked.price * travellers) : travel.estimate ? `≈ ${money(travel.estimate)}` : null}
           money={money}
         >
           {go === "none" ? (
@@ -254,7 +256,7 @@ export function TripSteps({
                   },
                 ]}
               />
-              <ExactDates links={travel.links} note="Not in your total, because the dates aren't yours." />
+              <ExactDates links={travel.links} note={`In your total as an estimate${travel.nearby.kind === "one-way" ? " (one way × 2)" : ""}. Exact dates:`} />
             </>
           ) : (
             <ExactDates

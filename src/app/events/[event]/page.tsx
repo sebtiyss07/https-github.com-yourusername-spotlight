@@ -232,13 +232,23 @@ export default async function EventPage({
   // One total for the trip: what's priced, and what's still missing.
   const hotelTotal = wantHotel && hotelQuote?.forYourDates ? convertUsd(hotelQuote.total, prices.currency) * rooms : null;
   const flightTotal = go === "flight" && !sameCity && flightQuote?.status === "ok" ? convertUsd(flightQuote.quote.perPerson, prices.currency) * travellers : null;
+  // No fare for the exact dates: the nearest real round trip goes in the total
+  // as an estimate (a one-way fare counts twice), marked "est." everywhere.
+  const flightEstimate =
+    go === "flight" && !sameCity && flightTotal === null && nearby
+      ? convertUsd(nearby.perPerson, prices.currency) * (nearby.kind === "one-way" ? 2 : 1) * travellers
+      : null;
   const ticketTotal = prices.cheapest ? prices.cheapest.amount! * travellers : 0;
   const tripTotal = {
-    amount: Math.round((ticketTotal + (hotelTotal ?? 0) + (flightTotal ?? 0)) * 100) / 100,
-    parts: [travellers > 1 ? `${travellers} tickets` : "ticket", hotelTotal !== null ? "hotel" : "", flightTotal !== null ? "flight" : ""].filter(Boolean),
+    amount: Math.round((ticketTotal + (hotelTotal ?? 0) + (flightTotal ?? flightEstimate ?? 0)) * 100) / 100,
+    parts: [
+      travellers > 1 ? `${travellers} tickets` : "ticket",
+      hotelTotal !== null ? "hotel" : "",
+      flightTotal !== null ? "flight" : flightEstimate !== null ? "flight (est.)" : "",
+    ].filter(Boolean),
     missing: [
       wantHotel && hotelTotal === null ? "the hotel" : "",
-      go === "flight" && !sameCity && flightTotal === null ? (resolvedOrigin ? "the flight" : "your flight (pick your city)") : "",
+      go === "flight" && !sameCity && flightTotal === null && flightEstimate === null ? (resolvedOrigin ? "the flight" : "your flight (pick your city)") : "",
       go === "train" || go === "coach" || go === "drive" ? "getting there" : "",
     ].filter(Boolean),
     feesExtra: !!prices.cheapest && prices.cheapest.fees.included !== "yes",
@@ -341,9 +351,9 @@ export default async function EventPage({
                         "—"
                       ) : flightTotal !== null ? (
                         money(flightTotal)
-                      ) : nearby ? (
+                      ) : flightEstimate !== null ? (
                         <a href="#trip" className="text-ink-2">
-                          from {money(convertUsd(nearby.perPerson, prices.currency) * travellers)}
+                          ≈ {money(flightEstimate)}
                         </a>
                       ) : (
                         <a href="#trip" className="text-accent">Add</a>
@@ -494,6 +504,7 @@ export default async function EventPage({
             toggleHref: `${tripHref({ go: go === "none" ? (available.includes("flight") ? "flight" : "") : "none" })}#trip`,
             needsOrigin: go !== "none" && !resolvedOrigin,
             nearby: nearby && { ...nearby, perPerson: convertUsd(nearby.perPerson, prices.currency) },
+            estimate: flightEstimate,
           }}
           total={tripTotal}
         />
