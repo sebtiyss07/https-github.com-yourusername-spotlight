@@ -428,7 +428,7 @@ export default async function EventPage({
               selected: i === 0,
               chooseHref: o.url,
               bookUrl: o.url,
-              bookLabel: `Buy on ${o.label}`,
+              bookLabel: "Buy",
             }))}
           compare={
             <>

@@ -104,9 +104,13 @@ export function TripSteps({
       <p className="mt-1 text-ink-2">Pick each part, see one total, then book each part on the site that sells it.</p>
 
       {/* Settings: one row */}
-      <form method="get" action="#trip" className="mt-5 grid gap-2 rounded-xl border border-line bg-surface p-3 sm:grid-cols-[2fr_1fr_1fr_auto]">
+      <form
+        method="get"
+        action="#trip"
+        className={`mt-5 grid gap-2 rounded-xl border border-line bg-surface p-3 ${modes.length > 1 ? "sm:grid-cols-[2fr_1fr_1fr_1fr_auto]" : "sm:grid-cols-[2fr_1fr_1fr_auto]"}`}
+      >
         {Object.entries(hidden)
-          .filter(([, v]) => v)
+          .filter(([k, v]) => v && !(k === "go" && modes.length > 1))
           .map(([k, v]) => (
             <input key={k} type="hidden" name={k} value={v} />
           ))}
@@ -140,6 +144,18 @@ export function TripSteps({
             ))}
           </select>
         </label>
+        {modes.length > 1 && (
+          <label className="block rounded-xl bg-surface-2 px-4 py-2">
+            <span className="block text-[12px] font-semibold text-ink-3">Getting there</span>
+            <select name="go" defaultValue={go} className="w-full cursor-pointer bg-transparent text-[16px] font-semibold text-ink outline-none">
+              {[...modes, "none" as const].map((m) => (
+                <option key={m} value={m}>
+                  {MODE_LABEL[m]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button type="submit" className="rounded-xl bg-accent px-6 py-3 text-[16px] font-bold text-white hover:bg-accent-2">
           Update
         </button>
@@ -154,13 +170,13 @@ export function TripSteps({
         {/* 1. Ticket */}
         <Step n={1} title={`Your ${ticket?.noun ?? "ticket"}${travellers > 1 ? `s × ${travellers}` : ""}`} price={ticket ? money(ticket.price * travellers) : null} money={money}>
           {ticketChoices.length ? (
-            <ChoiceCards choices={ticketChoices} money={money} selectable={false} />
+            <Rows rows={ticketChoices} money={money} selectable={false} />
           ) : (
             <p className="text-[15px] text-ink-2">No ticket site has a price yet. See each site below.</p>
           )}
           <details className="group mt-3">
-            <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-[14px] font-semibold text-ink-2 hover:border-accent hover:text-accent">
-              <span className="group-open:hidden">Compare all {ticket?.sites ?? ""} ticket sites ▾</span>
+            <summary className="cursor-pointer list-none text-[14px] font-semibold text-accent hover:underline">
+              <span className="group-open:hidden">Show all {ticket?.sites ?? ""} ticket sites ▾</span>
               <span className="hidden group-open:inline">Hide the full list ▴</span>
             </summary>
             <div className="mt-3">{compare}</div>
@@ -215,58 +231,36 @@ export function TripSteps({
               <span className="font-semibold text-ink">Pick your city above</span> and we&apos;ll show the cheapest fare for these exact dates.
             </p>
           ) : travel.choices.length ? (
-            <ChoiceCards choices={travel.choices} money={money} />
+            <Rows rows={travel.choices} money={money} selectable={travel.choices.length > 1} />
           ) : travel.nearby ? (
-            <div>
-              <div className="flex flex-col gap-3 rounded-xl border border-line p-3 sm:flex-row sm:items-center">
-                <div className="flex-1">
-                  <p className="text-[12px] font-bold uppercase tracking-wide text-ink-3">
-                    {travel.nearby.kind === "near" ? "Nearest fare we found" : "Flights on this route from"}
-                  </p>
-                  <p className="mt-0.5 text-[15px]">
-                    <span className="tabular text-[22px] font-bold">{money(travel.nearby.perPerson)}</span>{" "}
-                    <span className="text-ink-3">per person, {travel.nearby.kind === "one-way" ? "one way" : "round trip"}</span>
-                  </p>
-                  <p className="text-[13px] text-ink-2">
-                    {shortDay(travel.nearby.departOn)}
-                    {travel.nearby.returnOn ? ` → ${shortDay(travel.nearby.returnOn)}` : ""} · {travel.nearby.airline}, {travel.nearby.stopsLabel.toLowerCase()}
-                  </p>
-                  <p className="mt-1 text-[12px] text-ink-3">
-                    {travel.nearby.kind === "near"
-                      ? "These dates are close to yours, not the same, so it isn't added to your total."
-                      : "The lowest fare travellers found on this route this month. Your dates may cost more, so it isn't added to your total."}
-                  </p>
-                </div>
-                <a href={travel.nearby.url} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-xl bg-ink px-4 py-2.5 text-center text-[14px] font-bold text-white hover:bg-accent">
-                  See this fare ↗
-                </a>
-              </div>
-              <div className="mt-3">
-                <LinkRow intro="Or check fares for your exact dates:" links={travel.links} />
-              </div>
-            </div>
+            <>
+              <Rows
+                money={money}
+                selectable={false}
+                rows={[
+                  {
+                    tags: [],
+                    title: `${travel.nearby.airline} · ${travel.nearby.stopsLabel.toLowerCase()}`,
+                    facts: [
+                      `${shortDay(travel.nearby.departOn)}${travel.nearby.returnOn ? ` → ${shortDay(travel.nearby.returnOn)}` : ""}`,
+                      travel.nearby.kind === "near" ? "nearest dates to yours" : "lowest on this route this month",
+                    ],
+                    price: travel.nearby.perPerson,
+                    priceNote: `from · ${travel.nearby.kind === "one-way" ? "one way" : "round trip"}`,
+                    selected: false,
+                    chooseHref: travel.nearby.url,
+                    bookUrl: travel.nearby.url,
+                    bookLabel: "See",
+                  },
+                ]}
+              />
+              <ExactDates links={travel.links} note="Not in your total, because the dates aren't yours." />
+            </>
           ) : (
-            <LinkRow
-              intro={
-                go === "flight"
-                  ? "We don't have a fare saved for these exact dates yet. Live fares, one tap away:"
-                  : `${MODE_LABEL[go]} prices for your dates, one tap away:`
-              }
+            <ExactDates
               links={travel.links}
+              note={go === "flight" ? "We don't have a fare for these dates yet." : `${MODE_LABEL[go]} prices for your dates:`}
             />
-          )}
-          {modes.length > 1 && go !== "none" && !travel.needsOrigin && (
-            <p className="mt-3 flex flex-wrap gap-2 text-[13px]">
-              {modes.map((m) => (
-                <a
-                  key={m}
-                  href={`?${new URLSearchParams({ ...Object.fromEntries(Object.entries(hidden).filter(([, v]) => v)), origin, travellers: String(travellers), nights: String(nights), go: m })}#trip`}
-                  className={`rounded-full border px-3 py-1 font-semibold ${m === go ? "border-ink bg-ink text-white" : "border-line text-ink-2 hover:border-accent hover:text-accent"}`}
-                >
-                  {MODE_LABEL[m]}
-                </a>
-              ))}
-            </p>
           )}
           {go !== "none" && (
             <a href={travel.toggleHref} className="mt-3 inline-block text-[13px] font-semibold text-ink-3 hover:text-accent">
@@ -310,6 +304,71 @@ function Step({ n, title, price, children }: { n: number; title: string; price: 
       </div>
       {children}
     </li>
+  );
+}
+
+/** A clean price list: one row per option, price and one button on the right. */
+function Rows({ rows, money, selectable }: { rows: Choice[]; money: (n: number) => string; selectable: boolean }) {
+  return (
+    <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+      {rows.map((r, i) => (
+        <li key={`${r.bookUrl}-${i}`} className={`flex items-center gap-3 px-4 py-3 ${selectable && r.selected ? "bg-accent/[0.04]" : ""}`}>
+          {selectable &&
+            (r.selected ? (
+              <span aria-label="In your trip" className="grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-accent">
+                <span className="h-2.5 w-2.5 rounded-full bg-accent" />
+              </span>
+            ) : (
+              <a href={r.chooseHref} aria-label={`Choose ${r.title}`} className="h-5 w-5 shrink-0 rounded-full border-2 border-line-bright hover:border-accent" />
+            ))}
+          <div className="min-w-0 flex-1">
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] font-semibold">
+              {r.title}
+              {r.tags.map((t) => (
+                <span
+                  key={t}
+                  className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${t === "cheapest" ? "bg-positive/10 text-positive" : "bg-surface-2 text-ink-2"}`}
+                >
+                  {TAG_LABEL[t] ?? t}
+                </span>
+              ))}
+            </p>
+            <p className="truncate text-[13px] text-ink-3">{r.facts.join(" · ")}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="tabular text-[18px] font-bold leading-tight">{money(r.price)}</p>
+            <p className="text-[12px] text-ink-3">{r.priceNote}</p>
+          </div>
+          <a
+            href={r.bookUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 rounded-lg border border-accent px-3.5 py-2 text-[14px] font-semibold text-accent transition-colors hover:bg-accent hover:text-white"
+          >
+            {r.bookLabel} ↗
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** One quiet line: check the exact dates on the big booking sites. */
+function ExactDates({ links, note }: { links: TravelLinkLite[]; note?: string }) {
+  return (
+    <p className="mt-3 text-[13px] text-ink-3">
+      {note && <>{note} </>}
+      Check your exact dates on{" "}
+      {links.slice(0, 3).map((l, i) => (
+        <span key={l.url}>
+          {i > 0 && (i === Math.min(links.length, 3) - 1 ? " or " : ", ")}
+          <a href={l.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent hover:underline">
+            {l.site}
+          </a>
+        </span>
+      ))}
+      .
+    </p>
   );
 }
 
