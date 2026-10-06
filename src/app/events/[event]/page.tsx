@@ -416,6 +416,20 @@ export default async function EventPage({
                 }
               : null
           }
+          ticketChoices={prices.offers
+            .filter((o) => o.amount !== null)
+            .slice(0, 3)
+            .map((o, i) => ({
+              tags: i === 0 ? ["cheapest"] : [],
+              title: o.label,
+              facts: [o.fees.included === "yes" ? "Fees included" : o.fees.included === "no" ? "Fees added at checkout" : "Fees may be added", o.ticket && !/listed price/i.test(o.ticket) ? o.ticket : ""].filter(Boolean),
+              price: o.amount! * travellers,
+              priceNote: travellers > 1 ? `for ${travellers}` : "per ticket",
+              selected: i === 0,
+              chooseHref: o.url,
+              bookUrl: o.url,
+              bookLabel: `Buy on ${o.label}`,
+            }))}
           compare={
             <>
               {priceGroups.some((g) => g.comparison.offers.length > 0) ? (

@@ -55,6 +55,7 @@ export function TripSteps({
   go,
   sameCity,
   ticket,
+  ticketChoices,
   compare,
   hotel,
   travel,
@@ -72,6 +73,8 @@ export function TripSteps({
   go: Mode;
   sameCity: boolean;
   ticket: { price: number; site: string; url: string; feesExtra: boolean; sites: number; noun: string } | null;
+  /** The cheapest few ticket sites, as cards (price per ticket). */
+  ticketChoices: Choice[];
   /** Every ticket site, shown on request. */
   compare: ReactNode;
   hotel: {
@@ -150,24 +153,15 @@ export function TripSteps({
       <ol className="mt-5 flex flex-col gap-4">
         {/* 1. Ticket */}
         <Step n={1} title={`Your ${ticket?.noun ?? "ticket"}${travellers > 1 ? `s × ${travellers}` : ""}`} price={ticket ? money(ticket.price * travellers) : null} money={money}>
-          {ticket ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <p className="flex-1 text-[15px] text-ink-2">
-                Cheapest of {ticket.sites} ticket sites: <span className="font-bold text-ink">{money(ticket.price)}</span> on{" "}
-                <span className="font-bold text-ink">{ticket.site}</span>
-                {ticket.feesExtra ? <span className="font-semibold text-hot"> + any fees at checkout</span> : ", fees included"}.
-              </p>
-              <a href={ticket.url} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-xl bg-accent px-5 py-3 text-center text-[15px] font-bold text-white hover:bg-accent-2">
-                Buy on {ticket.site} ↗
-              </a>
-            </div>
+          {ticketChoices.length ? (
+            <ChoiceCards choices={ticketChoices} money={money} selectable={false} />
           ) : (
             <p className="text-[15px] text-ink-2">No ticket site has a price yet. See each site below.</p>
           )}
           <details className="group mt-3">
-            <summary className="cursor-pointer list-none text-[14px] font-semibold text-accent">
-              <span className="group-open:hidden">Compare all ticket sites ▾</span>
-              <span className="hidden group-open:inline">Hide ticket sites ▴</span>
+            <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-[14px] font-semibold text-ink-2 hover:border-accent hover:text-accent">
+              <span className="group-open:hidden">Compare all {ticket?.sites ?? ""} ticket sites ▾</span>
+              <span className="hidden group-open:inline">Hide the full list ▴</span>
             </summary>
             <div className="mt-3">{compare}</div>
           </details>
@@ -327,9 +321,9 @@ function LinkRow({ intro, links }: { intro: string; links: TravelLinkLite[] }) {
   );
 }
 
-function ChoiceCards({ choices, money }: { choices: Choice[]; money: (n: number) => string }) {
+function ChoiceCards({ choices, money, selectable = true }: { choices: Choice[]; money: (n: number) => string; selectable?: boolean }) {
   return (
-    <ul className={`grid gap-2 ${choices.length > 1 ? "sm:grid-cols-3" : ""}`}>
+    <ul className="grid gap-2 sm:grid-cols-3">
       {choices.map((c) => (
         <li
           key={c.chooseHref}
@@ -350,7 +344,7 @@ function ChoiceCards({ choices, money }: { choices: Choice[]; money: (n: number)
             <span className="text-[12px] text-ink-3">{c.priceNote}</span>
           </span>
           <span className="mt-auto flex gap-2 pt-3">
-            {choices.length > 1 &&
+            {selectable && choices.length > 1 &&
               (c.selected ? (
                 <span className="flex-1 whitespace-nowrap rounded-lg bg-accent px-2 py-2 text-center text-[13px] font-bold text-white">✓ Chosen</span>
               ) : (
