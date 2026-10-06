@@ -11,7 +11,7 @@ import {
   flightSearchCode,
   resolveOrigin,
 } from "@/lib/providers/geo";
-import { flightLinks, hotelLinks, type TravelLink } from "@/lib/providers/travelLinks";
+import { airlineLink, flightLinks, hotelLinks, type TravelLink } from "@/lib/providers/travelLinks";
 import { coachLinks, driveLink, groundTravelPossible, trainLink } from "@/lib/providers/ground";
 import { GameActions } from "@/components/GameActions";
 import { TripSteps } from "@/components/TripSteps";
@@ -506,14 +506,18 @@ export default async function EventPage({
             nearby: nearby && {
               ...nearby,
               perPerson: convertUsd(nearby.perPerson, prices.currency),
-              // The same flight search on the big sites: that fare's own dates, everyone travelling.
-              links: flightLinks({
-                from: flightSearchCode(resolvedOrigin!),
-                to: flightSearchCode(destination!),
-                departOn: nearby.departOn,
-                returnOn: nearby.returnOn,
-                adults: travellers,
-              }).filter((l) => ["Expedia", "KAYAK"].includes(l.site)),
+              // The airline's own site first, then the same search on Expedia
+              // and KAYAK: that fare's own dates, everyone travelling.
+              links: [
+                airlineLink(nearby.airline, { ...nearby.airports, departOn: nearby.departOn, returnOn: nearby.returnOn, adults: travellers }),
+                ...flightLinks({
+                  from: flightSearchCode(resolvedOrigin!),
+                  to: flightSearchCode(destination!),
+                  departOn: nearby.departOn,
+                  returnOn: nearby.returnOn,
+                  adults: travellers,
+                }).filter((l) => ["Expedia", "KAYAK"].includes(l.site)),
+              ].filter((l): l is TravelLink => l !== null),
             },
             estimate: flightEstimate,
           }}

@@ -265,6 +265,8 @@ export interface NearbyFare {
    * or two, still out before the game and back after it.
    */
   kind: "pair" | "near";
+  /** The airports this fare flies between, for the airline's own search. */
+  airports: { from: string; to: string };
 }
 
 /**
@@ -277,7 +279,7 @@ export interface NearbyFare {
 export async function nearbyFlight(trip: { from: string; to: string; departOn: string; returnOn: string; gameDay: string }): Promise<NearbyFare | null> {
   const token = process.env.TRAVELPAYOUTS_TOKEN;
   if (!token) return null;
-  type Fare = { price: number; airline: string; transfers: number; link: string; departure_at: string; return_at?: string };
+  type Fare = { price: number; airline: string; transfers: number; link: string; departure_at: string; return_at?: string; origin_airport: string; destination_airport: string };
   const search = (q: Record<string, string>) =>
     getJson<{ data?: Fare[] }>(
       `https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${new URLSearchParams({ currency: "usd", sorting: "price", token, ...q })}`,
@@ -302,6 +304,8 @@ export async function nearbyFlight(trip: { from: string; to: string; departOn: s
       stopsLabel: stopsLabel(Math.max(out.transfers, back.transfers)),
       url: expediaFlightsUrl({ from: trip.from, to: trip.to, departOn: trip.departOn, returnOn: trip.returnOn, adults: 1 }),
       kind: "pair",
+      // One airline both ways: its own site can price the round trip.
+      airports: { from: out.origin_airport, to: out.destination_airport },
     };
   }
 
@@ -333,6 +337,7 @@ export async function nearbyFlight(trip: { from: string; to: string; departOn: s
     stopsLabel: stopsLabel(f.transfers),
     url: expediaFlightsUrl({ from: trip.from, to: trip.to, departOn: f.departure_at.slice(0, 10), returnOn: f.return_at!.slice(0, 10), adults: 1 }),
     kind: "near",
+    airports: { from: f.origin_airport, to: f.destination_airport },
   };
 }
 

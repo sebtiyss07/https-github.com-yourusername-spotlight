@@ -43,6 +43,45 @@ export function flightLinks(trip: FlightTrip): TravelLink[] {
   ];
 }
 
+/**
+ * The same round trip on the airline's own site, for the airlines whose
+ * links were opened in a browser on 2026-10-06 and showed the right airports,
+ * dates and travellers: Frontier, JetBlue and United open on the results,
+ * Southwest on its booking form, filled in (one tap on Search). Others
+ * (American: robot check; Delta and Alaska: dropped the airports) get none.
+ * Needs real airports, not city codes.
+ */
+export function airlineLink(airline: string, trip: FlightTrip): TravelLink | null {
+  const n = Math.min(9, Math.max(1, trip.adults));
+  const q = (o: Record<string, string>) => new URLSearchParams(o).toString();
+  const usDate = (d: string) =>
+    new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  switch (airline) {
+    case "Frontier":
+      return {
+        site: "Frontier",
+        url: `https://booking.flyfrontier.com/Flight/InternalSelect?${q({ o1: trip.from, d1: trip.to, dd1: usDate(trip.departOn), dd2: usDate(trip.returnOn), ADT: String(n), mon: "true", r: "true" })}`,
+      };
+    case "JetBlue":
+      return {
+        site: "JetBlue",
+        url: `https://www.jetblue.com/booking/flights?${q({ from: trip.from, to: trip.to, depart: trip.departOn, return: trip.returnOn, isMultiCity: "false", noOfRoute: "1", lang: "en", adults: String(n), children: "0", infants: "0", sharedMarket: "false", roundTripFaresFlag: "false", usePoints: "false" })}`,
+      };
+    case "United":
+      return {
+        site: "United",
+        url: `https://www.united.com/en/us/fsr/choose-flights?${q({ f: trip.from, t: trip.to, d: trip.departOn, r: trip.returnOn, px: String(n), taxng: "1", newHP: "True", clm: "7", st: "bestmatches", tqp: "R" })}`,
+      };
+    case "Southwest":
+      return {
+        site: "Southwest",
+        url: `https://www.southwest.com/air/booking/select.html?${q({ adultPassengersCount: String(n), departureDate: trip.departOn, departureTimeOfDay: "ALL_DAY", destinationAirportCode: trip.to, fareType: "USD", originationAirportCode: trip.from, passengerType: "ADULT", returnDate: trip.returnOn, returnTimeOfDay: "ALL_DAY", tripType: "roundtrip" })}`,
+      };
+    default:
+      return null;
+  }
+}
+
 export function hotelLinks(stay: {
   destination: string;
   lat: number;
