@@ -40,7 +40,8 @@ const EXPEDIA_FARES = expediaFares.fares as Record<
 
 function expediaFareFor(trip: { from: string; to: string; departOn: string; returnOn: string }): FlightQuote | null {
   const f = EXPEDIA_FARES[`${trip.from}|${trip.to}|${trip.departOn}|${trip.returnOn}`];
-  if (!f) return null;
+  // Fares move daily: a saved one older than 3 days isn't shown or added up.
+  if (!f || (Date.now() - Date.parse(`${expediaFares.checkedOn}T12:00:00Z`)) / 86_400_000 > 3) return null;
   const [, m, d] = expediaFares.checkedOn.split("-");
   const month = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(m) - 1];
   return {
@@ -80,6 +81,27 @@ export interface HotelQuote {
    * price is then shown for reference only, not added to their total.
    */
   forYourDates: boolean;
+  /** Up to three choices for the same stay (cheapest, best reviewed, closest). */
+  options: HotelOption[];
+  /** Which of the options this quote is. */
+  pick: number;
+}
+
+/** One hotel choice for the stay, as Booking.com listed it. */
+export interface HotelOption {
+  name: string;
+  perNight: number;
+  total: number;
+  distance: string;
+  room: string;
+  url: string;
+  /** Booking.com guest score out of 10, and how many reviews it's from. */
+  score: number | null;
+  reviews: number | null;
+  /** The rate shown had free cancellation. */
+  freeCancellation: boolean;
+  /** "cheapest", "best-rated", "closest" (one hotel can be several). */
+  tags: string[];
 }
 
 export interface FlightQuote {
@@ -99,7 +121,7 @@ export interface FlightQuote {
 }
 
 export type FlightResult =
-  | { status: "ok"; quote: FlightQuote }
+  | { status: "ok"; quote: FlightQuote; options?: FlightQuote[] }
   | { status: "no-key" }
   | { status: "none" };
 
@@ -113,7 +135,10 @@ async function getJson<T>(url: string): Promise<T | null> {
   }
 }
 
-type SnapshotHotel = [name: string, perNight: number, total: number, distance: string, room: string, path: string, nights: string];
+type SnapshotHotel = [
+  name: string, perNight: number, total: number, distance: string, room: string, path: string, nights: string,
+  score?: number | null, reviews?: number | null, free?: boolean, tags?: string,
+];
 interface SnapshotSearch {
   found: string | null;
   wide: boolean;
@@ -165,6 +190,8 @@ export async function cheapestHotelNear(stay: {
   checkIn: string;
   checkOut: string;
   adults: number;
+  /** Which hotel option the visitor picked (0 = cheapest). */
+  pick?: number;
 }): Promise<HotelQuote | null> {
   const snap = HOTELS[stay.eventId];
   if (!snap || hotelAgeDays(snap) > MAX_HOTEL_AGE_DAYS) return null;
@@ -172,13 +199,14 @@ export async function cheapestHotelNear(stay: {
   // One traveller: a room for 1. Groups: rooms for 2 (an odd one out gets a
   // room for 2 as well, so their price is that room's).
   const search = stay.adults === 1 ? snap : snap.pair;
-  const best = search?.hotels[0];
+  // Booking.com paths carry the hotel's country ("/hotel/ca/…"). Detroit's
+  // cheapest was in Windsor, Canada: close, but across a border, so those
+  // aren't offered.
+  const inCountry = (search?.hotels ?? []).filter((h) => h[5].split("/")[2] === stay.country.toLowerCase());
+  const pick = Math.min(Math.max(0, stay.pick ?? 0), Math.max(0, inCountry.length - 1));
+  const best = inCountry[pick];
   if (!search || !best) return null;
   const [name, perNight, total, distance, room, path] = best;
-  // Booking.com paths carry the hotel's country ("/hotel/ca/…"). Detroit's
-  // cheapest was in Windsor, Canada: close, but across a border, so the
-  // visitor gets the hotel search for their dates instead.
-  if (path.split("/")[2] !== stay.country.toLowerCase()) return null;
   const nights = Math.round((Date.parse(snap.checkOut) - Date.parse(snap.checkIn)) / 86_400_000);
   const perRoom = stay.adults === 1 ? 1 : 2;
   // Links always use the visitor's own dates, so they land on today's price.
@@ -189,7 +217,21 @@ export async function cheapestHotelNear(stay: {
     no_rooms: "1",
     group_children: "0",
   });
+  const options: HotelOption[] = inCountry.map((h, i) => ({
+    name: h[0],
+    perNight: h[1],
+    total: h[2],
+    distance: h[3],
+    room: h[4],
+    url: `https://www.booking.com${h[5]}?${dates}`,
+    score: h[7] ?? null,
+    reviews: h[8] ?? null,
+    freeCancellation: !!h[9],
+    tags: h[10] ? h[10].split(",") : i === 0 ? ["cheapest"] : [],
+  }));
   return {
+    options,
+    pick,
     name,
     distance,
     room,
@@ -231,7 +273,9 @@ export async function cheapestFlight(trip: {
 }): Promise<FlightResult> {
   const result = await findFlight(trip);
   // Say which airports the fare is between (a city code like NYC means any of its airports).
-  return result.status === "ok" ? { ...result, quote: { ...result.quote, route: `${trip.from} → ${trip.to}` } } : result;
+  if (result.status !== "ok") return result;
+  const route = `${trip.from} → ${trip.to}`;
+  return { ...result, quote: { ...result.quote, route }, options: (result.options ?? [result.quote]).map((q) => ({ ...q, route })) };
 }
 
 async function findFlight(trip: Parameters<typeof cheapestFlight>[0]): Promise<FlightResult> {
@@ -241,23 +285,26 @@ async function findFlight(trip: Parameters<typeof cheapestFlight>[0]): Promise<F
   const token = process.env.TRAVELPAYOUTS_TOKEN;
   if (token) {
     type Fare = { price: number; airline: string; transfers: number; link: string; departure_at: string; return_at: string };
-    const params = new URLSearchParams({ origin: trip.from, destination: trip.to, departure_at: trip.departOn, return_at: trip.returnOn, currency: "usd", sorting: "price", one_way: "false", limit: "5", token });
+    const params = new URLSearchParams({ origin: trip.from, destination: trip.to, departure_at: trip.departOn, return_at: trip.returnOn, currency: "usd", sorting: "price", one_way: "false", limit: "10", token });
     const r = await getJson<{ data?: Fare[] }>(`https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${params}`);
     // Only a fare for exactly these dates counts (cheapest first).
-    const f = r?.data?.find((x) => x.departure_at.slice(0, 10) === trip.departOn && x.return_at.slice(0, 10) === trip.returnOn);
-    if (f) {
-      return {
-        status: "ok",
-        quote: {
-          perPerson: f.price,
-          airline: AIRLINES[f.airline] ?? f.airline,
-          stopsLabel: stopsLabel(f.transfers),
-          url: `https://www.aviasales.com${f.link}`,
-          source: "Aviasales: a fare travellers found in the last few days, which may have gone",
-          departOn: trip.departOn,
-          returnOn: trip.returnOn,
-        },
-      };
+    const exact = (r?.data ?? [])
+      .filter((x) => x.departure_at.slice(0, 10) === trip.departOn && x.return_at.slice(0, 10) === trip.returnOn)
+      .sort((a, b) => a.price - b.price);
+    const toQuote = (f: Fare): FlightQuote => ({
+      perPerson: f.price,
+      airline: AIRLINES[f.airline] ?? f.airline,
+      stopsLabel: stopsLabel(f.transfers),
+      url: `https://www.aviasales.com${f.link}`,
+      source: "Aviasales: a fare travellers found in the last few days, which may have gone",
+      departOn: trip.departOn,
+      returnOn: trip.returnOn,
+    });
+    if (exact.length) {
+      // Choices: the cheapest, the cheapest nonstop, and another airline.
+      const picks = [exact[0], exact.find((f) => f.transfers === 0), exact.find((f) => f.airline !== exact[0].airline)];
+      const options = [...new Set(picks.filter((f): f is Fare => !!f))].map(toQuote);
+      return { status: "ok", quote: options[0], options };
     }
   }
 

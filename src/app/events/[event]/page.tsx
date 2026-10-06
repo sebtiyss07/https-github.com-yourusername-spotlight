@@ -51,6 +51,10 @@ interface SearchParams {
   /** How they travel: flight, train, coach, drive, or none. */
   go?: string;
   hotel?: string;
+  /** Which hotel choice is in the trip (0 = cheapest). */
+  stay?: string;
+  /** Which flight choice is in the trip (0 = cheapest). */
+  fly?: string;
 }
 
 /** Clamps user-supplied numbers so a hand-edited URL can't break the links. */
@@ -126,6 +130,8 @@ export default async function EventPage({
       nights: String(nights),
       go: query.go || query.flight === "0" ? go : "",
       hotel: wantHotel ? "" : "0",
+      stay: query.stay ?? "",
+      fly: query.fly ?? "",
       ...change,
     };
     return `?${new URLSearchParams(Object.entries(next).filter(([, v]) => v))}`;
@@ -169,7 +175,7 @@ export default async function EventPage({
   });
 
   // The cheapest real flight and hotel for these exact dates.
-  const [flightQuote, hotelQuote] = await Promise.all([
+  const [flightFound, hotelQuote] = await Promise.all([
     wantFlight && resolvedOrigin && destination && !sameCity
       ? cheapestFlight({
           from: flightSearchCode(resolvedOrigin),
@@ -190,9 +196,14 @@ export default async function EventPage({
           checkIn: dates.checkIn,
           checkOut: dates.checkOut,
           adults: travellers,
+          pick: toInt(query.stay, 0, 0, 2),
         })
       : Promise.resolve(null),
   ]);
+  // The flight the visitor picked from the choices (the cheapest by default).
+  const flightOptions = flightFound?.status === "ok" ? (flightFound.options ?? [flightFound.quote]) : [];
+  const flyPick = Math.min(toInt(query.fly, 0, 0, 2), Math.max(0, flightOptions.length - 1));
+  const flightQuote = flightFound?.status === "ok" ? { ...flightFound, quote: flightOptions[flyPick] ?? flightFound.quote } : flightFound;
 
   const groundLinks: TravelLink[] =
     !resolvedOrigin || go === "none" || go === "flight"
@@ -347,66 +358,10 @@ export default async function EventPage({
       </section>
 
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
-        {/* 1. Every site's price, cheapest first. */}
-        <section id="tickets" className="mt-8 min-w-0 scroll-mt-32">
-          <h2 className="text-[24px] font-extrabold sm:text-[28px]">
-            Ticket prices, site by site
-          </h2>
-          <p className="mt-1 max-w-3xl text-ink-2">
-            {isRace
-              ? "The lowest price for one ticket on each site we check, cheapest first. Switch between full-weekend passes and race-day tickets."
-              : isFootball
-                ? "The lowest price for one ticket on each site we check, cheapest first. Prices that already include fees come first."
-                : "The lowest price for one ticket on each site we check, fees included, cheapest first. Parking, tailgate passes and add-ons are left out. The cheapest ticket may be standing room where the venue sells it."}
-          </p>
-          <div className="mt-5">
-            {priceGroups.some((g) => g.comparison.offers.length > 0) ? (
-              <>
-                <PriceCompare groups={priceGroups} />
-              </>
-            ) : (
-              <p className="rounded-2xl border border-dashed border-line-bright bg-surface px-5 py-6 text-ink-2">
-                No ticket site we compare lists this {isRace ? "race" : isFootball ? "match" : "game"} yet. We check
-                again as sites add it.
-              </p>
-            )}
-          </div>
-
-          {sellers.length > 0 && (
-            <details className="group mt-4 rounded-2xl border border-line bg-surface">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[15px] font-semibold">
-                Official club ticket offices
-                <span className="text-[13px] font-normal text-ink-3 group-open:hidden">
-                  Face value, usually members first ▾
-                </span>
-              </summary>
-              <div className="space-y-1 border-t border-line p-3">
-                {sellers.map((seller) => (
-                  <a
-                    key={seller.url}
-                    href={seller.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group/row flex items-center gap-4 rounded-xl px-3 py-2.5 transition-colors hover:bg-surface-2"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-semibold group-hover/row:text-accent">
-                        {seller.label}
-                      </span>
-                      <span className="block text-[13px] text-ink-3">{seller.note}</span>
-                    </span>
-                    <span className="shrink-0 text-[14px] font-semibold text-accent">Visit ↗</span>
-                  </a>
-                ))}
-              </div>
-            </details>
-          )}
-        </section>
-
-        {/* 2. The whole trip. Plain links and a GET form, so it works without
+        {/* 1. The whole trip, first: it's what Spotlight is for. Plain links and a GET form, so it works without
             JavaScript and every trip is a link you can send. */}
-        <section id="trip" className="mt-14 scroll-mt-32">
-          <h2 className="text-[24px] font-extrabold sm:text-[28px]">Plan the whole trip</h2>
+        <section id="trip" className="mt-8 scroll-mt-32">
+          <h2 className="text-[24px] font-extrabold sm:text-[28px]">Build your trip</h2>
           <p className="mt-1 text-ink-2">
             Travelling to the {isRace ? "race" : isFootball ? "match" : "game"}? Add a hotel and a
             flight for the same dates and we&apos;ll add it all up. Live nearby? Switch them off.
@@ -560,6 +515,36 @@ export default async function EventPage({
               needsOrigin={!resolvedOrigin}
               noFlightNeeded={sameCity}
               icons={{ ticket: <TicketIcon />, flight: <PlaneIcon />, hotel: <BedIcon /> }}
+              hotelChoices={
+                hotelQuote?.forYourDates
+                  ? hotelQuote.options.map((h, i) => ({
+                      tags: h.tags,
+                      title: h.name,
+                      facts: [
+                        h.score ? `${h.score}/10${h.reviews ? ` · ${h.reviews.toLocaleString("en-US")} reviews` : ""}` : "No guest score yet",
+                        h.distance ? `${h.distance} away` : "",
+                      ].filter(Boolean),
+                      price: convertUsd(h.total, prices.currency),
+                      priceNote: `${dates.nights} ${dates.nights === 1 ? "night" : "nights"}${rooms > 1 ? ", per room" : ""}`,
+                      freeCancellation: h.freeCancellation,
+                      selected: i === hotelQuote.pick,
+                      chooseHref: `${tripHref({ stay: String(i) })}#trip`,
+                      bookUrl: h.url,
+                      bookLabel: "Booking.com",
+                    }))
+                  : []
+              }
+              flightChoices={flightOptions.map((f, i) => ({
+                tags: [i === 0 ? "cheapest" : f.stopsLabel === "Nonstop" ? "nonstop" : "other-airline"],
+                title: f.airline,
+                facts: [f.stopsLabel, f.route ?? ""].filter(Boolean),
+                price: convertUsd(f.perPerson, prices.currency),
+                priceNote: "per person, round trip",
+                selected: i === flyPick,
+                chooseHref: `${tripHref({ fly: String(i) })}#trip`,
+                bookUrl: f.url,
+                bookLabel: "See fare",
+              }))}
             />
             <BookingSteps
               eventId={event.id}
@@ -603,6 +588,63 @@ export default async function EventPage({
             />
           </div>
         </section>
+
+        {/* 2. Every ticket site's price, cheapest first. */}
+        <section id="tickets" className="mt-14 min-w-0 scroll-mt-32">
+          <h2 className="text-[24px] font-extrabold sm:text-[28px]">
+            Ticket prices, site by site
+          </h2>
+          <p className="mt-1 max-w-3xl text-ink-2">
+            {isRace
+              ? "The lowest price for one ticket on each site we check, cheapest first. Switch between full-weekend passes and race-day tickets."
+              : isFootball
+                ? "The lowest price for one ticket on each site we check, cheapest first. Prices that already include fees come first."
+                : "The lowest price for one ticket on each site we check, fees included, cheapest first. Parking, tailgate passes and add-ons are left out. The cheapest ticket may be standing room where the venue sells it."}
+          </p>
+          <div className="mt-5">
+            {priceGroups.some((g) => g.comparison.offers.length > 0) ? (
+              <>
+                <PriceCompare groups={priceGroups} />
+              </>
+            ) : (
+              <p className="rounded-2xl border border-dashed border-line-bright bg-surface px-5 py-6 text-ink-2">
+                No ticket site we compare lists this {isRace ? "race" : isFootball ? "match" : "game"} yet. We check
+                again as sites add it.
+              </p>
+            )}
+          </div>
+
+          {sellers.length > 0 && (
+            <details className="group mt-4 rounded-2xl border border-line bg-surface">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[15px] font-semibold">
+                Official club ticket offices
+                <span className="text-[13px] font-normal text-ink-3 group-open:hidden">
+                  Face value, usually members first ▾
+                </span>
+              </summary>
+              <div className="space-y-1 border-t border-line p-3">
+                {sellers.map((seller) => (
+                  <a
+                    key={seller.url}
+                    href={seller.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group/row flex items-center gap-4 rounded-xl px-3 py-2.5 transition-colors hover:bg-surface-2"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-semibold group-hover/row:text-accent">
+                        {seller.label}
+                      </span>
+                      <span className="block text-[13px] text-ink-3">{seller.note}</span>
+                    </span>
+                    <span className="shrink-0 text-[14px] font-semibold text-accent">Visit ↗</span>
+                  </a>
+                ))}
+              </div>
+            </details>
+          )}
+        </section>
+
       </div>
 
       {/* Phones: the cheapest ticket stays one tap away while scrolling. */}

@@ -136,15 +136,40 @@ writeFileSync(join(OUT, "job-booking.js"), runner("__refreshBooking", cap(stays)
       const m = t && t.match(membersOnly && /Original price/.test(t) ? /Original price \\D*([\\d,.]+)/ : /(?:Current price|^Price) \\D*([\\d,.]+)/);
       return m ? Number(m[1].replace(/,/g, "")) : 0;
     };
-    const best = cards.map((c) => ({
-      name: c.querySelector('[data-testid="title"]')?.textContent.trim(),
-      path: (c.querySelector('a[data-testid="title-link"]')?.getAttribute("href") || "").split("?")[0].replace("https://www.booking.com", ""),
-      total: stayTotal(c),
-      dist: (c.querySelector('[data-testid="distance"]')?.textContent || "").replace(/ from (map )?cent(er|re)/, ""),
-      nights: c.querySelector('[data-testid="price-for-x-nights"]')?.textContent.trim(),
-      room: ((c.querySelector('[data-testid="recommended-units"] h4') || c.querySelector('[data-testid="recommended-units"]'))?.textContent || "").trim().split("\\n")[0],
-    })).filter((h) => h.total > 0 && h.path.startsWith("/hotel/" + cc + "/") && !/dorm|capsule|hostel|bed in/i.test(h.name + " " + h.room)).sort((a, b) => a.total - b.total)[0];
-    out[adults] = best ? [ci, co, found, best.name, best.total, best.dist, best.room, best.path, best.nights] : null;
+    // Up to three choices from the cheapest hotels near the venue (page one,
+    // sorted by price): the cheapest, the best reviewed (30+ reviews) and the
+    // closest. Each keeps Booking's own score (out of 10), review count,
+    // distance and whether the shown rate has free cancellation.
+    const miles = (t) => { const m = (t || "").match(/([\\d.,]+)\\s*(miles?|mi|km|feet|ft|m)\\b/i); if (!m) return null; const n = Number(m[1].replace(/,/g, "")); const u = m[2].toLowerCase(); return u.startsWith("mi") ? n : u === "km" ? n / 1.609 : u === "m" ? n / 1609 : n / 5280; };
+    const cands = cards.map((c) => {
+      const rs = c.querySelector('[data-testid="review-score"]')?.textContent || "";
+      const dist = (c.querySelector('[data-testid="distance"]')?.textContent || "").replace(/ from (map )?cent(er|re)/, "");
+      return {
+        name: c.querySelector('[data-testid="title"]')?.textContent.trim(),
+        path: (c.querySelector('a[data-testid="title-link"]')?.getAttribute("href") || "").split("?")[0].replace("https://www.booking.com", ""),
+        total: stayTotal(c),
+        dist,
+        miles: miles(dist),
+        nights: c.querySelector('[data-testid="price-for-x-nights"]')?.textContent.trim(),
+        room: ((c.querySelector('[data-testid="recommended-units"] h4') || c.querySelector('[data-testid="recommended-units"]'))?.textContent || "").trim().split("\\n")[0],
+        score: Number(rs.match(/Scored ([\\d.]+)/)?.[1]) || null,
+        reviews: Number((rs.match(/([\\d,]+) reviews?/)?.[1] || "").replace(/,/g, "")) || null,
+        free: /free cancellation/i.test(c.textContent),
+      };
+    }).filter((h) => h.total > 0 && h.path.startsWith("/hotel/" + cc + "/") && !/dorm|capsule|hostel|bed in/i.test(h.name + " " + h.room)).sort((a, b) => a.total - b.total);
+    const picks = [
+      ["cheapest", cands[0]],
+      ["best-rated", cands.filter((h) => h.score && h.reviews >= 30).sort((a, b) => b.score - a.score || a.total - b.total)[0]],
+      ["closest", cands.filter((h) => h.miles !== null).sort((a, b) => a.miles - b.miles || a.total - b.total)[0]],
+    ];
+    const options = [];
+    for (const [tag, h] of picks) {
+      if (!h) continue;
+      const same = options.find((o) => o[5] === h.path);
+      if (same) { same[0] += "," + tag; continue; }
+      options.push([tag, h.name, h.total, h.dist, h.room, h.path, h.nights, h.score, h.reviews, h.free]);
+    }
+    out[adults] = options.length ? [ci, co, found, options] : null;
     if (adults === 1) await sleepW(3000);
   }
   return out;`, 3500));

@@ -35,6 +35,8 @@ export function TripTotal({
   needsOrigin,
   noFlightNeeded,
   icons,
+  hotelChoices = [],
+  flightChoices = [],
 }: {
   currency: string;
   ticketPrice: number | null;
@@ -60,6 +62,10 @@ export function TripTotal({
   needsOrigin: boolean;
   noFlightNeeded: boolean;
   icons: { ticket: ReactNode; flight: ReactNode; hotel: ReactNode };
+  /** Hotel choices for the stay (prices already in the visitor's currency). */
+  hotelChoices?: Choice[];
+  /** Flight choices for the exact dates (price per person, visitor's currency). */
+  flightChoices?: Choice[];
 }) {
   const round = (n: number) => Math.round(n * 100) / 100;
   const money = (n: number) => formatPrice(n, currency);
@@ -156,6 +162,7 @@ export function TripTotal({
             links={flight?.status === "ok" || needsOrigin || noFlightNeeded ? [] : flightLinks}
           />
         )}
+        {includeFlight && flightChoices.length > 1 && <Choices title="Pick your flight" choices={flightChoices} money={money} />}
 
         {ground && (
           <Line
@@ -204,6 +211,8 @@ export function TripTotal({
             links={hotel ? [{ site: `All ${hotel.found ?? ""} hotels nearby, cheapest first`.replace("  ", " "), url: hotel.searchUrl }, ...hotelLinks.filter((l) => l.site !== hotel.site)] : hotelLinks}
           />
         )}
+
+        {includeHotel && hotelChoices.length > 1 && <Choices title="Pick your hotel" choices={hotelChoices} money={money} />}
 
         <p className="px-5 py-3 text-[12px] text-ink-3">
           Cheapest prices listed when we checked.
@@ -310,3 +319,81 @@ const GROUND = {
     action: "Directions",
   },
 } as const;
+
+/** One choice card: a hotel or a flight the visitor can swap into the trip. */
+export interface Choice {
+  /** "cheapest", "best-rated", "closest", "nonstop"… shown as labels. */
+  tags: string[];
+  title: string;
+  /** Facts shown under the name, e.g. "7.6/10 · 354 reviews · 2.1 miles". */
+  facts: string[];
+  /** Price shown big (whole stay, or per person for a flight). */
+  price: number;
+  priceNote: string;
+  freeCancellation?: boolean;
+  selected: boolean;
+  /** Puts this choice in the trip (same page, other settings kept). */
+  chooseHref: string;
+  bookUrl: string;
+  bookLabel: string;
+}
+
+const TAG_LABEL: Record<string, string> = {
+  cheapest: "💰 Cheapest",
+  "best-rated": "⭐ Best reviewed",
+  closest: "📍 Closest",
+  nonstop: "✈️ Nonstop",
+  "other-airline": "Another airline",
+};
+
+function Choices({ title, choices, money }: { title: string; choices: Choice[]; money: (n: number) => string }) {
+  return (
+    <div className="px-4 py-4 sm:px-5">
+      <p className="text-[13px] font-bold uppercase tracking-wide text-ink-3">{title}</p>
+      <ul className="mt-2 grid gap-2 sm:grid-cols-3">
+        {choices.map((c) => (
+          <li
+            key={c.chooseHref}
+            className={`flex flex-col rounded-xl border p-3 transition-colors ${
+              c.selected ? "border-accent bg-accent/[0.05] ring-1 ring-accent" : "border-line hover:border-accent/50"
+            }`}
+          >
+            <span className="flex flex-wrap gap-1">
+              {c.tags.map((t) => (
+                <span key={t} className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-ink-2">
+                  {TAG_LABEL[t] ?? t}
+                </span>
+              ))}
+              {c.freeCancellation && (
+                <span className="rounded-full bg-positive/10 px-2 py-0.5 text-[11px] font-bold text-positive">Free cancellation</span>
+              )}
+            </span>
+            <span className="mt-2 line-clamp-2 text-[15px] font-bold leading-snug">{c.title}</span>
+            <span className="mt-0.5 text-[12px] text-ink-3">{c.facts.join(" · ")}</span>
+            <span className="mt-2 flex items-baseline gap-1">
+              <span className="tabular text-[20px] font-extrabold">{money(c.price)}</span>
+              <span className="text-[12px] text-ink-3">{c.priceNote}</span>
+            </span>
+            <span className="mt-auto flex gap-2 pt-3">
+              {c.selected ? (
+                <span className="flex-1 whitespace-nowrap rounded-lg bg-accent px-2 py-1.5 text-center text-[13px] font-bold text-white">✓ Chosen</span>
+              ) : (
+                <a href={c.chooseHref} className="flex-1 rounded-lg border border-accent px-2 py-1.5 text-center text-[13px] font-bold text-accent hover:bg-accent hover:text-white">
+                  Choose
+                </a>
+              )}
+              <a
+                href={c.bookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg bg-ink px-2.5 py-1.5 text-[13px] font-bold text-white hover:bg-accent"
+              >
+                {c.bookLabel} ↗
+              </a>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

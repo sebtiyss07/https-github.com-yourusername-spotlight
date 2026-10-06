@@ -72,12 +72,23 @@ let hotelCount = 0;
 const searches = Object.entries(booking).flatMap(([eid, v]) => Object.entries(v ?? {}).map(([adults, h]) => [eid, adults, h]));
 for (const [eid, adults, v] of searches) {
   if (!v) continue;
-  const [ci, co, found, name, total, dist, room, path, nightsText] = v;
+  const [ci, co, found] = v;
+  // New format: [ci, co, found, options], options = [tags, name, total, dist,
+  // room, path, nightsText, score, reviews, freeCancellation], cheapest first.
+  // Old format: [ci, co, found, name, total, dist, room, path, nightsText].
+  const options = Array.isArray(v[3]) ? v[3] : [["cheapest", v[3], v[4], v[5], v[6], v[7], v[8], null, null, false]];
   const nights = Math.round((Date.parse(co) - Date.parse(ci)) / 864e5);
   const e = (hotels.events[eid] ??= { checkIn: ci, checkOut: co, found: null, wide: false, hotels: [] });
   // New dates: the old 2-person price was for other nights, so it goes too.
   if (e.checkIn !== ci || e.checkOut !== co) { Object.assign(e, { checkIn: ci, checkOut: co }); delete e.pair; }
-  const s = { found, wide: false, hotels: [[name, Math.round(total / nights), total, dist, room, path, nightsText]] };
+  // Stored as [name, perNight, total, dist, room, path, nightsText, score, reviews, free, tags].
+  const s = {
+    found,
+    wide: false,
+    hotels: options.map(([tags, name, total, dist, room, path, nightsText, score, reviews, free]) => [
+      name, Math.round(total / nights), total, dist, room, path, nightsText, score ?? null, reviews ?? null, !!free, tags,
+    ]),
+  };
   if (adults === "1") Object.assign(e, s); else e.pair = s;
   e.checkedOn = longDate;
   hotelCount++;
