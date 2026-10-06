@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { convertUsd, getEvent, getEventContext, getTicketSellers } from "@/lib/repositories";
 import { PriceCompare, type PriceGroup } from "@/components/PriceCompare";
 import { roomsFor, tripDates } from "@/lib/trip";
+import { localDate } from "@/lib/dates";
 import {
   AIRPORTS_BY_IATA,
   flightSearchCode,
@@ -12,12 +13,10 @@ import {
 } from "@/lib/providers/geo";
 import { flightLinks, hotelLinks, type TravelLink } from "@/lib/providers/travelLinks";
 import { coachLinks, driveLink, groundTravelPossible, trainLink } from "@/lib/providers/ground";
-import { TripTotal } from "@/components/TripTotal";
 import { GameActions } from "@/components/GameActions";
-import { BookingSteps } from "@/components/BookingSteps";
-import { CityInput } from "@/components/CityInput";
+import { TripSteps } from "@/components/TripSteps";
 import { PhotoCredit } from "@/components/ui";
-import { cheapestFlight, cheapestHotelNear } from "@/lib/providers/livePrices";
+import { cheapestFlight, cheapestHotelNear, nearbyFlight } from "@/lib/providers/livePrices";
 import {
   formatDateRange,
   formatFullDate,
@@ -64,13 +63,7 @@ function toInt(value: string | undefined, fallback: number, min: number, max: nu
   return Math.min(max, Math.max(min, n));
 }
 
-function people(n: number): string {
-  return `${n} ${n === 1 ? "person" : "people"}`;
-}
 
-function nightsLabel(n: number): string {
-  return `${n} ${n === 1 ? "night" : "nights"}`;
-}
 
 
 export default async function EventPage({
@@ -126,7 +119,6 @@ export default async function EventPage({
         : groundOk
           ? "train"
           : "flight";
-  const wantTravel = go !== "none";
   const wantFlight = go === "flight";
   const wantHotel = query.hotel === "1" ? true : query.hotel === "0" ? false : !sameCity;
   /** A link to this page with some trip settings changed, keeping the rest. */
@@ -206,6 +198,11 @@ export default async function EventPage({
   const flightOptions = flightFound?.status === "ok" ? (flightFound.options ?? [flightFound.quote]) : [];
   const flyPick = Math.min(toInt(query.fly, 0, 0, 2), Math.max(0, flightOptions.length - 1));
   const flightQuote = flightFound?.status === "ok" ? { ...flightFound, quote: flightOptions[flyPick] ?? flightFound.quote } : flightFound;
+  // No fare for the exact dates: the nearest real one, shown with its own dates.
+  const nearby =
+    wantFlight && resolvedOrigin && destination && !sameCity && !flightOptions.length
+      ? await nearbyFlight({ from: flightSearchCode(resolvedOrigin), to: flightSearchCode(destination), departOn: dates.checkIn, returnOn: dates.checkOut, gameDay: localDate(event.startsAt, venue.timeZone) })
+      : null;
 
   const groundLinks: TravelLink[] =
     !resolvedOrigin || go === "none" || go === "flight"
@@ -230,10 +227,22 @@ export default async function EventPage({
 
   const ticketNoun = isRace ? "weekend pass" : "ticket";
   const pricedSites = prices.offers.filter((o) => o.amount !== null).length;
-  // A site that adds fees at checkout shows a lower number than the cheapest all-in price.
-  const lowerBeforeFees = prices.offers.some(
-    (o) => o.fees.included !== "yes" && o.amount !== null && prices.cheapest?.fees.included === "yes" && o.amount < (prices.cheapest?.amount ?? 0),
-  );
+
+  const money = (n: number) => formatPrice(n, prices.currency);
+  // One total for the trip: what's priced, and what's still missing.
+  const hotelTotal = wantHotel && hotelQuote?.forYourDates ? convertUsd(hotelQuote.total, prices.currency) * rooms : null;
+  const flightTotal = go === "flight" && !sameCity && flightQuote?.status === "ok" ? convertUsd(flightQuote.quote.perPerson, prices.currency) * travellers : null;
+  const ticketTotal = prices.cheapest ? prices.cheapest.amount! * travellers : 0;
+  const tripTotal = {
+    amount: Math.round((ticketTotal + (hotelTotal ?? 0) + (flightTotal ?? 0)) * 100) / 100,
+    parts: [travellers > 1 ? `${travellers} tickets` : "ticket", hotelTotal !== null ? "hotel" : "", flightTotal !== null ? "flight" : ""].filter(Boolean),
+    missing: [
+      wantHotel && hotelTotal === null ? "the hotel" : "",
+      go === "flight" && !sameCity && flightTotal === null ? (resolvedOrigin ? "the flight" : "your flight (pick your city)") : "",
+      go === "train" || go === "coach" || go === "drive" ? "getting there" : "",
+    ].filter(Boolean),
+    feesExtra: !!prices.cheapest && prices.cheapest.fees.included !== "yes",
+  };
 
   return (
     <>
@@ -306,26 +315,51 @@ export default async function EventPage({
           <div className="rounded-2xl bg-surface p-5 text-ink shadow-lg">
             {prices.cheapest ? (
               <>
-                <TripPeek
-                  money={(n) => formatPrice(n, prices.currency)}
-                  ticket={prices.cheapest.amount!}
-                  ticketSite={prices.cheapest.label}
-                  ticketUrl={prices.cheapest.url}
-                  ticketNoun={ticketNoun}
-                  sitesCompared={pricedSites}
-                  allSites={prices.offers.length}
-                  lowerBeforeFees={lowerBeforeFees}
-                  ticketFeesExtra={prices.cheapest.fees.included !== "yes"}
-                  travellers={travellers}
-                  nights={dates.nights}
-                  rooms={rooms}
-                  hotel={wantHotel ? (hotelQuote ? { ...hotelQuote, perNight: convertUsd(hotelQuote.perNight, prices.currency), total: convertUsd(hotelQuote.total, prices.currency) } : null) : undefined}
-                  go={go}
-                  origin={resolvedOrigin?.city ?? null}
-                  sameCity={sameCity}
-                  flight={flightQuote?.status === "ok" ? { perPerson: convertUsd(flightQuote.quote.perPerson, prices.currency) } : null}
-                  keep={{ travellers: String(travellers), nights: String(nights), go: query.go || query.flight === "0" ? go : "", hotel: query.hotel ?? "" }}
-                />
+                <p className="text-[14px] font-semibold text-ink-3">
+                  Your trip · {travellers} {travellers === 1 ? "person" : "people"}
+                </p>
+                <p className="mt-1 flex items-baseline gap-2">
+                  <span className="tabular font-display text-[42px] font-extrabold leading-none text-positive">{money(tripTotal.amount)}</span>
+                  <span className="text-[15px] font-semibold text-ink-2">{tripTotal.missing.length ? "so far" : "total"}</span>
+                </p>
+                <ul className="mt-4 space-y-2 text-[15px]">
+                  <li className="flex items-center gap-3">
+                    <TicketIcon />
+                    <span className="flex-1">Ticket on {prices.cheapest.label}</span>
+                    <span className="tabular font-bold">{money(ticketTotal)}</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <BedIcon />
+                    <span className="flex-1">Hotel</span>
+                    <span className="tabular font-bold">{!wantHotel ? "—" : hotelTotal !== null ? money(hotelTotal) : <a href="#trip" className="text-accent">Add</a>}</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <PlaneIcon />
+                    <span className="flex-1">{go === "flight" ? "Flight" : "Travel"}</span>
+                    <span className="tabular font-bold">
+                      {go === "none" || sameCity ? (
+                        "—"
+                      ) : flightTotal !== null ? (
+                        money(flightTotal)
+                      ) : nearby ? (
+                        <a href="#trip" className="text-ink-2">
+                          from {money(convertUsd(nearby.perPerson, prices.currency) * travellers)}
+                        </a>
+                      ) : (
+                        <a href="#trip" className="text-accent">Add</a>
+                      )}
+                    </span>
+                  </li>
+                </ul>
+                <a
+                  href="#trip"
+                  className="mt-5 flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white transition-colors hover:bg-accent-2"
+                >
+                  Book your trip ↓
+                </a>
+                <a href={prices.cheapest.url} target="_blank" rel="noopener noreferrer" className="mt-2 block text-center text-[13px] font-semibold text-ink-3 hover:text-accent">
+                  or just buy the ticket on {prices.cheapest.label} ↗
+                </a>
               </>
             ) : prices.offers.length > 0 ? (
               <>
@@ -360,293 +394,95 @@ export default async function EventPage({
       </section>
 
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
-        {/* 1. The whole trip, first: it's what Spotlight is for. Plain links and a GET form, so it works without
-            JavaScript and every trip is a link you can send. */}
-        <section id="trip" className="mt-8 scroll-mt-32">
-          <h2 className="text-[24px] font-extrabold sm:text-[28px]">Build your trip</h2>
-          <p className="mt-1 text-ink-2">
-            Travelling to the {isRace ? "race" : isFootball ? "match" : "game"}? Add a hotel and a
-            flight for the same dates and we&apos;ll add it all up. Live nearby? Switch them off.
-          </p>
-
-          <div className="mt-5 rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-5">
-            <div className="grid gap-2 sm:grid-cols-3">
-              <NeedTile icon={<TicketIcon />} label={isRace ? "Race tickets" : isFootball ? "Match tickets" : "Game tickets"} on />
-              <NeedTile
-                icon={<PlaneIcon />}
-                label="Travel"
-                on={wantTravel}
-                href={tripHref({ go: wantTravel ? "none" : "" })}
-              />
-              <NeedTile
-                icon={<BedIcon />}
-                label="Hotel"
-                on={wantHotel}
-                href={tripHref({ hotel: wantHotel ? "0" : "1" })}
-              />
-            </div>
-
-            <form method="get" action="#trip" className="mt-3 flex flex-col gap-2 rounded-xl bg-surface-2 p-2 sm:flex-row">
-              {(query.go || query.flight === "0") && <input type="hidden" name="go" value={go} />}
-              {query.hotel && <input type="hidden" name="hotel" value={query.hotel} />}
-              {wantTravel && (
-                <Field label="Travelling from" className="sm:flex-[2]">
-                  <CityInput
-                    name="origin"
-                    defaultValue={origin}
-                    placeholder="Pick your city"
-                    submitOnPick
-                    inputClassName="w-full bg-transparent text-[16px] font-medium text-ink placeholder:font-normal placeholder:text-ink-3 outline-none"
-                  />
-                </Field>
-              )}
-              <Field label="Tickets" className="sm:flex-1">
-                <select
-                  name="travellers"
-                  defaultValue={travellers}
-                  className="w-full bg-transparent text-[16px] font-medium text-ink outline-none"
-                >
-                  {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      {n} {n === 1 ? "ticket" : "tickets"} · {people(n)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              {(wantTravel || wantHotel) && (
-                <Field label={wantHotel ? "Hotel" : "Time away"} className="sm:flex-1">
-                  <select
-                    name="nights"
-                    defaultValue={nights}
-                    className="w-full bg-transparent text-[16px] font-medium text-ink outline-none"
-                  >
-                    {Array.from({ length: 7 }, (_, i) => i + 1).map((n) => (
-                      <option key={n} value={n}>
-                        {nightsLabel(n)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              )}
-              <button
-                type="submit"
-                className="rounded-xl bg-accent px-6 py-3.5 text-[16px] font-bold text-white transition-colors hover:bg-accent-2"
-              >
-                Update total
-              </button>
-            </form>
-
-            {wantTravel && (
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-[14px]">
-                <span className="text-ink-3">Travelling from:</span>
-                {POPULAR_ORIGINS.map((city) => (
-                  <Link
-                    key={city}
-                    href={`${tripHref({ origin: city })}#trip`}
-                    scroll={false}
-                    className={`rounded-full border px-3 py-1 font-semibold transition-colors ${
-                      resolvedOrigin?.city === city
-                        ? "border-accent bg-accent text-white"
-                        : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
-                    }`}
-                  >
-                    {city}
-                  </Link>
-                ))}
-              </div>
-            )}
-
-            {wantTravel && (available.length > 1 || !resolvedOrigin) && (
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-[14px]">
-                <span className="text-ink-3">Getting there by:</span>
-                {available.map((mode) => (
-                  <Link
-                    key={mode}
-                    href={`${tripHref({ go: mode })}#trip`}
-                    scroll={false}
-                    className={`rounded-full border px-3.5 py-1 font-semibold transition-colors ${
-                      go === mode
-                        ? "border-ink bg-ink text-white"
-                        : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent"
-                    }`}
-                  >
-                    {MODE_LABEL[mode]}
-                  </Link>
-                ))}
-                {!resolvedOrigin && (
-                  <span className="text-ink-3">
-                    {venue.country === "GB"
-                      ? "Train, coach and driving appear once you pick a UK city."
-                      : "Driving appears once you pick where you're travelling from."}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {wantTravel && originUnresolved && (
-              <p className="mt-3 text-[15px] font-semibold text-hot">
-                We couldn&apos;t find &ldquo;{origin}&rdquo;. Try a big city nearby, like New York,
-                London or Paris.
-              </p>
-            )}
-          </div>
-
-          <div className="mt-4">
-            <TripTotal
-              currency={prices.currency}
-              ticketPrice={prices.cheapest?.amount ?? null}
-              ticketSite={prices.cheapest?.label ?? null}
-              ticketUrl={prices.cheapest?.url ?? null}
-              ticketFeesExtra={!!prices.cheapest && prices.cheapest.fees.included !== "yes"}
-              ticketNoun={isRace ? "Race ticket" : isFootball ? "Match ticket" : "Game ticket"}
-              travellers={travellers}
-              nights={dates.nights}
-              rooms={rooms}
-              venueName={venue.name}
-              travelMode={go}
-              includeHotel={wantHotel}
-              flight={
-                flightQuote?.status === "ok"
-                  ? { ...flightQuote, quote: { ...flightQuote.quote, perPerson: convertUsd(flightQuote.quote.perPerson, prices.currency) } }
-                  : flightQuote
-              }
-              hotel={hotelQuote && { ...hotelQuote, perNight: convertUsd(hotelQuote.perNight, prices.currency), total: convertUsd(hotelQuote.total, prices.currency) }}
-              flightLinks={flights}
-              groundLinks={groundLinks}
-              hotelLinks={hotels}
-              needsOrigin={!resolvedOrigin}
-              noFlightNeeded={sameCity}
-              icons={{ ticket: <TicketIcon />, flight: <PlaneIcon />, hotel: <BedIcon /> }}
-              hotelChoices={
-                hotelQuote?.forYourDates
-                  ? hotelQuote.options.map((h, i) => ({
-                      tags: h.tags,
-                      title: h.name,
-                      facts: [
-                        h.score ? `${h.score}/10${h.reviews ? ` · ${h.reviews.toLocaleString("en-US")} reviews` : ""}` : "No guest score yet",
-                        h.distance ? `${h.distance} away` : "",
-                      ].filter(Boolean),
-                      price: convertUsd(h.total, prices.currency),
-                      priceNote: `${dates.nights} ${dates.nights === 1 ? "night" : "nights"}${rooms > 1 ? ", per room" : ""}`,
-                      freeCancellation: h.freeCancellation,
-                      selected: i === hotelQuote.pick,
-                      chooseHref: `${tripHref({ stay: String(i) })}#trip`,
-                      bookUrl: h.url,
-                      bookLabel: "Booking.com",
-                    }))
-                  : []
-              }
-              flightChoices={flightOptions.map((f, i) => ({
-                tags: [i === 0 ? "cheapest" : f.stopsLabel === "Nonstop" ? "nonstop" : "other-airline"],
-                title: f.airline,
-                facts: [f.stopsLabel, f.route ?? ""].filter(Boolean),
-                price: convertUsd(f.perPerson, prices.currency),
-                priceNote: "per person, round trip",
-                selected: i === flyPick,
-                chooseHref: `${tripHref({ fly: String(i) })}#trip`,
-                bookUrl: f.url,
-                bookLabel: "See fare",
-              }))}
-            />
-            <BookingSteps
-              eventId={event.id}
-              steps={[
-                {
-                  key: "tickets",
-                  title: travellers === 1 ? "Your ticket" : `Your ${travellers} tickets`,
-                  why: "First: without seats there's no trip.",
-                  href: prices.cheapest?.url ?? "#tickets",
-                  cta: prices.cheapest ? `${prices.cheapest.label}` : "See sites",
-                },
-                ...(wantHotel
-                  ? [
-                      {
-                        key: "hotel",
-                        title: "A hotel with free cancellation",
-                        why:
-                          event.leagueId === "premier-league"
-                            ? "Premier League dates and kick-off times can move for TV: a refundable room costs nothing if they do."
-                            : "If plans change, you can cancel without paying.",
-                        href: hotelQuote?.url ?? hotels[0]?.url ?? null,
-                        cta: hotelQuote?.site ?? hotels[0]?.site ?? "Hotels",
-                      },
-                    ]
-                  : []),
-                ...(go === "flight" && !sameCity
-                  ? [
-                      {
-                        key: "flight",
-                        title: "Your flight",
-                        why: resolvedOrigin ? "Last, once the seats and a room are secured." : "Add where you're flying from above to see fares.",
-                        href: resolvedOrigin ? (flightQuote?.status === "ok" ? flightQuote.quote.url : flights[0]?.url ?? null) : "#trip",
-                        cta: resolvedOrigin ? (flightQuote?.status === "ok" ? "See fare" : flights[0]?.site ?? "Flights") : "Add city",
-                      },
-                    ]
-                  : []),
-                ...(groundLinks[0] && (go === "train" || go === "coach" || go === "drive")
-                  ? [{ key: "travel", title: "Getting there", why: "Last, once the seats and a room are secured.", href: groundLinks[0].url, cta: groundLinks[0].site }]
-                  : []),
-              ]}
-            />
-          </div>
-        </section>
-
-        {/* 2. Every ticket site's price, cheapest first. */}
-        <section id="tickets" className="mt-14 min-w-0 scroll-mt-32">
-          <h2 className="text-[24px] font-extrabold sm:text-[28px]">
-            Ticket prices, site by site
-          </h2>
-          <p className="mt-1 max-w-3xl text-ink-2">
-            {isRace
-              ? "The lowest price for one ticket on each site we check, cheapest first. Switch between full-weekend passes and race-day tickets."
-              : isFootball
-                ? "The lowest price for one ticket on each site we check, cheapest first. Prices that already include fees come first."
-                : "The lowest price for one ticket on each site we check, fees included, cheapest first. Parking, tailgate passes and add-ons are left out. The cheapest ticket may be standing room where the venue sells it."}
-          </p>
-          <div className="mt-5">
-            {priceGroups.some((g) => g.comparison.offers.length > 0) ? (
-              <>
+        <TripSteps
+          money={money}
+          hidden={{ go: query.go || query.flight === "0" ? go : "", hotel: query.hotel ?? "", stay: query.stay ?? "", fly: query.fly ?? "" }}
+          origin={origin}
+          originUnresolved={originUnresolved}
+          travellers={travellers}
+          nights={nights}
+          modes={resolvedOrigin && !sameCity ? available : []}
+          go={go}
+          sameCity={sameCity}
+          ticket={
+            prices.cheapest
+              ? {
+                  price: prices.cheapest.amount!,
+                  site: prices.cheapest.label,
+                  url: prices.cheapest.url,
+                  feesExtra: prices.cheapest.fees.included !== "yes",
+                  sites: pricedSites,
+                  noun: ticketNoun,
+                }
+              : null
+          }
+          compare={
+            <>
+              {priceGroups.some((g) => g.comparison.offers.length > 0) ? (
                 <PriceCompare groups={priceGroups} />
-              </>
-            ) : (
-              <p className="rounded-2xl border border-dashed border-line-bright bg-surface px-5 py-6 text-ink-2">
-                No ticket site we compare lists this {isRace ? "race" : isFootball ? "match" : "game"} yet. We check
-                again as sites add it.
-              </p>
-            )}
-          </div>
-
-          {sellers.length > 0 && (
-            <details className="group mt-4 rounded-2xl border border-line bg-surface">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[15px] font-semibold">
-                Official club ticket offices
-                <span className="text-[13px] font-normal text-ink-3 group-open:hidden">
-                  Face value, usually members first ▾
-                </span>
-              </summary>
-              <div className="space-y-1 border-t border-line p-3">
-                {sellers.map((seller) => (
-                  <a
-                    key={seller.url}
-                    href={seller.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group/row flex items-center gap-4 rounded-xl px-3 py-2.5 transition-colors hover:bg-surface-2"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-semibold group-hover/row:text-accent">
-                        {seller.label}
-                      </span>
-                      <span className="block text-[13px] text-ink-3">{seller.note}</span>
-                    </span>
-                    <span className="shrink-0 text-[14px] font-semibold text-accent">Visit ↗</span>
-                  </a>
-                ))}
-              </div>
-            </details>
-          )}
-        </section>
-
+              ) : (
+                <p className="rounded-2xl border border-dashed border-line-bright bg-surface px-5 py-6 text-ink-2">
+                  No ticket site we compare lists this {isRace ? "race" : isFootball ? "match" : "game"} yet.
+                </p>
+              )}
+              {sellers.length > 0 && (
+                <div className="mt-3 rounded-2xl border border-line bg-surface p-3">
+                  <p className="px-3 pt-1 text-[14px] font-semibold">Official club ticket offices (face value, usually members first)</p>
+                  {sellers.map((seller) => (
+                    <a key={seller.url} href={seller.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 rounded-xl px-3 py-2.5 hover:bg-surface-2">
+                      <span className="min-w-0 flex-1 text-[15px] font-semibold">{seller.label}</span>
+                      <span className="shrink-0 text-[14px] font-semibold text-accent">Visit ↗</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </>
+          }
+          hotel={{
+            wanted: wantHotel,
+            choices: hotelQuote?.forYourDates
+              ? hotelQuote.options.map((h, i) => ({
+                  tags: hotelQuote.options.length > 1 ? h.tags : [],
+                  title: h.name,
+                  facts: [
+                    h.score ? `${h.score}/10${h.reviews ? ` · ${h.reviews.toLocaleString("en-US")} reviews` : ""}` : "",
+                    h.distance ? `${h.distance} from the stadium` : "",
+                  ].filter(Boolean),
+                  price: convertUsd(h.total, prices.currency) * rooms,
+                  priceNote: `${dates.nights} ${dates.nights === 1 ? "night" : "nights"}${rooms > 1 ? `, ${rooms} rooms` : ""}`,
+                  freeCancellation: h.freeCancellation,
+                  selected: i === hotelQuote.pick,
+                  chooseHref: `${tripHref({ stay: String(i) })}#trip`,
+                  bookUrl: h.url,
+                  bookLabel: "Book",
+                }))
+              : [],
+            links: hotels,
+            toggleHref: `${tripHref({ hotel: wantHotel ? "0" : "1" })}#trip`,
+            note: event.leagueId === "premier-league" ? "Tip: Premier League kick-off times can move for TV, so pick a rate with free cancellation." : undefined,
+          }}
+          travel={{
+            choices:
+              go === "flight"
+                ? flightOptions.map((f, i) => ({
+                    tags: flightOptions.length > 1 ? [i === 0 ? "cheapest" : f.stopsLabel === "Nonstop" ? "nonstop" : "other-airline"] : [],
+                    title: f.airline,
+                    facts: [f.stopsLabel, f.route ?? ""].filter(Boolean),
+                    price: convertUsd(f.perPerson, prices.currency),
+                    priceNote: "per person, round trip",
+                    selected: i === flyPick,
+                    chooseHref: `${tripHref({ fly: String(i) })}#trip`,
+                    bookUrl: f.url,
+                    bookLabel: "Book",
+                  }))
+                : [],
+            links: go === "flight" ? flights : groundLinks,
+            toggleHref: `${tripHref({ go: go === "none" ? (available.includes("flight") ? "flight" : "") : "none" })}#trip`,
+            needsOrigin: go !== "none" && !resolvedOrigin,
+            nearby: nearby && { ...nearby, perPerson: convertUsd(nearby.perPerson, prices.currency) },
+          }}
+          total={tripTotal}
+        />
       </div>
 
       {/* Phones: the cheapest ticket stays one tap away while scrolling. */}
@@ -681,254 +517,10 @@ export default async function EventPage({
 
 type TravelMode = "flight" | "train" | "coach" | "drive";
 
-const MODE_LABEL: Record<TravelMode, string> = {
-  flight: "✈ Flight",
-  train: "🚆 Train",
-  coach: "🚌 Coach",
-  drive: "🚗 Drive",
-};
-
-const POPULAR_ORIGINS = ["New York", "Los Angeles", "Chicago", "Toronto", "London", "Manchester"];
 
 
-/** One thing the trip can include. Tapping it switches it on or off. */
-function NeedTile({
-  icon,
-  label,
-  on,
-  href,
-}: {
-  icon: ReactNode;
-  label: string;
-  on: boolean;
-  /** Missing for tickets, which are always included. */
-  href?: string;
-}) {
-  const body = (
-    <>
-      <span
-        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
-          on ? "bg-accent text-white" : "bg-surface-2 text-ink-3"
-        }`}
-      >
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className={`block text-[15px] font-semibold ${on ? "text-ink" : "text-ink-3"}`}>{label}</span>
-        <span className="block text-[13px] text-ink-3">
-          {!href ? "Always included" : on ? "Included · tap to remove" : "Not needed · tap to add"}
-        </span>
-      </span>
-      <span
-        aria-hidden
-        className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[13px] font-bold ${
-          on ? "bg-accent text-white" : "border-2 border-line"
-        }`}
-      >
-        {on ? "✓" : ""}
-      </span>
-    </>
-  );
-  const cls = `flex items-center gap-3 rounded-xl border-2 px-3 py-3 transition-colors ${
-    on ? "border-accent bg-accent/5" : "border-dashed border-line bg-surface hover:border-accent"
-  }`;
-  return href ? (
-    <Link href={href} scroll={false} className={cls} aria-pressed={on}>
-      {body}
-    </Link>
-  ) : (
-    <div className={cls}>{body}</div>
-  );
-}
 
-/**
- * The trip at a glance, under the ticket price: the hotel and the flight with
- * their prices, and the whole-trip total once every part is priced. Each row
- * jumps to the full trip planner below; a city can be typed right here.
- */
-function TripPeek({
-  money,
-  ticket,
-  ticketSite,
-  ticketUrl,
-  ticketNoun,
-  sitesCompared,
-  allSites,
-  lowerBeforeFees,
-  ticketFeesExtra,
-  travellers,
-  nights,
-  rooms,
-  hotel,
-  go,
-  origin,
-  sameCity,
-  flight,
-  keep,
-}: {
-  money: (n: number) => string;
-  ticket: number;
-  ticketSite: string;
-  ticketUrl: string;
-  ticketNoun: string;
-  sitesCompared: number;
-  allSites: number;
-  lowerBeforeFees: boolean;
-  ticketFeesExtra: boolean;
-  travellers: number;
-  nights: number;
-  rooms: number;
-  /** undefined: hotel switched off; null: no saved price. */
-  hotel: { perNight: number; total: number; forYourDates?: boolean } | null | undefined;
-  go: TravelMode | "none";
-  origin: string | null;
-  sameCity: boolean;
-  /** A fare for the visitor's exact dates and airports, or null. */
-  flight: { perPerson: number } | null;
-  /** The other trip settings, kept when a city is typed here. */
-  keep: Record<string, string>;
-}) {
-  const hotelPriced = hotel?.forYourDates ? hotel : null;
-  const flightNeeded = go === "flight" && !sameCity;
-  const flightPriced = flightNeeded && origin ? flight : null;
-  const tickets = ticket * travellers;
-  const hotelTotal = hotelPriced ? hotelPriced.total * rooms : null;
-  const flightTotal = flightPriced ? flightPriced.perPerson * travellers : null;
-  const round = (n: number) => Math.round(n * 100) / 100;
-  // What's priced so far, and what isn't yet.
-  const sum = round(tickets + (hotelTotal ?? 0) + (flightTotal ?? 0));
-  const missing = [
-    hotel !== undefined && hotelTotal === null ? "the hotel" : null,
-    flightNeeded && flightTotal === null ? (origin ? "the flight" : "your flight (add your city)") : null,
-    go === "train" || go === "coach" || go === "drive" ? "getting there" : null,
-  ].filter(Boolean) as string[];
-  const parts = ["ticket" + (travellers > 1 ? "s" : ""), hotelTotal !== null && "hotel", flightTotal !== null && "flight"].filter(Boolean).join(" + ");
 
-  const row = "flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2";
-  const icon = "grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2";
-  return (
-    <div>
-      <p className="text-[14px] font-semibold text-ink-3">
-        Your whole trip ·{" "}
-        {hotel !== undefined || go !== "none" ? `${nights} ${nights === 1 ? "night" : "nights"}, ` : ""}
-        {travellers} {travellers === 1 ? "person" : "people"}
-      </p>
-      <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
-        <span className="tabular font-display text-[40px] font-extrabold leading-none text-positive">{money(sum)}</span>
-        <span className="text-[15px] font-semibold text-ink-2">{missing.length ? "so far" : "total"}</span>
-        {ticketFeesExtra && <span className="text-[13px] font-semibold text-hot">+ any ticket fees</span>}
-      </p>
-      <p className="mt-1 text-[13px] text-ink-3">
-        {parts}
-        {missing.length > 0 && <> · still to add: {missing.join(", ")}</>}
-      </p>
-
-      <div className="mt-3 border-t border-line pt-2">
-        <a href={ticketUrl} target="_blank" rel="noopener noreferrer" className={row}>
-          <span className={icon}>
-            <TicketIcon />
-          </span>
-          <span className="min-w-0 flex-1 text-[14px] font-semibold">
-            {travellers > 1 ? `${travellers} tickets` : ticketNoun.charAt(0).toUpperCase() + ticketNoun.slice(1)} on {ticketSite}
-            <span className="block text-[12px] font-normal text-ink-3">
-              Cheapest{sitesCompared > 1 ? ` of ${sitesCompared} sites` : ""}
-              {lowerBeforeFees ? ", fees included" : ""}
-            </span>
-          </span>
-          <span className="tabular shrink-0 text-[14px] font-bold">{money(tickets)}</span>
-        </a>
-
-        {hotel !== undefined && (
-          <a href="#trip" className={row}>
-            <span className={icon}>
-              <BedIcon />
-            </span>
-            <span className="min-w-0 flex-1 text-[14px] font-semibold">
-              Hotel near the venue
-              {hotelPriced && (
-                <span className="block text-[12px] font-normal text-ink-3">
-                  {nights} {nights === 1 ? "night" : "nights"} · {money(hotelPriced.perNight)}/night{rooms > 1 ? ` · ${rooms} rooms` : ""}
-                </span>
-              )}
-            </span>
-            <span className="shrink-0 text-right text-[14px]">
-              {hotelTotal !== null ? <span className="tabular font-bold">{money(hotelTotal)}</span> : <span className="font-semibold text-accent">See prices</span>}
-            </span>
-          </a>
-        )}
-
-        {go !== "none" &&
-          (go === "flight" && !origin && !sameCity ? (
-            <form method="get" className="flex items-center gap-2 rounded-xl px-2 py-2">
-              <span className={icon}>
-                <PlaneIcon />
-              </span>
-              {Object.entries(keep)
-                .filter(([, v]) => v)
-                .map(([k, v]) => (
-                  <input key={k} type="hidden" name={k} value={v} />
-                ))}
-              <CityInput
-                name="origin"
-                placeholder="Add your flight: pick your city"
-                ariaLabel="Flying from"
-                submitOnPick
-                className="min-w-0 flex-1"
-                inputClassName="w-full rounded-lg border-2 border-accent/40 bg-surface px-3 py-1.5 text-[14px] font-semibold outline-none placeholder:font-semibold placeholder:text-accent focus:border-accent"
-              />
-            </form>
-          ) : (
-            <a href="#trip" className={row}>
-              <span className={icon}>
-                <PlaneIcon />
-              </span>
-              <span className="min-w-0 flex-1 text-[14px] font-semibold">
-                {go === "flight" ? (sameCity ? "No flight needed" : `Flight from ${origin}`) : MODE_LABEL[go].replace(/^\S+\s/, "") + (origin ? ` from ${origin}` : "")}
-                {flightPriced && <span className="block text-[12px] font-normal text-ink-3">Round trip{travellers > 1 ? ` · ${money(flightPriced.perPerson)} each` : ""}</span>}
-              </span>
-              <span className="shrink-0 text-right text-[14px]">
-                {go !== "flight" ? (
-                  <span className="font-semibold text-accent">{go === "drive" ? "Directions" : "See fares"}</span>
-                ) : sameCity ? (
-                  <span className="font-semibold text-ink-3">{money(0)}</span>
-                ) : flightTotal !== null ? (
-                  <span className="tabular font-bold">{money(flightTotal)}</span>
-                ) : (
-                  <span className="font-semibold text-accent">See fares</span>
-                )}
-              </span>
-            </a>
-          ))}
-      </div>
-
-      <a
-        href={ticketUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white transition-colors hover:bg-accent-2"
-      >
-        Buy the {ticketNoun.toLowerCase()} on {ticketSite} ↗
-      </a>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <a href="#tickets" className="flex items-center justify-center rounded-xl border border-line px-3 py-2.5 text-[14px] font-semibold text-ink transition-colors hover:border-accent hover:text-accent">
-          All {allSites} ticket sites ↓
-        </a>
-        <a href="#trip" className="flex items-center justify-center rounded-xl border border-line px-3 py-2.5 text-[14px] font-semibold text-ink transition-colors hover:border-accent hover:text-accent">
-          Trip details ↓
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, className = "", children }: { label: string; className?: string; children: ReactNode }) {
-  return (
-    <label className={`block rounded-xl bg-surface px-4 py-2 ${className}`}>
-      <span className="block text-[12px] font-semibold text-ink-3">{label}</span>
-      {children}
-    </label>
-  );
-}
 
 const ICON_STROKE = {
   fill: "none" as const,

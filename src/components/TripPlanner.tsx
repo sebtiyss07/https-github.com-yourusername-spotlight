@@ -13,6 +13,20 @@ interface Pick {
 
 const BUDGETS = [0, 200, 300, 500, 800, 1200];
 
+/** Shown as soon as the "who" box is opened, before typing anything. */
+const QUICK: Pick[] = [
+  { kind: "league", id: "nfl", title: "NFL", subtitle: "Every game" },
+  { kind: "league", id: "nba", title: "NBA", subtitle: "Every game" },
+  { kind: "league", id: "premier-league", title: "Premier League", subtitle: "Every match" },
+  { kind: "league", id: "champions-league", title: "Champions League", subtitle: "Every match" },
+  { kind: "league", id: "mls", title: "MLS", subtitle: "Every game" },
+  { kind: "league", id: "formula-1", title: "Formula 1", subtitle: "Every race weekend" },
+  { kind: "team", id: "nba-lal", title: "Los Angeles Lakers", subtitle: "Popular team" },
+  { kind: "team", id: "nfl-kc", title: "Kansas City Chiefs", subtitle: "Popular team" },
+  { kind: "team", id: "arsenal", title: "Arsenal", subtitle: "Popular team" },
+  { kind: "team", id: "nba-ny", title: "New York Knicks", subtitle: "Popular team" },
+];
+
 /**
  * The home page's main tool: who you want to see, where you're coming from
  * and a budget, then every whole trip (ticket + hotel + flight) priced on
@@ -22,7 +36,7 @@ export function TripPlanner({ currencySymbol }: { currencySymbol: string }) {
   const router = useRouter();
   const [who, setWho] = useState("");
   const [pick, setPick] = useState<Pick | null>(null);
-  const [items, setItems] = useState<Pick[]>([]);
+  const [items, setItems] = useState<Pick[]>(QUICK);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [from, setFrom] = useState("");
@@ -38,7 +52,9 @@ export function TripPlanner({ currencySymbol }: { currencySymbol: string }) {
 
   useEffect(() => {
     const q = who.trim();
-    if (q.length < 2 || (pick && pick.title === who)) return setItems([]);
+    // Nothing typed yet: the quick list. A pick already made: no list.
+    if (pick && pick.title === who) return setItems([]);
+    if (q.length < 2) return setItems(QUICK);
     const t = setTimeout(() => {
       fetch(`/api/suggest?only=places&q=${encodeURIComponent(q)}`)
         .then((r) => r.json())
@@ -83,6 +99,7 @@ export function TripPlanner({ currencySymbol }: { currencySymbol: string }) {
                 setActive(-1);
               }}
               onFocus={() => setOpen(true)}
+              onClick={() => setOpen(true)}
               onKeyDown={(e) => {
                 if (!open || !items.length) return;
                 if (e.key === "ArrowDown") {
@@ -96,7 +113,7 @@ export function TripPlanner({ currencySymbol }: { currencySymbol: string }) {
                   choose(items[active]);
                 } else if (e.key === "Escape") setOpen(false);
               }}
-              placeholder="A team or league, e.g. Lakers"
+              placeholder="Pick a team or league ▾"
               autoComplete="off"
               role="combobox"
               aria-expanded={open && items.length > 0}
@@ -133,7 +150,7 @@ export function TripPlanner({ currencySymbol }: { currencySymbol: string }) {
           <CityInput
             name="from"
             onValueChange={setFrom}
-            placeholder="Your city"
+            placeholder="Pick your city ▾"
             ariaLabel="Travelling from"
             inputClassName={input}
           />

@@ -250,6 +250,63 @@ export async function cheapestHotelNear(stay: {
   };
 }
 
+/** A real fare found for dates close to the visitor's, labelled with its own dates. */
+export interface NearbyFare {
+  perPerson: number;
+  departOn: string;
+  returnOn: string;
+  airline: string;
+  stopsLabel: string;
+  url: string;
+}
+
+/**
+ * When no fare is known for the exact dates: the cheapest round trip on the
+ * same route that travellers found for dates within 3 days of the visitor's
+ * (and a stay within a day of the same length), from the Travelpayouts feed.
+ * Shown with its own dates and never added to the trip total.
+ */
+export async function nearbyFlight(trip: { from: string; to: string; departOn: string; returnOn: string; gameDay: string }): Promise<NearbyFare | null> {
+  const token = process.env.TRAVELPAYOUTS_TOKEN;
+  if (!token) return null;
+  type Fare = { price: number; airline: string; transfers: number; link: string; departure_at: string; return_at: string };
+  const params = new URLSearchParams({
+    origin: trip.from,
+    destination: trip.to,
+    departure_at: trip.departOn.slice(0, 7),
+    return_at: trip.returnOn.slice(0, 7),
+    currency: "usd",
+    sorting: "price",
+    one_way: "false",
+    limit: "200",
+    token,
+  });
+  const r = await getJson<{ data?: Fare[] }>(`https://api.travelpayouts.com/aviasales/v3/prices_for_dates?${params}`);
+  const day = (d: string) => Date.parse(`${d.slice(0, 10)}T00:00:00Z`) / 86_400_000;
+  const wantLength = day(trip.returnOn) - day(trip.departOn);
+  const f = (r?.data ?? [])
+    // Close to the visitor's dates, and it must get them there for the game:
+    // out the day before or earlier (no arrival times here, and a same-day
+    // flight can land after kick-off), back after it.
+    .filter(
+      (x) =>
+        Math.abs(day(x.departure_at) - day(trip.departOn)) <= 3 &&
+        Math.abs(day(x.return_at) - day(x.departure_at) - wantLength) <= 1 &&
+        day(x.departure_at) < day(trip.gameDay) &&
+        day(x.return_at) > day(trip.gameDay),
+    )
+    .sort((a, b) => a.price - b.price)[0];
+  if (!f) return null;
+  return {
+    perPerson: f.price,
+    departOn: f.departure_at.slice(0, 10),
+    returnOn: f.return_at.slice(0, 10),
+    airline: AIRLINES[f.airline] ?? f.airline,
+    stopsLabel: stopsLabel(f.transfers),
+    url: `https://www.aviasales.com${f.link}`,
+  };
+}
+
 /**
  * The cheapest round-trip fare for the visitor's exact dates and airports,
  * never another day or another airport. In order:
@@ -465,6 +522,7 @@ const duffelFare = unstable_cache(
 
 /** Airline names for the two-letter codes Aviasales returns ("F9" → Frontier). */
 const AIRLINES: Record<string, string> = {
+  Z0: "Norse Atlantic Airways",
   AA: "American Airlines", DL: "Delta", UA: "United", WN: "Southwest", B6: "JetBlue",
   AS: "Alaska Airlines", F9: "Frontier", NK: "Spirit", G4: "Allegiant", SY: "Sun Country",
   MX: "Breeze Airways", HA: "Hawaiian Airlines", AC: "Air Canada", WS: "WestJet", PD: "Porter",
