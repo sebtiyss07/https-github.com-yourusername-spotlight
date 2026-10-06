@@ -75,14 +75,15 @@ export default async function TripsPage({
   const lookedUp = !origin
     ? groundTrips
     : [...await Promise.all(
-        groundTrips.slice(0, FLIGHT_CANDIDATES).map(async (t) => {
+        groundTrips.slice(0, FLIGHT_CANDIDATES).map(async (t, i) => {
           const dest = AIRPORTS_BY_IATA.get(t.c.venue!.nearestAirport);
           if (!dest) return t;
           const fromCode = flightSearchCode(origin);
           const toCode = flightSearchCode(dest);
           if (fromCode === toCode) return { ...t, flight: { price: 0, label: "no flight needed" } };
           const trip = { from: fromCode, to: toCode, departOn: t.hotel.checkIn, returnOn: t.hotel.checkOut, adults: 1 };
-          const fare = await cheapestFlight({ ...trip, bookUrl: flightLinks(trip)[0]?.url ?? "https://www.expedia.com/Flights" });
+          // Live Google Flights fares for the cheapest few only, to stay within the search plan.
+          const fare = await cheapestFlight({ ...trip, bookUrl: flightLinks(trip)[0]?.url ?? "https://www.expedia.com/Flights", live: i < 5 });
           if (fare.status !== "ok") return t;
           const price = convertUsd(fare.quote.perPerson, currency);
           return { ...t, flight: { price, label: `${fromCode} → ${toCode}, ${fare.quote.airline}` }, total: Math.round((t.total + price) * 100) / 100 };

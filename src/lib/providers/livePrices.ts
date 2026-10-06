@@ -324,9 +324,10 @@ export async function nearbyFlight(trip: { from: string; to: string; departOn: s
  *
  * 1. Duffel (when DUFFEL_ACCESS_TOKEN is set): live airline fares, priced
  *    the moment we ask. Cached for 3 hours per route, dates and group size.
- * 2. Travelpayouts (TRAVELPAYOUTS_TOKEN): the cheapest fare travellers found
+ * 2. Google Flights via SerpApi (SERPAPI_KEY): live fares for these dates.
+ * 3. Travelpayouts (TRAVELPAYOUTS_TOKEN): the cheapest fare travellers found
  *    for these exact dates in the last few days.
- * 3. Fares read from Expedia's own results (flight-prices.json).
+ * 4. Fares read from Expedia's own results (flight-prices.json).
  *
  * Nothing found means no price: the page links to live fares for the dates.
  */
@@ -338,6 +339,8 @@ export async function cheapestFlight(trip: {
   adults: number;
   /** Where "see this fare" goes for a live airline fare (a search for the same dates). */
   bookUrl: string;
+  /** false skips the live Google Flights search (lists that price many trips at once). */
+  live?: boolean;
 }): Promise<FlightResult> {
   const result = await findFlight(trip);
   // Say which airports the fare is between (a city code like NYC means any of its airports).
@@ -350,9 +353,9 @@ async function findFlight(trip: Parameters<typeof cheapestFlight>[0]): Promise<F
   const live = await duffelFare(trip);
   if (live) return { status: "ok", quote: live };
 
-  // Amadeus (live fares, any route, these exact dates).
-  const amadeus = await amadeusFares(trip);
-  if (amadeus?.length) return { status: "ok", quote: amadeus[0], options: amadeus };
+  // Google Flights (live fares, any route, these exact dates).
+  const google = trip.live === false ? null : await googleFlightsFares({ from: trip.from, to: trip.to, departOn: trip.departOn, returnOn: trip.returnOn });
+  if (google?.length) return { status: "ok", quote: google[0], options: google };
 
   const token = process.env.TRAVELPAYOUTS_TOKEN;
   if (token) {
@@ -382,7 +385,7 @@ async function findFlight(trip: Parameters<typeof cheapestFlight>[0]): Promise<F
 
   const saved = expediaFareFor(trip);
   if (saved) return { status: "ok", quote: saved };
-  return { status: token || process.env.DUFFEL_ACCESS_TOKEN ? "none" : "no-key" };
+  return { status: token || process.env.DUFFEL_ACCESS_TOKEN || process.env.SERPAPI_KEY ? "none" : "no-key" };
 }
 
 const stopsLabel = (n: number) => (n === 0 ? "Nonstop" : `${n} stop${n > 1 ? "s" : ""}`);
@@ -396,76 +399,81 @@ interface DuffelOffer {
 
 /** Live airline fares from Duffel's offer search: the cheapest offer, in US dollars. */
 /**
- * Live round-trip fares from Amadeus Flight Offers Search for the exact dates
- * and airports (city codes like NYC cover every airport there). Production
- * only: Amadeus's test host serves sample data, not real prices. Returns up
- * to three choices (cheapest, cheapest nonstop, another airline), per person.
+ * Several airports in one city: Google Flights wants the airports themselves,
+ * not a city code like NYC. Anything else is already one airport.
  */
-const amadeusFares = unstable_cache(
-  async (trip: { from: string; to: string; departOn: string; returnOn: string; adults: number; bookUrl: string }): Promise<FlightQuote[] | null> => {
-    const id = process.env.AMADEUS_CLIENT_ID?.trim();
-    const secret = process.env.AMADEUS_CLIENT_SECRET?.trim();
-    if (!id || !secret || process.env.AMADEUS_ENV !== "production") return null;
-    const host = "https://api.amadeus.com";
+const CITY_AIRPORTS: Record<string, string> = {
+  LON: "LHR,LGW,STN,LTN,LCY,SEN",
+  NYC: "JFK,EWR,LGA",
+  CHI: "ORD,MDW",
+  WAS: "DCA,IAD,BWI",
+  PAR: "CDG,ORY",
+  MIL: "MXP,LIN,BGY",
+  ROM: "FCO,CIA",
+  TYO: "HND,NRT",
+  SAO: "GRU,CGH,VCP",
+  RIO: "GIG,SDU",
+  YMQ: "YUL",
+  YTO: "YYZ,YTZ",
+};
+
+/**
+ * Live round-trip fares from Google Flights (read through SerpApi, key in
+ * SERPAPI_KEY) for the visitor's exact dates. Google Flights compares the
+ * airlines and the big booking sites, so its lowest price is the market's.
+ * Searched for one traveller (the price is per person, so every group size
+ * shares one search) and cached 12 hours per route and dates to keep within
+ * the free plan. Up to three choices: cheapest, cheapest nonstop, another
+ * airline. The link is the same search on Google Flights.
+ */
+const googleFlightsFares = unstable_cache(
+  async (trip: { from: string; to: string; departOn: string; returnOn: string }): Promise<FlightQuote[] | null> => {
+    const key = process.env.SERPAPI_KEY?.trim();
+    if (!key) return null;
+    const q = new URLSearchParams({
+      engine: "google_flights",
+      departure_id: CITY_AIRPORTS[trip.from] ?? trip.from,
+      arrival_id: CITY_AIRPORTS[trip.to] ?? trip.to,
+      outbound_date: trip.departOn,
+      return_date: trip.returnOn,
+      type: "1",
+      adults: "1",
+      travel_class: "1",
+      currency: "USD",
+      hl: "en",
+      gl: "us",
+      api_key: key,
+    });
     try {
-      const auth = await fetch(`${host}/v1/security/oauth2/token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ grant_type: "client_credentials", client_id: id, client_secret: secret }),
-        cache: "no-store",
-        signal: AbortSignal.timeout(10000),
-      });
-      if (!auth.ok) return null;
-      const { access_token } = (await auth.json()) as { access_token?: string };
-      if (!access_token) return null;
-      const adults = Math.max(1, Math.min(9, trip.adults));
-      const q = new URLSearchParams({
-        originLocationCode: trip.from,
-        destinationLocationCode: trip.to,
-        departureDate: trip.departOn,
-        returnDate: trip.returnOn,
-        adults: String(adults),
-        currencyCode: "USD",
-        max: "30",
-      });
-      const res = await fetch(`${host}/v2/shopping/flight-offers?${q}`, {
-        headers: { Authorization: `Bearer ${access_token}` },
-        cache: "no-store",
-        signal: AbortSignal.timeout(20000),
-      });
+      const res = await fetch(`https://serpapi.com/search.json?${q}`, { cache: "no-store", signal: AbortSignal.timeout(25000) });
       if (!res.ok) return null;
-      type Offer = {
-        price?: { grandTotal?: string; currency?: string };
-        validatingAirlineCodes?: string[];
-        itineraries?: { segments?: unknown[] }[];
+      type Option = { price?: number; flights?: { airline?: string }[] };
+      const body = (await res.json()) as {
+        error?: string;
+        best_flights?: Option[];
+        other_flights?: Option[];
+        search_metadata?: { google_flights_url?: string };
+        search_parameters?: { currency?: string };
       };
-      const body = (await res.json()) as { data?: Offer[]; dictionaries?: { carriers?: Record<string, string> } };
-      const offers = (body.data ?? [])
+      if (body.error || body.search_parameters?.currency !== "USD") return null;
+      const url = body.search_metadata?.google_flights_url;
+      if (!url) return null;
+      const offers = [...(body.best_flights ?? []), ...(body.other_flights ?? [])]
         .map((o) => {
-          const total = Number(o.price?.grandTotal);
-          const code = o.validatingAirlineCodes?.[0] ?? "";
-          const legs = (o.itineraries ?? []).map((i) => (i.segments ?? []).length);
-          return {
-            perPerson: Math.round((total / adults) * 100) / 100,
-            code,
-            stops: legs.length ? Math.max(...legs) - 1 : 0,
-            ok: o.price?.currency === "USD" && total > 0 && legs.length === 2,
-          };
+          const legs = o.flights ?? [];
+          const airlines = [...new Set(legs.map((f) => f.airline).filter((a): a is string => !!a))];
+          return { price: Number(o.price), airline: airlines.slice(0, 2).join(" + "), stops: legs.length - 1 };
         })
-        .filter((o) => o.ok)
-        .sort((a, b) => a.perPerson - b.perPerson);
+        .filter((o) => o.price > 0 && o.airline && o.stops >= 0)
+        .sort((a, b) => a.price - b.price);
       if (!offers.length) return null;
-      const name = (code: string) => {
-        const raw = AIRLINES[code] ?? body.dictionaries?.carriers?.[code] ?? code;
-        return raw === raw.toUpperCase() ? raw.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : raw;
-      };
-      const picks = [offers[0], offers.find((o) => o.stops === 0), offers.find((o) => o.code !== offers[0].code)];
+      const picks = [offers[0], offers.find((o) => o.stops === 0), offers.find((o) => o.airline !== offers[0].airline)];
       return [...new Set(picks.filter((o): o is (typeof offers)[number] => !!o))].map((o) => ({
-        perPerson: o.perPerson,
-        airline: name(o.code),
+        perPerson: o.price,
+        airline: o.airline,
         stopsLabel: stopsLabel(o.stops),
-        url: trip.bookUrl,
-        source: "Live fare (Amadeus), checked within the last hour",
+        url,
+        source: "Google Flights, checked within the last 12 hours",
         departOn: trip.departOn,
         returnOn: trip.returnOn,
       }));
@@ -473,8 +481,8 @@ const amadeusFares = unstable_cache(
       return null;
     }
   },
-  ["amadeus-fares"],
-  { revalidate: 3600 },
+  ["google-flights-fares"],
+  { revalidate: 12 * 3600 },
 );
 
 const duffelFare = unstable_cache(

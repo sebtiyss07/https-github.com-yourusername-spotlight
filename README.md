@@ -129,7 +129,7 @@ rounded ones — those are what must reconcile.
 |---|---|---|---|
 | Ticketmaster Discovery | Free, self-serve | ✅ built | Returns **price ranges**, not seat-level listings |
 | SeatGeek | Free client ID | ✅ built | Lowest + average price and a live listing count |
-| Amadeus (flights) | Free self-serve sandbox | ✅ built | Sandbox is a cached subset of routes |
+| Google Flights via SerpApi (flights) | Free plan, 250 searches/month (`SERPAPI_KEY`) | ✅ built | Exact-date live fares; cached 12 h per route and dates. Amadeus Self-Service was shut down on 17 Jul 2026 |
 | StubHub / Vivid Seats | Partner approval | — | Not self-serve |
 | Duffel | Self-serve, paid | — | Better flight UX |
 | Booking.com / Expedia | Affiliate approval | — | Amadeus Hotel reuses `AMADEUS_*` |
