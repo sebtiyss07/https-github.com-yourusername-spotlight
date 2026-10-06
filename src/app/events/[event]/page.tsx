@@ -119,7 +119,11 @@ export default async function EventPage({
         : groundOk
           ? "train"
           : "flight";
-  const wantFlight = go === "flight";
+  // A trip that starts today (a game today or tomorrow night) can't be flown
+  // to: the flight would have to leave today, often already gone. No fare,
+  // no links, just say so.
+  const flightTooSoon = go === "flight" && dates.checkIn <= localDate(new Date().toISOString(), venue.timeZone);
+  const wantFlight = go === "flight" && !flightTooSoon;
   const wantHotel = query.hotel === "1" ? true : query.hotel === "0" ? false : !sameCity;
   /** A link to this page with some trip settings changed, keeping the rest. */
   const tripHref = (change: Partial<Record<keyof SearchParams, string>>) => {
@@ -149,7 +153,7 @@ export default async function EventPage({
   const originUnresolved = origin.length > 0 && resolvedOrigin === null;
 
   const flights =
-    resolvedOrigin && destination && !sameCity
+    resolvedOrigin && destination && !sameCity && !flightTooSoon
       ? flightLinks({
           from: flightSearchCode(resolvedOrigin),
           to: flightSearchCode(destination),
@@ -248,7 +252,7 @@ export default async function EventPage({
     ].filter(Boolean),
     missing: [
       wantHotel && hotelTotal === null ? "the hotel" : "",
-      go === "flight" && !sameCity && flightTotal === null && flightEstimate === null ? (resolvedOrigin ? "the flight" : "your flight (pick your city)") : "",
+      go === "flight" && !sameCity && !flightTooSoon && flightTotal === null && flightEstimate === null ? (resolvedOrigin ? "the flight" : "your flight (pick your city)") : "",
       go === "train" || go === "coach" || go === "drive" ? "getting there" : "",
     ].filter(Boolean),
     feesExtra: !!prices.cheapest && prices.cheapest.fees.included !== "yes",
@@ -503,6 +507,7 @@ export default async function EventPage({
             links: go === "flight" ? flights : groundLinks,
             toggleHref: `${tripHref({ go: go === "none" ? (available.includes("flight") ? "flight" : "") : "none" })}#trip`,
             needsOrigin: go !== "none" && !resolvedOrigin,
+            tooSoon: flightTooSoon && !!resolvedOrigin && !sameCity,
             nearby: nearby && {
               ...nearby,
               perPerson: convertUsd(nearby.perPerson, prices.currency),

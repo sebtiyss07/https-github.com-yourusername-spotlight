@@ -1,3 +1,4 @@
+import { localDate } from "@/lib/dates";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { convertUsd, getEventContexts, getTeam, getUpcomingEvents } from "@/lib/repositories";
@@ -81,6 +82,8 @@ export default async function TripsPage({
           const fromCode = flightSearchCode(origin);
           const toCode = flightSearchCode(dest);
           if (fromCode === toCode) return { ...t, flight: { price: 0, label: "no flight needed" } };
+          // Leaving today is too late to fly in: no fare for that trip.
+          if (t.hotel.checkIn <= localDate(new Date().toISOString(), t.c.venue!.timeZone)) return t;
           const trip = { from: fromCode, to: toCode, departOn: t.hotel.checkIn, returnOn: t.hotel.checkOut, adults: 1 };
           // Live Google Flights fares for the cheapest few only, to stay within the search plan.
           const fare = await cheapestFlight({ ...trip, bookUrl: flightLinks(trip)[0]?.url ?? "https://www.expedia.com/Flights", live: i < 5 });

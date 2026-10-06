@@ -89,6 +89,8 @@ export function TripSteps({
     links: TravelLinkLite[];
     toggleHref: string;
     needsOrigin: boolean;
+    /** The flight would have to leave today: too late to fly in. */
+    tooSoon?: boolean;
     /** No exact-date fare: the nearest real one, with its own dates (per person). */
     nearby?: {
       perPerson: number;
@@ -238,6 +240,8 @@ export function TripSteps({
                 Add travel
               </a>
             </p>
+          ) : travel.tooSoon ? (
+            <p className="text-[15px] text-ink-2">Too late to fly in: the flight would have to leave today.</p>
           ) : travel.needsOrigin ? (
             <p className="text-[15px] text-ink-2">
               <span className="font-semibold text-ink">Pick your city above</span> and we&apos;ll show the cheapest fare for these exact dates.
