@@ -267,24 +267,16 @@ export interface NearbyFare {
   airline: string;
   stopsLabel: string;
   url: string;
-  /**
-   * "pair": two one-way flights on the visitor's exact dates.
-   * "pair-near": two one-way flights, each at most a day off the visitor's
-   * (out earlier, back later, so the game is always covered).
-   * "near": a round trip of exactly the same number of nights, moved by a day
-   * or two, still out before the game and back after it.
-   */
-  kind: "pair" | "pair-near" | "near";
+  /** "pair": two one-way flights on the visitor's exact dates. */
+  kind: "pair";
   /** The airports this fare flies between, for the airline's own search. */
   airports: { from: string; to: string };
 }
 
 /**
- * When no round trip is known for the exact dates: first two one-way fares on
- * exactly those dates, then a round trip for the same number of nights within
- * 2 days, still out before the game day and back after it (closest dates
- * first). Both from fares travellers found in the Travelpayouts feed. Never a
- * different trip length or a date that misses the game.
+ * When no round trip is known for the exact dates: two one-way fares on
+ * exactly those dates (every airport in each city), from fares travellers
+ * found in the Travelpayouts feed. Never another day or trip length.
  */
 export async function nearbyFlight(trip: { from: string; to: string; departOn: string; returnOn: string; gameDay: string }): Promise<NearbyFare | null> {
   const token = process.env.TRAVELPAYOUTS_TOKEN;
@@ -317,14 +309,17 @@ export async function nearbyFlight(trip: { from: string; to: string; departOn: s
       .flat()
       .filter((x) => days.includes(day(x.departure_at)));
 
-  // 1. Two one-way flights: out on the visitor's day or the day before (never
-  // the game day: no arrival times here), back on their day or the day after.
+  // Two one-way flights on exactly the visitor's dates (the same dates as the
+  // hotel): never another day, never a longer or shorter trip.
+  const nights = back0 - out0;
+  const shifts = [0].filter((k) => out0 + k < game && back0 + k > game);
   const [outs, backs] = await Promise.all([
-    legs(froms, tos, [out0, out0 - 1].filter((d) => d < game)),
-    legs(tos, froms, [back0, back0 + 1].filter((d) => d > game)),
+    legs(froms, tos, shifts.map((k) => out0 + k)),
+    legs(tos, froms, shifts.map((k) => back0 + k)),
   ]);
   const pairs = outs
-    .flatMap((o) => backs.map((b) => ({ o, b, shift: out0 - day(o.departure_at) + (day(b.departure_at) - back0), price: o.price + b.price })))
+    .flatMap((o) => backs.map((b) => ({ o, b, shift: Math.abs(day(o.departure_at) - out0), price: o.price + b.price })))
+    .filter((x) => day(x.b.departure_at) - day(x.o.departure_at) === nights)
     .sort((x, y) => x.shift - y.shift || x.price - y.price);
   const best = pairs[0];
   if (best) {
@@ -339,43 +334,13 @@ export async function nearbyFlight(trip: { from: string; to: string; departOn: s
       airline: airlines.join(" + "),
       stopsLabel: stopsLabel(Math.max(out.transfers, back.transfers)),
       url: expediaFlightsUrl({ from: trip.from, to: trip.to, departOn, returnOn, adults: 1 }),
-      kind: best.shift === 0 ? "pair" : "pair-near",
+      kind: "pair",
       // One airline both ways: its own site can price the round trip.
       airports: { from: out.origin_airport, to: out.destination_airport },
     };
   }
 
-  // 2. A round trip of the same length, moved by at most 2 days.
-  const nights = back0 - out0;
-  const months = [...new Set([trip.departOn.slice(0, 7), trip.returnOn.slice(0, 7)])];
-  const rounds = (
-    await Promise.all(
-      froms.flatMap((o) => tos.flatMap((d) => months.map((m) => search({ origin: o, destination: d, departure_at: m, one_way: "false", limit: "200" })))),
-    )
-  ).flat();
-  const f = rounds
-    .filter(
-      (x) =>
-        x.return_at &&
-        day(x.return_at) - day(x.departure_at) === nights &&
-        Math.abs(day(x.departure_at) - day(trip.departOn)) <= 2 &&
-        // Out the day before the game or earlier (no arrival times here, and
-        // a same-day flight can land after kick-off), back after it.
-        day(x.departure_at) < day(trip.gameDay) &&
-        day(x.return_at) > day(trip.gameDay),
-    )
-    .sort((a, b) => Math.abs(day(a.departure_at) - day(trip.departOn)) - Math.abs(day(b.departure_at) - day(trip.departOn)) || a.price - b.price)[0];
-  if (!f) return null;
-  return {
-    perPerson: f.price,
-    departOn: f.departure_at.slice(0, 10),
-    returnOn: f.return_at!.slice(0, 10),
-    airline: name(f.airline),
-    stopsLabel: stopsLabel(f.transfers),
-    url: expediaFlightsUrl({ from: trip.from, to: trip.to, departOn: f.departure_at.slice(0, 10), returnOn: f.return_at!.slice(0, 10), adults: 1 }),
-    kind: "near",
-    airports: { from: f.origin_airport, to: f.destination_airport },
-  };
+  return null;
 }
 
 /**

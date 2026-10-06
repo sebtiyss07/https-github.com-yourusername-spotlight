@@ -97,7 +97,7 @@ export function TripSteps({
       airline: string;
       stopsLabel: string;
       url: string;
-      kind: "pair" | "pair-near" | "near";
+      kind: "pair";
       /** The airline's own site (when we have a working link), Expedia and KAYAK, for that fare's dates. */
       links: TravelLinkLite[];
     } | null;
@@ -253,7 +253,7 @@ export function TripSteps({
                   </p>
                   <p className="text-[13px] text-ink-3">
                     {travel.nearby.airline} · {travel.nearby.stopsLabel.toLowerCase()} ·{" "}
-                    {travel.nearby.kind === "pair" ? "your dates" : travel.nearby.kind === "pair-near" ? "closest flights to your dates" : "same nights, closest dates"}
+                    your dates
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
