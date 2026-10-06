@@ -25,16 +25,16 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
   const pricedOffers = prices.offers.filter((o) => o.amount !== null);
   const pricedCount = pricedOffers.length;
   const cheapest = prices.cheapest;
-  // The honest saving: against the next-cheapest site, not the dearest one,
-  // and only between prices that both include fees.
+  // The saving against the most expensive site, only between prices that
+  // both include fees (a price with fees still to come isn't comparable).
   const allIn = pricedOffers.filter((o) => o.fees.included === "yes");
-  const runnerUp = cheapest?.fees.included === "yes" ? allIn[1] : undefined;
+  const priciest = cheapest?.fees.included === "yes" && allIn.length > 1 ? allIn[allIn.length - 1] : undefined;
   // Sites that add fees at checkout come after the all-in prices, under a note.
   const firstExtra = allIn.length ? prices.offers.findIndex((o) => o.amount !== null && o.fees.included !== "yes") : -1;
   // A lower price before fees might still end up cheaper, so don't claim more than we know.
   const lowerBeforeFees = !!cheapest && pricedOffers.some((o) => o.fees.included !== "yes" && o.amount! < cheapest.amount!);
   const saving =
-    cheapest && runnerUp ? Math.round((runnerUp.amount! - cheapest.amount!) * 100) / 100 : 0;
+    cheapest && priciest ? Math.round((priciest.amount! - cheapest.amount!) * 100) / 100 : 0;
 
   return (
     <div>
@@ -56,12 +56,12 @@ export function PriceCompare({ groups }: { groups: PriceGroup[] }) {
         </div>
       )}
 
-      {cheapest && runnerUp && saving >= 1 && (
+      {cheapest && priciest && saving >= 1 && (
         <p className="mb-3 rounded-xl bg-positive/10 px-4 py-2 text-[14px] text-ink-2 sm:inline-block sm:rounded-full sm:py-1.5">
           <span className="font-semibold text-positive">
             {cheapest.label} is {formatPrice(saving, prices.currency)} cheaper
           </span>{" "}
-          than the next site, {runnerUp.label}.
+          than the most expensive site, {priciest.label}.
         </p>
       )}
 
