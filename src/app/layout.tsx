@@ -101,6 +101,12 @@ export default async function RootLayout({
         </main>
 
         <footer className="mt-20 bg-night text-white/75">
+          {/* One stripe per league colour: a kit-like band across the top. */}
+          <div aria-hidden className="flex h-1.5">
+            {["#013369", "#c8102e", "#3d195b", "#0e1e5b", "#1c7c54", "#e10600"].map((c) => (
+              <span key={c} className="flex-1" style={{ backgroundColor: c }} />
+            ))}
+          </div>
           <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 text-[14px] sm:grid-cols-[1.4fr_1fr_1fr] sm:px-6">
             <div className="max-w-sm space-y-3">
               <Link href="/" className="flex items-center gap-2 text-white">

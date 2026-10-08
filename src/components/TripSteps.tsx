@@ -114,7 +114,10 @@ export function TripSteps({
 
   return (
     <section id="trip" className="mt-8 scroll-mt-32">
-      <h2 className="text-[24px] font-bold tracking-tight sm:text-[28px]">Book your trip in 3 steps</h2>
+      <h2 className="flex items-center gap-3 text-[28px] sm:text-[34px]">
+        <span aria-hidden className="h-7 w-2 shrink-0 skew-x-[-14deg] bg-accent sm:h-8" />
+        Book your trip in 3 steps
+      </h2>
 
       {/* Settings: one row */}
       <form

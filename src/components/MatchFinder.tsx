@@ -240,12 +240,11 @@ export function FinderRowView({ row, currency }: { row: FinderRow; currency: str
       href={`/events/${row.id}`}
       className="group flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 shadow-xs transition-all hover:-translate-y-0.5 hover:border-line-bright hover:shadow-md sm:gap-4 sm:p-3.5"
     >
-      <div className="flex w-12 shrink-0 flex-col items-center overflow-hidden rounded-xl border border-line text-center">
-        <span className="w-full bg-accent py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-          {row.monthShort}
-        </span>
-        <span className="font-display text-[19px] font-semibold leading-tight">{row.day}</span>
-        <span className="pb-0.5 text-[10px] font-medium text-ink-3">{row.weekday}</span>
+      {/* Scoreboard date: navy block, big day number. */}
+      <div className="flex w-13 shrink-0 flex-col items-center overflow-hidden rounded-xl bg-night text-center text-white">
+        <span className="w-full bg-accent py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]">{row.monthShort}</span>
+        <span className="score text-[26px] leading-[1.05]">{row.day}</span>
+        <span className="pb-1 text-[10px] font-semibold uppercase tracking-wide text-white/60">{row.weekday}</span>
       </div>
 
       {row.photo && (
@@ -283,7 +282,7 @@ export function FinderRowView({ row, currency }: { row: FinderRow; currency: str
 
       {row.price !== null ? (
         <div className="shrink-0 text-right">
-          <p className="tabular text-[17px] font-semibold leading-tight text-positive">
+          <p className="score text-[24px] leading-tight text-positive">
             {formatPrice(row.price, currency)}
             {row.feesExtra && <span className="text-[12px] text-hot"> + any fees</span>}
           </p>

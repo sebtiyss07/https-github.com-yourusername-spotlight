@@ -152,13 +152,20 @@ export default async function HomePage() {
             <Link
               key={l.id}
               href={`/leagues/${l.id}`}
-              className="group flex flex-col items-center gap-2 rounded-xl border border-line bg-surface p-4 text-center transition-colors hover:border-accent"
+              className="group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-xl p-4 text-white transition-transform hover:-translate-y-0.5"
+              style={{ background: `linear-gradient(140deg, ${LEAGUE_COLORS[l.id]} 0%, ${LEAGUE_COLORS[l.id]} 55%, #0a1736 140%)` }}
             >
-              <span aria-hidden className="grid h-11 w-11 place-items-center rounded-lg text-white" style={{ backgroundColor: LEAGUE_COLORS[l.id] }}>
+              {/* The sport's icon, big and faint, like a jersey print. */}
+              <span aria-hidden className="pointer-events-none absolute -bottom-2 right-3 origin-bottom-right scale-[3.4] opacity-[0.12]">
                 <SportIcon sport={l.sport} />
               </span>
-              <span className="font-display text-[15px] font-semibold leading-tight group-hover:text-accent">{l.title}</span>
-              {l.price !== null && <span className="text-[13px] font-semibold text-positive">Tickets from {money(l.price)}</span>}
+              <span aria-hidden className="grid h-9 w-9 place-items-center rounded-lg bg-white/15">
+                <SportIcon sport={l.sport} />
+              </span>
+              <span>
+                <span className="score block text-[24px] uppercase leading-none">{l.title}</span>
+                {l.price !== null && <span className="mt-1.5 inline-block rounded-md bg-black/25 px-2 py-0.5 text-[12px] font-semibold">Tickets from {money(l.price)}</span>}
+              </span>
             </Link>
           ))}
         </div>
@@ -218,8 +225,12 @@ interface Trip {
 function SectionTitle({ title, text }: { title: string; text?: string }) {
   return (
     <div>
-      <h2 className="text-[24px] font-bold tracking-tight sm:text-[28px]">{title}</h2>
-      {text && <p className="mt-1 text-[15px] text-ink-3">{text}</p>}
+      <h2 className="flex items-center gap-3 text-[28px] sm:text-[34px]">
+        {/* A TV-graphics marker before each section title. */}
+        <span aria-hidden className="h-7 w-2 shrink-0 skew-x-[-14deg] bg-accent sm:h-8" />
+        {title}
+      </h2>
+      {text && <p className="mt-2 text-[15px] text-ink-3">{text}</p>}
     </div>
   );
 }
