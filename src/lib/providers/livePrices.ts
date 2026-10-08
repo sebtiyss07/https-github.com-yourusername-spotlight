@@ -451,10 +451,16 @@ const CITY_AIRPORTS: Record<string, string> = {
  * the free plan. Up to three choices: cheapest, cheapest nonstop, another
  * airline. The link is the same search on Google Flights.
  */
-const googleFlightsFares = unstable_cache(
+async function googleFlightsFares(trip: { from: string; to: string; departOn: string; returnOn: string }): Promise<FlightQuote[] | null> {
+  // No key: no search, and nothing saved (a "none" saved before the key was
+  // added would hide fares for 12 hours). A failed search isn't saved either.
+  if (!process.env.SERPAPI_KEY?.trim()) return null;
+  return googleFlightsSearch(trip).catch(() => null);
+}
+
+const googleFlightsSearch = unstable_cache(
   async (trip: { from: string; to: string; departOn: string; returnOn: string }): Promise<FlightQuote[] | null> => {
-    const key = process.env.SERPAPI_KEY?.trim();
-    if (!key) return null;
+    const key = process.env.SERPAPI_KEY!.trim();
     const q = new URLSearchParams({
       engine: "google_flights",
       departure_id: CITY_AIRPORTS[trip.from] ?? trip.from,
@@ -469,44 +475,42 @@ const googleFlightsFares = unstable_cache(
       gl: "us",
       api_key: key,
     });
-    try {
-      const res = await fetch(`https://serpapi.com/search.json?${q}`, { cache: "no-store", signal: AbortSignal.timeout(25000) });
-      if (!res.ok) return null;
-      type Option = { price?: number; flights?: { airline?: string }[] };
-      const body = (await res.json()) as {
-        error?: string;
-        best_flights?: Option[];
-        other_flights?: Option[];
-        search_metadata?: { google_flights_url?: string };
-        search_parameters?: { currency?: string };
-      };
-      if (body.error || body.search_parameters?.currency !== "USD") return null;
-      const url = body.search_metadata?.google_flights_url;
-      if (!url) return null;
-      const offers = [...(body.best_flights ?? []), ...(body.other_flights ?? [])]
-        .map((o) => {
-          const legs = o.flights ?? [];
-          const airlines = [...new Set(legs.map((f) => f.airline).filter((a): a is string => !!a))];
-          return { price: Number(o.price), airline: airlines.slice(0, 2).join(" + "), stops: legs.length - 1 };
-        })
-        .filter((o) => o.price > 0 && o.airline && o.stops >= 0)
-        .sort((a, b) => a.price - b.price);
-      if (!offers.length) return null;
-      const picks = [offers[0], offers.find((o) => o.stops === 0), offers.find((o) => o.airline !== offers[0].airline)];
-      return [...new Set(picks.filter((o): o is (typeof offers)[number] => !!o))].map((o) => ({
-        perPerson: o.price,
-        airline: o.airline,
-        stopsLabel: stopsLabel(o.stops),
-        url,
-        source: "Google Flights, checked within the last 12 hours",
-        departOn: trip.departOn,
-        returnOn: trip.returnOn,
-      }));
-    } catch {
-      return null;
-    }
+    const res = await fetch(`https://serpapi.com/search.json?${q}`, { cache: "no-store", signal: AbortSignal.timeout(25000) });
+    if (!res.ok) throw new Error(`SerpApi ${res.status}`);
+    type Option = { price?: number; flights?: { airline?: string }[] };
+    const body = (await res.json()) as {
+      error?: string;
+      best_flights?: Option[];
+      other_flights?: Option[];
+      search_metadata?: { google_flights_url?: string };
+      search_parameters?: { currency?: string };
+    };
+    // "No results" is a real answer (saved); any other error is not.
+    if (body.error && !/no results/i.test(body.error)) throw new Error(body.error);
+    if (body.error) return null;
+    const url = body.search_metadata?.google_flights_url;
+    if (body.search_parameters?.currency !== "USD" || !url) throw new Error("SerpApi: unexpected reply");
+    const offers = [...(body.best_flights ?? []), ...(body.other_flights ?? [])]
+      .map((o) => {
+        const legs = o.flights ?? [];
+        const airlines = [...new Set(legs.map((f) => f.airline).filter((a): a is string => !!a))];
+        return { price: Number(o.price), airline: airlines.slice(0, 2).join(" + "), stops: legs.length - 1 };
+      })
+      .filter((o) => o.price > 0 && o.airline && o.stops >= 0)
+      .sort((a, b) => a.price - b.price);
+    if (!offers.length) return null;
+    const picks = [offers[0], offers.find((o) => o.stops === 0), offers.find((o) => o.airline !== offers[0].airline)];
+    return [...new Set(picks.filter((o): o is (typeof offers)[number] => !!o))].map((o) => ({
+      perPerson: o.price,
+      airline: o.airline,
+      stopsLabel: stopsLabel(o.stops),
+      url,
+      source: "Google Flights, checked within the last 12 hours",
+      departOn: trip.departOn,
+      returnOn: trip.returnOn,
+    }));
   },
-  ["google-flights-fares"],
+  ["google-flights-fares-v2"],
   { revalidate: 12 * 3600 },
 );
 
