@@ -115,7 +115,6 @@ export function TripSteps({
   return (
     <section id="trip" className="mt-8 scroll-mt-32">
       <h2 className="text-[24px] font-bold tracking-tight sm:text-[28px]">Book your trip in 3 steps</h2>
-      <p className="mt-1 text-ink-2">Pick each part, see one total, then book each part on the site that sells it.</p>
 
       {/* Settings: one row */}
       <form
@@ -186,7 +185,7 @@ export function TripSteps({
           {ticketChoices.length ? (
             <Rows rows={ticketChoices} money={money} selectable={false} />
           ) : (
-            <p className="text-[15px] text-ink-2">No ticket site has a price yet. See each site below.</p>
+            <p className="text-[15px] text-ink-2">No prices yet.</p>
           )}
           <details className="group mt-3">
             <summary className="cursor-pointer list-none text-[14px] font-semibold text-accent hover:underline">
@@ -206,7 +205,7 @@ export function TripSteps({
         >
           {!hotel.wanted ? (
             <p className="text-[15px] text-ink-2">
-              No hotel in this trip.{" "}
+              No hotel.{" "}
               <a href={hotel.toggleHref} className="font-semibold text-accent hover:underline">
                 Add a hotel
               </a>
@@ -217,7 +216,7 @@ export function TripSteps({
               {hotel.note && <p className="mt-2 text-[13px] text-ink-3">{hotel.note}</p>}
             </>
           ) : (
-            <LinkRow intro="See hotel prices near the venue for your dates:" links={hotel.links} />
+            <LinkRow intro="Hotels near the venue, your dates:" links={hotel.links} />
           )}
           {hotel.wanted && (
             <a href={hotel.toggleHref} className="mt-3 inline-block text-[13px] font-semibold text-ink-3 hover:text-accent">
@@ -235,7 +234,7 @@ export function TripSteps({
         >
           {go === "none" ? (
             <p className="text-[15px] text-ink-2">
-              {sameCity ? "You're coming from the same city, so no travel is added." : "No travel in this trip."}{" "}
+              {sameCity ? "You're local." : "No travel."}{" "}
               <a href={travel.toggleHref} className="font-semibold text-accent hover:underline">
                 Add travel
               </a>
@@ -244,7 +243,7 @@ export function TripSteps({
             <p className="text-[15px] text-ink-2">Too late to fly in: the flight would have to leave today.</p>
           ) : travel.needsOrigin ? (
             <p className="text-[15px] text-ink-2">
-              <span className="font-semibold text-ink">Pick your city above</span> and we&apos;ll show the cheapest fare for these exact dates.
+              <span className="font-semibold text-ink">Pick your city above</span> to see flights.
             </p>
           ) : travel.choices.length ? (
             <Rows rows={travel.choices} money={money} selectable={travel.choices.length > 1} />
@@ -279,13 +278,10 @@ export function TripSteps({
                   </a>
                 ))}
               </div>
-              <p className="mt-2 text-[12px] text-ink-3">Estimate from recent fares. Each site shows today's price; the airline's own site is often cheapest.</p>
+              <p className="mt-2 text-[12px] text-ink-3">Recent fare. Check today&apos;s price on each site.</p>
             </div>
           ) : (
-            <ExactDates
-              links={travel.links}
-              note={go === "flight" ? "We don't have a fare for these dates yet." : `${MODE_LABEL[go]} prices for your dates:`}
-            />
+            <LinkRow intro={go === "flight" ? "No price yet for your dates. See flights on:" : `${MODE_LABEL[go]} for your dates:`} links={travel.links.slice(0, 3)} />
           )}
           {go !== "none" && (
             <a href={travel.toggleHref} className="mt-3 inline-block text-[13px] font-semibold text-ink-3 hover:text-accent">
@@ -310,7 +306,7 @@ export function TripSteps({
         </p>
       </div>
       <p className="mt-2 text-[12px] text-ink-3">
-        Cheapest prices listed when we checked. Hotel prices are before taxes. Prices change fast, so confirm on each site before you pay.
+        Prices when we last checked. Hotels are before taxes.
       </p>
     </section>
   );
@@ -321,7 +317,7 @@ const shortDay = (d: string) =>
 
 function Step({ n, title, price, children }: { n: number; title: string; price: string | null; money: (n: number) => string; children: ReactNode }) {
   return (
-    <li className="rounded-xl border border-line bg-surface p-4 sm:p-5">
+    <li id={`step-${n}`} className="scroll-mt-28 rounded-xl border border-line bg-surface p-4 sm:p-5">
       <div className="mb-3 flex items-center gap-3">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/10 text-[14px] font-bold text-accent">{n}</span>
         <h3 className="min-w-0 flex-1 text-[17px] font-semibold tracking-tight">{title}</h3>
@@ -375,25 +371,6 @@ function Rows({ rows, money, selectable }: { rows: Choice[]; money: (n: number) 
         </li>
       ))}
     </ul>
-  );
-}
-
-/** One quiet line: check the exact dates on the big booking sites. */
-function ExactDates({ links, note }: { links: TravelLinkLite[]; note?: string }) {
-  return (
-    <p className="mt-3 text-[13px] text-ink-3">
-      {note && <>{note} </>}
-      Check your exact dates on{" "}
-      {links.slice(0, 3).map((l, i) => (
-        <span key={l.url}>
-          {i > 0 && (i === Math.min(links.length, 3) - 1 ? " or " : ", ")}
-          <a href={l.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent hover:underline">
-            {l.site}
-          </a>
-        </span>
-      ))}
-      .
-    </p>
   );
 }
 

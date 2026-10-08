@@ -345,7 +345,7 @@ export default async function EventPage({
                   <li className="flex items-center gap-3">
                     <BedIcon />
                     <span className="flex-1">Hotel</span>
-                    <span className="tabular font-bold">{!wantHotel ? "—" : hotelTotal !== null ? money(hotelTotal) : <a href="#trip" className="text-accent">Add</a>}</span>
+                    <span className="tabular font-bold">{!wantHotel ? "—" : hotelTotal !== null ? money(hotelTotal) : <a href="#step-2" className="text-accent">Add</a>}</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <PlaneIcon />
@@ -356,11 +356,13 @@ export default async function EventPage({
                       ) : flightTotal !== null ? (
                         money(flightTotal)
                       ) : flightEstimate !== null ? (
-                        <a href="#trip" className="text-ink-2">
+                        <a href="#step-3" className="text-ink-2">
                           ≈ {money(flightEstimate)}
                         </a>
+                      ) : flightTooSoon ? (
+                        "—"
                       ) : (
-                        <a href="#trip" className="text-accent">Add</a>
+                        <a href="#step-3" className="text-accent">Add</a>
                       )}
                     </span>
                   </li>
@@ -379,7 +381,7 @@ export default async function EventPage({
               <>
                 <p className="text-[16px] font-bold">No price listed yet</p>
                 <p className="mt-1 text-[14px] text-ink-3">
-                  None of the sites we read had a price when we checked. See each site below.
+                  No site had a price when we checked.
                 </p>
                 <a
                   href="#tickets"
@@ -392,8 +394,7 @@ export default async function EventPage({
               <>
                 <p className="text-[16px] font-bold">Not on the ticket sites yet</p>
                 <p className="mt-1 text-[14px] text-ink-3">
-                  None of the ticket sites we compare lists this {isRace ? "race" : isFootball ? "match" : "game"} yet.
-                  Resale tickets usually appear closer to the date, so check back soon.
+                  No ticket site lists it yet. Check back closer to the date.
                 </p>
                 <Link
                   href={`/leagues/${event.leagueId}`}
@@ -414,7 +415,7 @@ export default async function EventPage({
           origin={origin}
           originUnresolved={originUnresolved}
           travellers={travellers}
-          nights={nights}
+          nights={dates.nights}
           modes={resolvedOrigin && !sameCity ? available : []}
           go={go}
           sameCity={sameCity}
@@ -530,28 +531,40 @@ export default async function EventPage({
         />
       </div>
 
-      {/* Phones: the cheapest ticket stays one tap away while scrolling. */}
+      {/* Always on screen: the trip total, and a tap on each part jumps to it. */}
       {prices.cheapest && (
         <>
-          <div aria-hidden className="h-20 md:hidden" />
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur-xl md:hidden">
-            <div className="mx-auto flex max-w-6xl items-center gap-3">
-              <p className="min-w-0 flex-1 leading-tight">
-                <span className="block text-[12px] text-ink-3">Cheapest {ticketNoun}</span>
-                <span className="tabular text-[20px] font-extrabold text-positive">
-                  {formatPrice(prices.cheapest.amount!, prices.currency)}
-                </span>
-                {prices.cheapest.fees.included !== "yes" && <span className="text-[13px] font-semibold text-hot"> + any fees</span>}
-                <span className="truncate text-[13px] text-ink-2"> on {prices.cheapest.label}</span>
+          <div aria-hidden className="h-20" />
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 px-4 py-2.5 backdrop-blur-xl">
+            <div className="mx-auto flex max-w-6xl items-center gap-3 sm:px-2">
+              <p className="min-w-0 leading-tight">
+                <span className="block text-[12px] text-ink-3">Your trip · {travellers} {travellers === 1 ? "person" : "people"}</span>
+                <span className="tabular text-[22px] font-extrabold text-positive">{money(tripTotal.amount)}</span>
+                {tripTotal.feesExtra && <span className="text-[13px] font-semibold text-hot"> + any fees</span>}
               </p>
-              <a
-                href={prices.cheapest.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 rounded-xl bg-accent px-5 py-3 text-[15px] font-bold text-white transition-colors hover:bg-accent-2"
-              >
-                Buy ↗
-              </a>
+              <nav aria-label="Jump to" className="ml-auto flex items-center gap-1.5 text-[14px] font-semibold">
+                {[
+                  { href: "#step-1", icon: "🎟️", label: money(ticketTotal) },
+                  { href: "#step-2", icon: "🏨", label: !wantHotel ? "—" : hotelTotal !== null ? money(hotelTotal) : "Add" },
+                  {
+                    href: "#step-3",
+                    icon: "✈️",
+                    label: go === "none" || sameCity ? "—" : flightTotal !== null ? money(flightTotal) : flightEstimate !== null ? `≈${money(flightEstimate)}` : flightTooSoon ? "—" : "Add",
+                  },
+                ].map((p) => (
+                  <a
+                    key={p.href}
+                    href={p.href}
+                    className={`tabular hidden items-center gap-1 rounded-lg border px-2.5 py-2 sm:flex ${p.label === "Add" ? "border-accent text-accent" : "border-line text-ink hover:border-accent"}`}
+                  >
+                    <span aria-hidden>{p.icon}</span>
+                    {p.label}
+                  </a>
+                ))}
+                <a href="#trip" className="rounded-xl bg-accent px-5 py-3 text-[15px] font-bold text-white transition-colors hover:bg-accent-2 sm:ml-1">
+                  See my trip ↓
+                </a>
+              </nav>
             </div>
           </div>
         </>
