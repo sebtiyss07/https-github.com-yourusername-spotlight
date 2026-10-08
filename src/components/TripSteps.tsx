@@ -303,7 +303,7 @@ export function TripSteps({
                 {total.missing.length > 0 && <> · still to add: {total.missing.join(", ")}</>}
               </p>
             </div>
-            <p className="tabular text-[36px] font-bold leading-none tracking-tight">
+            <p className="score text-[44px] leading-none">
               {money(total.amount)}
               {total.feesExtra && <span className="text-[14px] font-semibold text-sun"> + any fees</span>}
             </p>
@@ -331,7 +331,7 @@ function Step({ n, icon, title, price, children }: { n: number; icon: string; ti
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">Step {n}</p>
             <h3 className="text-[17px] font-semibold tracking-tight">{title}</h3>
           </div>
-          {price && <span className="tabular shrink-0 text-[17px] font-bold">{price}</span>}
+          {price && <span className="score shrink-0 text-[24px] leading-none">{price}</span>}
         </div>
         {children}
       </div>

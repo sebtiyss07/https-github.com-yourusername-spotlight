@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Barlow_Condensed, Inter, Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { HeaderSearch } from "@/components/HeaderSearch";
@@ -17,6 +17,15 @@ import { authEnabled } from "@/lib/auth";
 const display = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-jakarta",
+  display: "swap",
+});
+
+// Scoreboard face: headings and the big numbers (prices, routes).
+const sport = Barlow_Condensed({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  style: ["normal", "italic"],
+  variable: "--font-barlow",
   display: "swap",
 });
 
@@ -56,7 +65,7 @@ export default async function RootLayout({
 }) {
   const currency = await getCurrency();
   const page = (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
+    <html lang="en" className={`${display.variable} ${body.variable} ${sport.variable}`}>
       <head>
         {/* Impact.com site ownership check for the affiliate programs. */}
         {/* @ts-expect-error Impact reads a `value` attribute, not `content`. */}

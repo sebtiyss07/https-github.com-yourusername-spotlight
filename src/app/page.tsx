@@ -259,7 +259,7 @@ function TripCard({ trip: t, money }: { trip: Trip; money: (n: number) => string
       <span className="pass-stub flex items-center justify-between gap-3 rounded-b-xl bg-surface px-4 pb-4 pt-3">
         <span>
           <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3">Trip from</span>
-          <span className="tabular block text-[26px] font-bold leading-none tracking-tight text-ink">{money(t.total)}</span>
+          <span className="score block text-[32px] leading-none text-ink">{money(t.total)}</span>
         </span>
         <span className="shrink-0 rounded-lg bg-accent px-3 py-2 text-[14px] font-semibold text-white transition-colors group-hover:bg-accent-2">
           Plan trip <span aria-hidden className="inline-block transition-transform group-hover:translate-x-0.5">→</span>

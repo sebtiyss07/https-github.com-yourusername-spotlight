@@ -16,6 +16,7 @@ import { coachLinks, driveLink, groundTravelPossible, trainLink } from "@/lib/pr
 import { GameActions } from "@/components/GameActions";
 import { TripSteps } from "@/components/TripSteps";
 import { PhotoCredit } from "@/components/ui";
+import { TeamMark } from "@/components/TeamMark";
 import { cheapestFlight, cheapestHotelNear, nearbyFlight } from "@/lib/providers/livePrices";
 import {
   formatDateRange,
@@ -259,7 +260,7 @@ export default async function EventPage({
   return (
     <>
       {/* The event, and the answer: its cheapest ticket */}
-      <section className="glow relative overflow-hidden" style={{ ["--glow" as string]: accent }}>
+      <section className="glow relative overflow-hidden [clip-path:polygon(0_0,100%_0,100%_calc(100%-36px),0_100%)]" style={{ ["--glow" as string]: accent }}>
         {photo && !isRace && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -292,9 +293,27 @@ export default async function EventPage({
             <p className="mt-6 text-[13px] font-semibold uppercase tracking-wide text-white/65">
               {context.league?.name}
             </p>
-            <h1 className="mt-2 text-[30px] font-extrabold leading-[1.08] text-white sm:text-[44px]">
-              {context.title}
-            </h1>
+            {context.homeTeam && context.awayTeam ? (
+              // A scoreboard: away team, then home team, each in its colours.
+              <h1 className="mt-3 flex flex-col gap-2 text-white sm:gap-2.5">
+                <span className="sr-only">{context.title}</span>
+                {[
+                  { team: context.awayTeam, side: "Away" },
+                  { team: context.homeTeam, side: "Home" },
+                ].map(({ team, side }, i) => (
+                  <span key={team.id} aria-hidden className="flex items-center gap-3">
+                    <span className="h-10 w-1.5 shrink-0 skew-x-[-12deg] sm:h-12" style={{ backgroundColor: team.primaryColor }} />
+                    <TeamMark name={team.name} primary={team.primaryColor} secondary={team.secondaryColor} abbreviation={team.abbreviation} size={44} />
+                    <span className="min-w-0">
+                      <span className="block text-[11px] font-semibold tracking-[0.18em] text-white/55">{side}</span>
+                      <span className="block truncate text-[32px] leading-[0.95] sm:text-[46px]">{team.name}</span>
+                    </span>
+                  </span>
+                ))}
+              </h1>
+            ) : (
+              <h1 className="mt-2 text-[34px] text-white sm:text-[52px]">{context.title}</h1>
+            )}
             <ul className="mt-5 space-y-1.5 text-[16px] text-white/90">
               <li className="flex items-start gap-2.5">
                 <CalendarIcon />
@@ -337,7 +356,7 @@ export default async function EventPage({
                   {/* The route, like a boarding pass: home city ✈ game city. */}
                   <div className="mt-3 flex items-center gap-3">
                     <div className="min-w-0">
-                      <p className="font-display text-[30px] font-extrabold leading-none tracking-tight">
+                      <p className="score text-[36px] leading-none">
                         {resolvedOrigin && !sameCity ? flightSearchCode(resolvedOrigin) : "···"}
                       </p>
                       <p className="mt-1 truncate text-[12px] text-ink-3">
@@ -348,7 +367,7 @@ export default async function EventPage({
                       <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface px-1 text-[18px] leading-none">✈️</span>
                     </div>
                     <div className="min-w-0 text-right">
-                      <p className="font-display text-[30px] font-extrabold leading-none tracking-tight">{destination ? flightSearchCode(destination) : venue.city.slice(0, 3).toUpperCase()}</p>
+                      <p className="score text-[36px] leading-none">{destination ? flightSearchCode(destination) : venue.city.slice(0, 3).toUpperCase()}</p>
                       <p className="mt-1 truncate text-[12px] text-ink-3">{venue.city}</p>
                     </div>
                   </div>
@@ -393,7 +412,7 @@ export default async function EventPage({
                 <div className="pass-stub rounded-b-2xl bg-surface p-5 pt-4 text-ink">
                   <p className="flex items-baseline justify-between gap-2">
                     <span className="text-[14px] font-semibold text-ink-3">{tripTotal.missing.length ? "Trip so far" : "Trip total"}</span>
-                    <span className="tabular font-display text-[38px] font-extrabold leading-none text-positive">{money(tripTotal.amount)}</span>
+                    <span className="score text-[46px] leading-none text-positive">{money(tripTotal.amount)}</span>
                   </p>
                   <a
                     href="#trip"
@@ -568,7 +587,7 @@ export default async function EventPage({
             <div className="mx-auto flex max-w-6xl items-center gap-3 sm:px-2">
               <p className="min-w-0 leading-tight">
                 <span className="block text-[12px] text-ink-3">Your trip · {travellers} {travellers === 1 ? "person" : "people"}</span>
-                <span className="tabular text-[22px] font-extrabold text-positive">{money(tripTotal.amount)}</span>
+                <span className="score text-[28px] leading-none text-positive">{money(tripTotal.amount)}</span>
                 {tripTotal.feesExtra && <span className="text-[13px] font-semibold text-hot"> + any fees</span>}
               </p>
               <nav aria-label="Jump to" className="ml-auto flex items-center gap-1.5 text-[14px] font-semibold">
