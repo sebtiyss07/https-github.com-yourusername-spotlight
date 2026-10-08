@@ -228,37 +228,41 @@ function SectionTitle({ title, text }: { title: string; text?: string }) {
 function TripCard({ trip: t, money }: { trip: Trip; money: (n: number) => string }) {
   const { c } = t;
   const { weekday, day, month } = dateParts(c.event.startsAt, c.venue?.timeZone ?? "UTC");
+  const color = LEAGUE_COLORS[c.event.leagueId] ?? "#1d4ed8";
+  // A ticket stub: the game on top, a tear line, the trip price on the stub.
   return (
-    <Link
-      href={`/events/${c.event.id}#trip`}
-      className="group flex flex-col overflow-hidden rounded-xl border border-line border-t-[3px] bg-surface transition-shadow hover:shadow-md"
-      style={{ borderTopColor: LEAGUE_COLORS[c.event.leagueId] ?? "#1d4ed8" }}
-    >
-      <span className="flex items-center justify-between px-4 pt-3 text-[12px] font-semibold uppercase tracking-wider text-ink-3">
-        <span className="flex items-center gap-1.5">
-          <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: LEAGUE_COLORS[c.event.leagueId] ?? "#1d4ed8" }} />
-          {c.league?.shortName ?? c.league?.name}
+    <Link href={`/events/${c.event.id}#trip`} className="group flex flex-col drop-shadow-sm transition-[filter] hover:drop-shadow-md">
+      <span className="pass-top flex flex-1 flex-col rounded-t-xl bg-surface">
+        <span className="h-1.5 rounded-t-xl" style={{ backgroundColor: color }} />
+        <span className="flex items-center justify-between px-4 pt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3">
+          <span className="flex items-center gap-1.5">
+            <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+            {c.league?.shortName ?? c.league?.name}
+          </span>
+          <span>
+            {weekday} {day} {month}
+          </span>
         </span>
-        <span>
-          {weekday} {day} {month}
+        <span className="flex flex-1 flex-col px-4 pb-4 pt-2">
+          <span className="line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight group-hover:text-accent">{c.title}</span>
+          <span className="mt-0.5 truncate text-[13px] text-ink-3">
+            📍 {c.venue?.name}, {c.venue?.city}
+          </span>
+          <span className="mt-auto pt-3 text-[12px] text-ink-3">
+            🎟️ {money(t.ticket)} · 🏨 {money(t.hotel)} ({t.nights} {t.nights === 1 ? "night" : "nights"})
+          </span>
         </span>
       </span>
-      <span className="flex flex-1 flex-col px-4 pb-4 pt-2">
-        <span className="line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight group-hover:text-accent">{c.title}</span>
-        <span className="mt-0.5 truncate text-[13px] text-ink-3">
-          {c.venue?.name}, {c.venue?.city}
+      <span className="bg-surface">
+        <span className="pass-tear block" />
+      </span>
+      <span className="pass-stub flex items-center justify-between gap-3 rounded-b-xl bg-surface px-4 pb-4 pt-3">
+        <span>
+          <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3">Trip from</span>
+          <span className="tabular block text-[26px] font-bold leading-none tracking-tight text-ink">{money(t.total)}</span>
         </span>
-        <span className="mt-auto flex items-end justify-between gap-3 pt-5">
-          <span>
-            <span className="block text-[12px] font-semibold text-ink-3">Trip from</span>
-            <span className="tabular block text-[26px] font-bold leading-none tracking-tight text-ink">{money(t.total)}</span>
-            <span className="mt-1 block text-[12px] text-ink-3">
-              Ticket {money(t.ticket)} + hotel {money(t.hotel)} ({t.nights} {t.nights === 1 ? "night" : "nights"})
-            </span>
-          </span>
-          <span className="shrink-0 text-[14px] font-semibold text-accent">
-            Plan trip <span aria-hidden className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
-          </span>
+        <span className="shrink-0 rounded-lg bg-accent px-3 py-2 text-[14px] font-semibold text-white transition-colors group-hover:bg-accent-2">
+          Plan trip <span aria-hidden className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
         </span>
       </span>
     </Link>

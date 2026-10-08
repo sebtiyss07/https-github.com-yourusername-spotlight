@@ -136,3 +136,40 @@ h3 {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/**
+ * Boarding-pass cards: a main part and a stub, with a half-circle notch cut
+ * out of both sides where they meet (masks, so it works on any background).
+ * Put the shadow on the wrapper with a drop-shadow filter: a box-shadow on a
+ * masked element is cut off with it.
+ */
+.pass-top {
+  -webkit-mask:
+    radial-gradient(circle 11px at 0 100%, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 11px at 100% 100%, #0000 98%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle 11px at 0 100%, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 11px at 100% 100%, #0000 98%, #000) right / 51% 100% no-repeat;
+}
+.pass-stub {
+  -webkit-mask:
+    radial-gradient(circle 11px at 0 0, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 11px at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle 11px at 0 0, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 11px at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat;
+}
+/* The tear line between the two. */
+.pass-tear {
+  height: 2px;
+  margin: 0 16px;
+  background-image: linear-gradient(90deg, var(--color-line-bright) 50%, transparent 50%);
+  background-size: 10px 2px;
+}
+/* A dotted flight path with the plane riding on it. */
+.flight-path {
+  background-image: radial-gradient(circle, currentColor 1.2px, transparent 1.6px);
+  background-size: 8px 4px;
+  background-repeat: repeat-x;
+  background-position: left center;
+}

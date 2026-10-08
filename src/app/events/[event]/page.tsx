@@ -22,6 +22,7 @@ import {
   formatFullDate,
   formatPrice,
   formatTime,
+  formatShortDate,
 } from "@/lib/format";
 
 export async function generateMetadata({
@@ -62,9 +63,6 @@ function toInt(value: string | undefined, fallback: number, min: number, max: nu
   if (Number.isNaN(n)) return fallback;
   return Math.min(max, Math.max(min, n));
 }
-
-
-
 
 export default async function EventPage({
   params,
@@ -325,73 +323,104 @@ export default async function EventPage({
             />
           </div>
 
-          {/* The answer first: the whole trip, priced, with the ticket one tap away. */}
-          <div className="rounded-2xl bg-surface p-5 text-ink shadow-lg">
+          {/* The answer first: the whole trip as a boarding pass, priced, with the ticket one tap away. */}
+          <div className="drop-shadow-xl">
             {prices.cheapest ? (
               <>
-                <p className="text-[14px] font-semibold text-ink-3">
-                  Your trip · {travellers} {travellers === 1 ? "person" : "people"}
-                </p>
-                <p className="mt-1 flex items-baseline gap-2">
-                  <span className="tabular font-display text-[42px] font-extrabold leading-none text-positive">{money(tripTotal.amount)}</span>
-                  <span className="text-[15px] font-semibold text-ink-2">{tripTotal.missing.length ? "so far" : "total"}</span>
-                </p>
-                <ul className="mt-4 space-y-2 text-[15px]">
-                  <li className="flex items-center gap-3">
-                    <TicketIcon />
-                    <span className="flex-1">Ticket on {prices.cheapest.label}</span>
-                    <span className="tabular font-bold">{money(ticketTotal)}</span>
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <BedIcon />
-                    <span className="flex-1">Hotel</span>
-                    <span className="tabular font-bold">{!wantHotel ? "—" : hotelTotal !== null ? money(hotelTotal) : <a href="#step-2" className="text-accent">Add</a>}</span>
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <PlaneIcon />
-                    <span className="flex-1">{go === "flight" ? "Flight" : "Travel"}</span>
-                    <span className="tabular font-bold">
-                      {go === "none" || sameCity ? (
-                        "—"
-                      ) : flightTotal !== null ? (
-                        money(flightTotal)
-                      ) : flightEstimate !== null ? (
-                        <a href="#step-3" className="text-ink-2">
-                          ≈ {money(flightEstimate)}
-                        </a>
-                      ) : flightTooSoon ? (
-                        "—"
-                      ) : (
-                        <a href="#step-3" className="text-accent">Add</a>
-                      )}
+                <div className="pass-top rounded-t-2xl bg-surface p-5 pb-4 text-ink">
+                  <p className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3">
+                    <span>Your trip</span>
+                    <span>
+                      {travellers} {travellers === 1 ? "fan" : "fans"} · {dates.nights} {dates.nights === 1 ? "night" : "nights"}
                     </span>
-                  </li>
-                </ul>
-                <a
-                  href="#trip"
-                  className="mt-5 flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white transition-colors hover:bg-accent-2"
-                >
-                  Book your trip ↓
-                </a>
-                <a href={prices.cheapest.url} target="_blank" rel="noopener noreferrer" className="mt-2 block text-center text-[13px] font-semibold text-ink-3 hover:text-accent">
-                  or just buy the ticket on {prices.cheapest.label} ↗
-                </a>
+                  </p>
+                  {/* The route, like a boarding pass: home city ✈ game city. */}
+                  <div className="mt-3 flex items-center gap-3">
+                    <div className="min-w-0">
+                      <p className="font-display text-[30px] font-extrabold leading-none tracking-tight">
+                        {resolvedOrigin && !sameCity ? flightSearchCode(resolvedOrigin) : "···"}
+                      </p>
+                      <p className="mt-1 truncate text-[12px] text-ink-3">
+                        {resolvedOrigin ? resolvedOrigin.city : <a href="#trip" className="font-semibold text-accent">Add your city</a>}
+                      </p>
+                    </div>
+                    <div className="flight-path relative h-6 flex-1 text-line-bright" aria-hidden>
+                      <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface px-1 text-[18px] leading-none">✈️</span>
+                    </div>
+                    <div className="min-w-0 text-right">
+                      <p className="font-display text-[30px] font-extrabold leading-none tracking-tight">{destination ? flightSearchCode(destination) : venue.city.slice(0, 3).toUpperCase()}</p>
+                      <p className="mt-1 truncate text-[12px] text-ink-3">{venue.city}</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-[13px] font-semibold text-ink-2">
+                    {formatShortDate(dates.checkIn)} → {formatShortDate(dates.checkOut)}
+                  </p>
+                  <ul className="mt-4 space-y-2 border-t border-line pt-3 text-[15px]">
+                    <li className="flex items-center gap-3">
+                      <span aria-hidden className="w-5 text-center">🎟️</span>
+                      <a href="#step-1" className="flex-1 hover:text-accent">Ticket on {prices.cheapest.label}</a>
+                      <span className="tabular font-bold">{money(ticketTotal)}</span>
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <span aria-hidden className="w-5 text-center">🏨</span>
+                      <a href="#step-2" className="flex-1 hover:text-accent">Hotel</a>
+                      <span className="tabular font-bold">{!wantHotel ? "—" : hotelTotal !== null ? money(hotelTotal) : <a href="#step-2" className="text-accent">Add</a>}</span>
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <span aria-hidden className="w-5 text-center">{go === "flight" || go === "none" ? "✈️" : go === "train" ? "🚆" : go === "coach" ? "🚌" : "🚗"}</span>
+                      <a href="#step-3" className="flex-1 hover:text-accent">{go === "flight" ? "Flight" : "Travel"}</a>
+                      <span className="tabular font-bold">
+                        {go === "none" || sameCity ? (
+                          "—"
+                        ) : flightTotal !== null ? (
+                          money(flightTotal)
+                        ) : flightEstimate !== null ? (
+                          <a href="#step-3" className="text-ink-2">
+                            ≈ {money(flightEstimate)}
+                          </a>
+                        ) : flightTooSoon ? (
+                          "—"
+                        ) : (
+                          <a href="#step-3" className="text-accent">Add</a>
+                        )}
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="bg-surface">
+                  <div className="pass-tear" />
+                </div>
+                <div className="pass-stub rounded-b-2xl bg-surface p-5 pt-4 text-ink">
+                  <p className="flex items-baseline justify-between gap-2">
+                    <span className="text-[14px] font-semibold text-ink-3">{tripTotal.missing.length ? "Trip so far" : "Trip total"}</span>
+                    <span className="tabular font-display text-[38px] font-extrabold leading-none text-positive">{money(tripTotal.amount)}</span>
+                  </p>
+                  <a
+                    href="#trip"
+                    className="mt-4 flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white transition-colors hover:bg-accent-2"
+                  >
+                    Book your trip ↓
+                  </a>
+                  <a href={prices.cheapest.url} target="_blank" rel="noopener noreferrer" className="mt-2 block text-center text-[13px] font-semibold text-ink-3 hover:text-accent">
+                    or just buy the ticket on {prices.cheapest.label} ↗
+                  </a>
+                </div>
               </>
             ) : prices.offers.length > 0 ? (
-              <>
+              <div className="rounded-2xl bg-surface p-5 text-ink">
                 <p className="text-[16px] font-bold">No price listed yet</p>
                 <p className="mt-1 text-[14px] text-ink-3">
                   No site had a price when we checked.
                 </p>
                 <a
-                  href="#tickets"
+                  href="#step-1"
                   className="mt-4 flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3.5 text-[16px] font-bold text-white hover:bg-accent-2"
                 >
                   See ticket sites ↓
                 </a>
-              </>
+              </div>
             ) : (
-              <>
+              <div className="rounded-2xl bg-surface p-5 text-ink">
                 <p className="text-[16px] font-bold">Not on the ticket sites yet</p>
                 <p className="mt-1 text-[14px] text-ink-3">
                   No ticket site lists it yet. Check back closer to the date.
@@ -402,7 +431,7 @@ export default async function EventPage({
                 >
                   See other {context.league?.shortName ?? ""} {isRace ? "races" : isFootball ? "matches" : "games"}
                 </Link>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -575,11 +604,6 @@ export default async function EventPage({
 
 type TravelMode = "flight" | "train" | "coach" | "drive";
 
-
-
-
-
-
 const ICON_STROKE = {
   fill: "none" as const,
   stroke: "currentColor",
@@ -587,29 +611,6 @@ const ICON_STROKE = {
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
 };
-
-function TicketIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden>
-      <path
-        d="M3.5 9.5a2 2 0 0 0 0 5V17a1.5 1.5 0 0 0 1.5 1.5h14A1.5 1.5 0 0 0 20.5 17v-2.5a2 2 0 0 1 0-5V7A1.5 1.5 0 0 0 19 5.5H5A1.5 1.5 0 0 0 3.5 7z"
-        {...ICON_STROKE}
-      />
-      <path d="M14 5.5v13" {...ICON_STROKE} strokeDasharray="2 2.5" />
-    </svg>
-  );
-}
-
-function PlaneIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden>
-      <path
-        d="M11.2 4.2l1.1 5.6 6-1.8c.8-.24 1.5.5 1.2 1.26-.16.4-.5.7-.9.82l-5.9 1.77.9 4.56 2 1.1c.3.16.3.6 0 .78l-1.5.8-1.9-1.4-1.9 1.4-1.5-.8c-.3-.18-.3-.62 0-.78l2-1.1.9-4.56-5.9-1.77a1.08 1.08 0 0 1-.9-.82c-.3-.76.4-1.5 1.2-1.26l6 1.8 1.1-5.6a1.08 1.08 0 0 1 2.1 0z"
-        {...ICON_STROKE}
-      />
-    </svg>
-  );
-}
 
 function CalendarIcon() {
   return (
@@ -629,12 +630,3 @@ function PinIcon() {
   );
 }
 
-function BedIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden>
-      <path d="M3 18.5v-9M3 18.5h18M21 18.5v-6a2 2 0 0 0-2-2h-8v5" {...ICON_STROKE} />
-      <path d="M3 15.5V9a1.5 1.5 0 0 1 1.5-1.5h4A1.5 1.5 0 0 1 10 9v.5" {...ICON_STROKE} />
-      <circle cx="6.2" cy="10.6" r="1.1" {...ICON_STROKE} />
-    </svg>
-  );
-}

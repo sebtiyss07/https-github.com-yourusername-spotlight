@@ -181,7 +181,7 @@ export function TripSteps({
 
       <ol className="mt-5 flex flex-col gap-4">
         {/* 1. Ticket */}
-        <Step n={1} title={`Your ${ticket?.noun ?? "ticket"}${travellers > 1 ? `s × ${travellers}` : ""}`} price={ticket ? money(ticket.price * travellers) : null} money={money}>
+        <Step n={1} icon="🎟️" title={`Your ${ticket?.noun ?? "ticket"}${travellers > 1 ? `s × ${travellers}` : ""}`} price={ticket ? money(ticket.price * travellers) : null} money={money}>
           {ticketChoices.length ? (
             <Rows rows={ticketChoices} money={money} selectable={false} />
           ) : (
@@ -199,6 +199,7 @@ export function TripSteps({
         {/* 2. Hotel */}
         <Step
           n={2}
+          icon="🏨"
           title={`Your hotel · ${nights} ${nights === 1 ? "night" : "nights"}`}
           price={hotel.wanted ? (hotelPicked ? money(hotelPicked.price) : null) : "Not needed"}
           money={money}
@@ -228,6 +229,7 @@ export function TripSteps({
         {/* 3. Getting there */}
         <Step
           n={3}
+          icon={go === "train" ? "🚆" : go === "coach" ? "🚌" : go === "drive" ? "🚗" : go === "none" ? "🏠" : "✈️"}
           title={go === "none" ? "Getting there" : go === "flight" ? "Your flight" : `Your ${MODE_LABEL[go].toLowerCase()}`}
           price={go === "none" ? (sameCity ? "You're local" : "Not needed") : flightPicked ? money(flightPicked.price * travellers) : travel.estimate ? `≈ ${money(travel.estimate)}` : null}
           money={money}
@@ -289,22 +291,25 @@ export function TripSteps({
             </a>
           )}
         </Step>
-      </ol>
 
-      {/* The answer */}
-      <div className="mt-4 flex flex-col gap-1 rounded-xl bg-night px-6 py-5 text-white sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-[13px] font-semibold uppercase tracking-wide text-white/70">Your trip · {people}</p>
-          <p className="text-[15px] text-white/85">
-            {total.parts.join(" + ")}
-            {total.missing.length > 0 && <> · still to add: {total.missing.join(", ")}</>}
-          </p>
-        </div>
-        <p className="tabular text-[36px] font-bold leading-none tracking-tight">
-          {money(total.amount)}
-          {total.feesExtra && <span className="text-[14px] font-semibold text-sun"> + any fees</span>}
-        </p>
-      </div>
+        {/* Game day: the whole trip, one total */}
+        <li className="grid grid-cols-[40px_1fr] gap-3 sm:grid-cols-[48px_1fr] sm:gap-4">
+          <RouteStop icon="🏟️" last />
+          <div className="flex min-w-0 flex-col gap-1 rounded-xl bg-night px-6 py-5 text-white sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[13px] font-semibold uppercase tracking-wide text-white/70">Game day · your trip · {people}</p>
+              <p className="text-[15px] text-white/85">
+                {total.parts.join(" + ")}
+                {total.missing.length > 0 && <> · still to add: {total.missing.join(", ")}</>}
+              </p>
+            </div>
+            <p className="tabular text-[36px] font-bold leading-none tracking-tight">
+              {money(total.amount)}
+              {total.feesExtra && <span className="text-[14px] font-semibold text-sun"> + any fees</span>}
+            </p>
+          </div>
+        </li>
+      </ol>
       <p className="mt-2 text-[12px] text-ink-3">
         Prices when we last checked. Hotels are before taxes.
       </p>
@@ -315,16 +320,33 @@ export function TripSteps({
 const shortDay = (d: string) =>
   new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 
-function Step({ n, title, price, children }: { n: number; title: string; price: string | null; money: (n: number) => string; children: ReactNode }) {
+/** One stop on the trip: an emoji stop on a dotted route line, then its card. */
+function Step({ n, icon, title, price, children }: { n: number; icon: string; title: string; price: string | null; money: (n: number) => string; children: ReactNode }) {
   return (
-    <li id={`step-${n}`} className="scroll-mt-28 rounded-xl border border-line bg-surface p-4 sm:p-5">
-      <div className="mb-3 flex items-center gap-3">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/10 text-[14px] font-bold text-accent">{n}</span>
-        <h3 className="min-w-0 flex-1 text-[17px] font-semibold tracking-tight">{title}</h3>
-        {price && <span className="tabular shrink-0 text-[17px] font-bold">{price}</span>}
+    <li id={`step-${n}`} className="grid scroll-mt-28 grid-cols-[40px_1fr] gap-3 sm:grid-cols-[48px_1fr] sm:gap-4">
+      <RouteStop icon={icon} />
+      <div className="min-w-0 rounded-xl border border-line bg-surface p-4 sm:p-5">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">Step {n}</p>
+            <h3 className="text-[17px] font-semibold tracking-tight">{title}</h3>
+          </div>
+          {price && <span className="tabular shrink-0 text-[17px] font-bold">{price}</span>}
+        </div>
+        {children}
       </div>
-      {children}
     </li>
+  );
+}
+
+function RouteStop({ icon, last = false }: { icon: string; last?: boolean }) {
+  return (
+    <div className="relative flex justify-center">
+      <span aria-hidden className="relative z-10 grid h-10 w-10 place-items-center rounded-full bg-surface text-[19px] shadow-sm ring-2 ring-accent/25 sm:h-12 sm:w-12 sm:text-[22px]">
+        {icon}
+      </span>
+      {!last && <span aria-hidden className="absolute -bottom-4 left-1/2 top-10 -translate-x-1/2 border-l-2 border-dashed border-accent/30 sm:top-12" />}
+    </div>
   );
 }
 
