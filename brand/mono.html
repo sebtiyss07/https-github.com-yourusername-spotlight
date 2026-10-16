@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;width:1080px;height:1080px;background:#070b1d}</style></head><body>
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="light" cx="50%" cy="-5%" r="90%">
+      <stop offset="0" stop-color="#2346c8" stop-opacity=".85"/>
+      <stop offset=".5" stop-color="#0f1a4d" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#070b1d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sfill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b9bff"/>
+      <stop offset="1" stop-color="#2148e0"/>
+    </linearGradient>
+    <radialGradient id="ball" cx="36%" cy="32%" r="72%">
+      <stop offset="0" stop-color="#fff4c4"/>
+      <stop offset=".42" stop-color="#ffc93c"/>
+      <stop offset="1" stop-color="#ef9208"/>
+    </radialGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="26"/></filter>
+    <!-- S centreline: two equal arcs (r 150), even stroke, cut ends -->
+    <path id="s" d="M676 327 A150 150 0 1 0 540 540 A150 150 0 1 1 404 753"/>
+  </defs>
+  <rect width="1080" height="1080" fill="#070b1d"/>
+  <rect width="1080" height="1080" fill="url(#light)"/>
+  <g transform="translate(540 548) scale(1.1) translate(-540 -540)">
+  <g transform="translate(540 540) skewX(-13) translate(-540 -540) translate(0 -8)">
+    <use href="#s" fill="none" stroke="url(#sfill)" stroke-width="124"/>
+    <use href="#s" fill="none" stroke="#fff" stroke-width="10" stroke-dasharray="36 26" stroke-linecap="round" opacity=".95"/>
+  </g>
+  <!-- the destination / spotlight: a round ball off the top end -->
+  <circle cx="790" cy="192" r="56" fill="#ffc93c" filter="url(#glow)" opacity=".55"/>
+  <circle cx="790" cy="192" r="48" fill="url(#ball)"/>
+  </g>
+</svg></body></html>

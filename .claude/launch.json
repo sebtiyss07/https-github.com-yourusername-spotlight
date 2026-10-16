@@ -23,6 +23,18 @@
         "4610"
       ],
       "port": 4610
+    },
+    {
+      "name": "twtest",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4599",
+        "--directory",
+        "/Users/yanis/SP/.twtest"
+      ],
+      "port": 4599
     }
   ]
 }

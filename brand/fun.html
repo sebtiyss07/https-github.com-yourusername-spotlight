@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@800&display=block" rel="stylesheet">
+<style>
+html,body{margin:0;width:1080px;height:1080px}
+.tile{position:relative;width:1080px;height:1080px;overflow:hidden;
+  background:radial-gradient(circle at 18% 12%,#5a8cff 0%,rgba(90,140,255,0) 45%),
+             radial-gradient(circle at 88% 92%,#7b3cf0 0%,rgba(123,60,240,0) 50%),
+             linear-gradient(150deg,#3466ff 0%,#1d4ed8 50%,#3a2bd0 100%)}
+.orb{position:absolute;border-radius:50%;background:rgba(255,255,255,.07)}
+.s{position:absolute;left:0;right:0;top:50%;transform:translate(-20px,-52%) skewX(-9deg);text-align:center;
+  font:800 700px/1 'Plus Jakarta Sans',sans-serif;color:#fff;letter-spacing:-20px;
+  text-shadow:0 26px 50px rgba(10,16,70,.45)}
+svg{position:absolute;inset:0}
+</style></head><body><div class="tile">
+  <div class="orb" style="width:620px;height:620px;left:-220px;top:-260px"></div>
+  <div class="orb" style="width:520px;height:520px;right:-200px;bottom:-230px;background:rgba(255,255,255,.06)"></div>
+  <svg width="1080" height="1080" viewBox="0 0 1080 1080">
+    <defs>
+      <radialGradient id="ball" cx="35%" cy="32%" r="72%">
+        <stop offset="0" stop-color="#fff6cf"/><stop offset=".45" stop-color="#ffcf45"/><stop offset="1" stop-color="#f59a0c"/>
+      </radialGradient>
+      <linearGradient id="trail" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".85"/>
+      </linearGradient>
+      <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="20"/></filter>
+    </defs>
+    <!-- the ball's arc across the top, behind the S -->
+    <path d="M150 560 C 210 300, 470 150, 760 205" fill="none" stroke="url(#trail)" stroke-width="12" stroke-linecap="round" stroke-dasharray="2 30"/>
+  </svg>
+  <div class="s">S</div>
+  <svg width="1080" height="1080" viewBox="0 0 1080 1080">
+    <circle cx="805" cy="214" r="70" fill="#ffc93c" opacity=".55" filter="url(#glow)"/>
+    <circle cx="805" cy="214" r="60" fill="url(#ball)"/>
+  </svg>
+</div></body></html>

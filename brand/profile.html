@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;width:1080px;height:1080px;background:#0a1736}</style></head><body>
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="56%" r="55%">
+      <stop offset="0" stop-color="#1d4ed8" stop-opacity="0.75"/>
+      <stop offset="0.55" stop-color="#1d4ed8" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#0a1736" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff6d6" stop-opacity="0.95"/>
+      <stop offset="0.55" stop-color="#ffd76a" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ffc93c" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="pool" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffc93c" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ffc93c" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="14"/></filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="22" stdDeviation="26" flood-color="#000" flood-opacity="0.45"/></filter>
+  </defs>
+  <rect width="1080" height="1080" fill="#0a1736"/>
+  <rect width="1080" height="1080" fill="url(#glow)"/>
+  <!-- the spotlight beam, from above onto the ticket -->
+  <polygon points="480,-40 600,-40 840,770 240,770" fill="url(#beam)" filter="url(#soft)" style="mix-blend-mode:screen"/>
+  <ellipse cx="540" cy="780" rx="360" ry="78" fill="url(#pool)" style="mix-blend-mode:screen"/>
+  <!-- the ticket, from the site's mark (32-unit grid scaled 26x, centred) -->
+  <g transform="translate(540 600) rotate(-8) scale(29) translate(-16 -16)" filter="url(#shadow)">
+    <path d="M8 11.5a1.5 1.5 0 0 1 1.5-1.5h13a1.5 1.5 0 0 1 1.5 1.5v2.2a2.3 2.3 0 0 0 0 4.6v2.2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 8 20.5v-2.2a2.3 2.3 0 0 0 0-4.6z" fill="#fff"/>
+    <path d="M19 10.6v10.8" stroke="#1d4ed8" stroke-width="0.55" stroke-dasharray="0.9 0.9" stroke-linecap="round"/>
+    <circle cx="13.5" cy="16" r="2.1" fill="#ffc93c"/>
+  </g>
+</svg></body></html>

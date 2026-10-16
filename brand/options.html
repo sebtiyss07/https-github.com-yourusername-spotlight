@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;background:#fff}
+.sheet{display:flex;gap:40px;padding:40px}
+.opt{display:flex;flex-direction:column;align-items:center;gap:18px;font:600 28px system-ui;color:#0b1324}
+svg{display:block;border-radius:50%;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+</style></head><body><div class="sheet">
+<!-- shapes on a 1080 canvas -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- plane, pointing up, 100-unit box centred on 50,50 -->
+    <symbol id="plane" viewBox="0 0 100 100">
+      <rect x="44.5" y="6" width="11" height="84" rx="5.5"/>
+      <path d="M50 36 L94 58 L94 66 L50 54 L6 66 L6 58 Z"/>
+      <path d="M50 76 L70 87 L70 93 L50 86 L30 93 L30 87 Z"/>
+    </symbol>
+    <!-- bed, 100-unit box -->
+    <symbol id="bed" viewBox="0 0 100 100">
+      <rect x="8" y="18" width="12" height="66" rx="5"/>
+      <rect x="8" y="52" width="84" height="20" rx="6"/>
+      <rect x="80" y="62" width="12" height="22" rx="5"/>
+      <rect x="25" y="34" width="22" height="16" rx="7"/>
+      <rect x="50" y="36" width="42" height="14" rx="7"/>
+    </symbol>
+    <symbol id="ticket" viewBox="8 10 16 12">
+      <path d="M8 11.5a1.5 1.5 0 0 1 1.5-1.5h13a1.5 1.5 0 0 1 1.5 1.5v2.2a2.3 2.3 0 0 0 0 4.6v2.2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 8 20.5v-2.2a2.3 2.3 0 0 0 0-4.6z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="opt">
+<svg id="o1" width="480" height="480" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1080" fill="#1d4ed8"/>
+  <g transform="rotate(-10 540 540)">
+    <use href="#ticket" x="210" y="345" width="660" height="495" fill="#fff"/>
+    <line x1="602" y1="372" x2="602" y2="813" stroke="#1d4ed8" stroke-width="16" stroke-dasharray="1 32" stroke-linecap="round"/>
+    <use href="#plane" x="302" y="472" width="240" height="240" fill="#ffc93c" transform="rotate(45 422 592)"/>
+    <use href="#bed" x="626" y="520" width="140" height="140" fill="#1d4ed8"/>
+  </g>
+</svg>1 · All-in-one ticket</div>
+
+<div class="opt">
+<svg id="o2" width="480" height="480" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1080" fill="#0a1736"/>
+  <path d="M300 790 C 260 560, 560 620, 600 470 S 640 300, 760 260" fill="none" stroke="#fff" stroke-width="26" stroke-linecap="round" stroke-dasharray="2 54"/>
+  <circle cx="300" cy="790" r="62" fill="#ffc93c"/>
+  <circle cx="300" cy="790" r="22" fill="#0a1736"/>
+  <use href="#plane" x="660" y="130" width="230" height="230" fill="#fff" transform="rotate(72 775 245)"/>
+</svg>2 · Flight path</div>
+
+<div class="opt">
+<svg id="o3" width="480" height="480" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1080" fill="#1d4ed8"/>
+  <ellipse cx="540" cy="600" rx="370" ry="150" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="16" stroke-dasharray="2 40" stroke-linecap="round" transform="rotate(-14 540 600)"/>
+  <path d="M540 250 c-120 0 -210 92 -210 208 c0 150 210 360 210 360 s210 -210 210 -360 c0 -116 -90 -208 -210 -208z" fill="#fff"/>
+  <clipPath id="front"><rect x="0" y="600" width="1080" height="480" transform="rotate(-14 540 600)"/></clipPath>
+  <ellipse cx="540" cy="600" rx="370" ry="150" fill="none" stroke="#1d4ed8" stroke-width="16" stroke-dasharray="2 40" stroke-linecap="round" transform="rotate(-14 540 600)" clip-path="url(#front)"/>
+  <circle cx="540" cy="460" r="82" fill="#ffc93c"/>
+  <use href="#plane" x="805" y="430" width="170" height="170" fill="#fff" transform="rotate(-8 890 515)"/>
+</svg>3 · Destination pin</div>
+</div></body></html>
